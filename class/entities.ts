@@ -1,10 +1,12 @@
 import type {
-    CandidateRow,
-    ElectionRow,
-    ElectionStatus,
-    UserRole,
-    VoteBlockRow,
+  CandidateRow,
+  ElectionRow,
+  ElectionStatus,
+  UserRole,
+  VoteBlockRow,
 } from '@/class/database-types';
+     
+
 
 export class UserAccount {
   constructor(
