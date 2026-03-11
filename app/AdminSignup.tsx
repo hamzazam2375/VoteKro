@@ -1,25 +1,32 @@
 import { serviceFactory } from '@/class/service-factory';
+import { Navbar } from '@/components/navbar';
+import { PasswordField } from '@/components/password-field';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 export default function AdminSignupScreen() {
     const router = useRouter();
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
-    const [adminId, setAdminId] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
     const handleRegister = async () => {
         // Validate inputs
-        if (!fullName || !email || !adminId || !password) {
+        if (!fullName || !email || !password || !confirmPassword) {
             Alert.alert('Error', 'Please fill in all fields');
             return;
         }
 
         if (password.length < 8) {
             Alert.alert('Error', 'Password must be at least 8 characters');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            Alert.alert('Error', 'Password and confirm password do not match');
             return;
         }
 
@@ -36,7 +43,6 @@ export default function AdminSignupScreen() {
                 password,
                 fullName,
                 role: 'admin',
-                adminId,
             });
 
             Alert.alert(
@@ -58,31 +64,9 @@ export default function AdminSignupScreen() {
         }
     };
 
-    const handleGoHome = () => {
-        router.push('/');
-    };
-
     return (
         <View style={styles.container}>
-            {/* Header */}
-            <View style={[styles.header, { paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 16 : 16 }]}>
-                <View style={styles.logoContainer}>
-                    <Image
-                        source={require('@/assets/images/icon.png')}
-                        style={styles.logoIcon}
-                    />
-                    <Text style={styles.logoText}>VoteKro</Text>
-                </View>
-                <Pressable
-                    style={({ pressed }) => [
-                        styles.homeButton,
-                        pressed && styles.homeButtonPressed
-                    ]}
-                    onPress={handleGoHome}
-                >
-                    <Text style={styles.homeButtonText}>← Home</Text>
-                </Pressable>
-            </View>
+            <Navbar />
 
             {/* Main Content */}
             <ScrollView
@@ -124,33 +108,23 @@ export default function AdminSignupScreen() {
                         />
                     </View>
 
-                    {/* Admin ID Input */}
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Admin ID</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="e.g., ADMIN_AIRZA_01"
-                            placeholderTextColor="#999"
-                            value={adminId}
-                            onChangeText={setAdminId}
-                            autoCapitalize="characters"
-                            editable={!isLoading}
-                        />
-                    </View>
+                    <PasswordField
+                        label="Password"
+                        placeholder="Min 8 characters"
+                        placeholderTextColor="#999"
+                        value={password}
+                        onChangeText={setPassword}
+                        editable={!isLoading}
+                    />
 
-                    {/* Password Input */}
-                    <View style={styles.inputContainer}>
-                        <Text style={styles.label}>Password</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Min 8 characters"
-                            placeholderTextColor="#999"
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry
-                            editable={!isLoading}
-                        />
-                    </View>
+                    <PasswordField
+                        label="Confirm Password"
+                        placeholder="Re-enter your password"
+                        placeholderTextColor="#999"
+                        value={confirmPassword}
+                        onChangeText={setConfirmPassword}
+                        editable={!isLoading}
+                    />
 
                     {/* Register Button */}
                     <Pressable
@@ -169,10 +143,10 @@ export default function AdminSignupScreen() {
                         )}
                     </Pressable>
 
-                    {/* Login Link */}
                     <View style={styles.loginLinkContainer}>
+                        <Text style={styles.loginText}>Already have an account? </Text>
                         <Pressable onPress={() => router.push('/AdminLogin')}>
-                            <Text style={styles.loginLink}>←  Back to Login</Text>
+                            <Text style={styles.loginLink}>Go to login</Text>
                         </Pressable>
                     </View>
                 </View>
@@ -185,45 +159,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#f5f5f5',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingBottom: 16,
-        backgroundColor: '#fff',
-        borderBottomWidth: 3,
-        borderBottomColor: '#1a73e8',
-    },
-    logoContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    logoIcon: {
-        width: 24,
-        height: 24,
-    },
-    logoText: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#1a73e8',
-    },
-    homeButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 6,
-        borderWidth: 1,
-        borderColor: '#1a73e8',
-    },
-    homeButtonPressed: {
-        backgroundColor: '#f0f0f0',
-    },
-    homeButtonText: {
-        fontSize: 14,
-        color: '#1a73e8',
-        fontWeight: '500',
     },
     scrollContent: {
         flexGrow: 1,

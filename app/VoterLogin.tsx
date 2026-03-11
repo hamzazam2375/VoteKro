@@ -5,9 +5,8 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-export default function LoginScreen() {
+export default function VoterLoginScreen() {
     const router = useRouter();
-    const [selectedRole, setSelectedRole] = useState<'admin' | 'auditor'>('admin');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -20,17 +19,8 @@ export default function LoginScreen() {
 
         setIsLoading(true);
         try {
-            console.log('Attempting login for:', email);
-
-            // Sign in using the auth service
             await serviceFactory.authService.signIn(email, password);
-
-            console.log('Login successful, fetching profile...');
-
-            // Get the user profile to check their role
             const profile = await serviceFactory.authService.getCurrentProfile();
-
-            console.log('Profile fetched:', profile);
 
             if (!profile) {
                 Alert.alert('Error', 'Profile not found. Please contact support.');
@@ -38,24 +28,16 @@ export default function LoginScreen() {
                 return;
             }
 
-            // Check if the account matches the selected role
-            if (profile.role !== selectedRole) {
-                Alert.alert(
-                    'Role Mismatch',
-                    `This account is not registered as ${selectedRole}. Please select the correct role.`
-                );
+            if (profile.role !== 'voter') {
+                Alert.alert('Access denied', 'This account is not registered as a voter.');
                 await serviceFactory.authService.signOut();
                 return;
             }
 
-            // Navigate to the current dashboard screen for both roles.
-            console.log('Navigating to dashboard...');
-            router.push('/AdminDashboard');
+            router.push('/VoterDashboard');
         } catch (error) {
-            console.error('Login error:', error);
             const errorMessage = error instanceof Error ? error.message : 'An error occurred during login';
 
-            // Check for common error messages
             if (errorMessage.includes('Email not confirmed')) {
                 Alert.alert(
                     'Email Not Verified',
@@ -75,58 +57,27 @@ export default function LoginScreen() {
         <View style={styles.container}>
             <Navbar />
 
-            {/* Main Content */}
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
                 <View style={styles.card}>
                     <View style={styles.titleContainer}>
-                        <Text style={styles.lockIcon}>🔐</Text>
-                        <Text style={styles.title}>Login</Text>
+                        <Text style={styles.voteIcon}>🗳️</Text>
+                        <Text style={styles.title}>Voter Login</Text>
                     </View>
 
-                    <Text style={styles.subtitle}>Choose role and login</Text>
-
-                    <View style={styles.roleSwitchWrap}>
-                        <Pressable
-                            style={({ pressed }) => [
-                                styles.roleButton,
-                                selectedRole === 'admin' && styles.roleButtonActive,
-                                pressed && styles.roleButtonPressed,
-                            ]}
-                            onPress={() => setSelectedRole('admin')}
-                            disabled={isLoading}
-                        >
-                            <Text style={[styles.roleButtonText, selectedRole === 'admin' && styles.roleButtonTextActive]}>
-                                Admin
-                            </Text>
-                        </Pressable>
-
-                        <Pressable
-                            style={({ pressed }) => [
-                                styles.roleButton,
-                                selectedRole === 'auditor' && styles.roleButtonActive,
-                                pressed && styles.roleButtonPressed,
-                            ]}
-                            onPress={() => setSelectedRole('auditor')}
-                            disabled={isLoading}
-                        >
-                            <Text style={[styles.roleButtonText, selectedRole === 'auditor' && styles.roleButtonTextActive]}>
-                                Auditor
-                            </Text>
-                        </Pressable>
-                    </View>
+                    <Text style={styles.subtitle}>Sign in securely to access your ballot and election activity.</Text>
 
                     <View style={styles.inputContainer}>
-                        <Text style={styles.label}>{selectedRole === 'admin' ? 'Admin ID / Email' : 'Auditor ID / Email'}</Text>
+                        <Text style={styles.label}>Voter Email</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder={selectedRole === 'admin' ? 'Type: ADMIN001 or email' : 'Type: AUDITOR001 or email'}
-                            placeholderTextColor="#999"
+                            placeholder="Enter your registered email"
+                            placeholderTextColor="#9aa6b6"
                             value={email}
                             onChangeText={setEmail}
-                            keyboardType="default"
+                            keyboardType="email-address"
                             autoCapitalize="none"
                             editable={!isLoading}
                         />
@@ -134,8 +85,8 @@ export default function LoginScreen() {
 
                     <PasswordField
                         label="Password"
-                        placeholder="Enter password"
-                        placeholderTextColor="#999"
+                        placeholder="Enter your password"
+                        placeholderTextColor="#9aa6b6"
                         value={password}
                         onChangeText={setPassword}
                         editable={!isLoading}
@@ -145,7 +96,7 @@ export default function LoginScreen() {
                         style={({ pressed }) => [
                             styles.loginButton,
                             pressed && styles.loginButtonPressed,
-                            isLoading && styles.loginButtonDisabled
+                            isLoading && styles.loginButtonDisabled,
                         ]}
                         onPress={handleLogin}
                         disabled={isLoading}
@@ -153,20 +104,16 @@ export default function LoginScreen() {
                         {isLoading ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
-                            <Text style={styles.loginButtonText}>Login</Text>
+                            <Text style={styles.loginButtonText}>Continue to Voting</Text>
                         )}
                     </Pressable>
 
-                    {selectedRole === 'admin' ? (
-                        <View style={styles.registerLinkContainer}>
-                            <Text style={styles.registerText}>Don't have an account? </Text>
-                            <Pressable onPress={() => router.push('/AdminSignup')}>
-                                <Text style={styles.registerLink}>Register here</Text>
-                            </Pressable>
-                        </View>
-                    ) : (
-                        <Text style={styles.auditorNote}>Auditor accounts are created by admin.</Text>
-                    )}
+                    <View style={styles.footerRow}>
+                        <Text style={styles.footerText}>Admin or auditor account? </Text>
+                        <Pressable onPress={() => router.push('/AdminLogin')}>
+                            <Text style={styles.footerLink}>Go to login</Text>
+                        </Pressable>
+                    </View>
                 </View>
             </ScrollView>
         </View>
@@ -176,7 +123,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#f5f7fb',
     },
     scrollContent: {
         flexGrow: 1,
@@ -186,7 +133,7 @@ const styles = StyleSheet.create({
         paddingVertical: 20,
     },
     card: {
-        backgroundColor: '#ffffff',
+        backgroundColor: '#fbfdff',
         borderRadius: 18,
         padding: 22,
         width: '100%',
@@ -209,7 +156,7 @@ const styles = StyleSheet.create({
         gap: 10,
         marginBottom: 10,
     },
-    lockIcon: {
+    voteIcon: {
         fontSize: 28,
     },
     title: {
@@ -219,42 +166,10 @@ const styles = StyleSheet.create({
     },
     subtitle: {
         fontSize: 14,
-        color: '#395173',
+        lineHeight: 22,
+        color: '#4a607f',
         textAlign: 'center',
-        marginBottom: 16,
-    },
-    roleSwitchWrap: {
-        flexDirection: 'row',
-        backgroundColor: '#eaf0f8',
-        borderRadius: 10,
-        padding: 4,
         marginBottom: 18,
-    },
-    roleButton: {
-        flex: 1,
-        borderRadius: 8,
-        paddingVertical: 10,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    roleButtonActive: {
-        backgroundColor: '#2f64e6',
-        shadowColor: '#2f64e6',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 10,
-        elevation: 3,
-    },
-    roleButtonPressed: {
-        opacity: 0.9,
-    },
-    roleButtonText: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#304761',
-    },
-    roleButtonTextActive: {
-        color: '#ffffff',
     },
     inputContainer: {
         marginBottom: 14,
@@ -298,24 +213,18 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
     },
-    registerLinkContainer: {
+    footerRow: {
         flexDirection: 'row',
         justifyContent: 'center',
         marginTop: 14,
     },
-    registerText: {
+    footerText: {
         fontSize: 13,
         color: '#5c6f89',
     },
-    registerLink: {
+    footerLink: {
         fontSize: 13,
         color: '#2f64e6',
         fontWeight: '600',
-    },
-    auditorNote: {
-        marginTop: 14,
-        textAlign: 'center',
-        fontSize: 12,
-        color: '#5c6f89',
     },
 });

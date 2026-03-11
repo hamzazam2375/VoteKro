@@ -1,9 +1,10 @@
 import type { ProfileRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
+import { Navbar } from '@/components/navbar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 export default function AdminDashboard() {
     const router = useRouter();
@@ -24,8 +25,8 @@ export default function AdminDashboard() {
                 router.replace('/AdminLogin');
                 return;
             }
-            if (userProfile.role !== 'admin') {
-                Alert.alert('Error', 'Access denied. Admin role required.');
+            if (userProfile.role !== 'admin' && userProfile.role !== 'auditor') {
+                Alert.alert('Error', 'Access denied. Admin or Auditor role required.');
                 router.replace('/AdminLogin');
                 return;
             }
@@ -76,47 +77,21 @@ export default function AdminDashboard() {
 
     return (
         <View style={styles.container}>
-            {/* Header - same style as Login/Signup */}
-            <View style={[styles.header, { paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 16 : 16 }, isMobile && styles.headerMobile]}>
-                <View style={styles.logoContainer}>
-                    <Image
-                        source={require('@/assets/images/icon.png')}
-                        style={styles.logoIcon}
-                    />
-                    <Text style={styles.logoText}>VoteKro</Text>
-                </View>
-                <View style={[styles.headerRight, isMobile && styles.headerRightMobile]}>
-                    {!isMobile && <Text style={styles.welcomeText}>Welcome, {profile?.full_name ?? 'Administrator'}!</Text>}
-                    <Pressable
-                        style={({ pressed }) => [
-                            styles.homeButton,
-                            pressed && styles.homeButtonPressed
-                        ]}
-                        onPress={() => router.replace('/')}
-                    >
-                        <Text style={styles.homeButtonText}>← Home</Text>
-                    </Pressable>
-                    <Pressable
-                        style={({ pressed }) => [
-                            styles.logoutButton,
-                            pressed && styles.logoutButtonPressed
-                        ]}
-                        onPress={handleLogout}
-                    >
-                        <Text style={styles.logoutButtonText}>Logout</Text>
-                    </Pressable>
-                </View>
-                {isMobile && (
-                    <Text style={styles.welcomeTextMobile}>Welcome, {profile?.full_name ?? 'Administrator'}!</Text>
-                )}
-            </View>
+            <Navbar
+                infoText={`Welcome, ${profile?.full_name ?? 'Administrator'}!`}
+                actions={[
+                    { label: 'Logout', onPress: handleLogout, variant: 'outline' },
+                ]}
+            />
 
             {/* Main Content */}
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                 <View style={styles.innerWrapper}>
                     {/* Dashboard Title */}
                     <View style={styles.titleSection}>
-                        <Text style={styles.dashboardTitle}>Admin Dashboard</Text>
+                        <Text style={styles.dashboardTitle}>
+                            {profile?.role === 'auditor' ? 'Auditor Dashboard' : 'Admin Dashboard'}
+                        </Text>
                         <Text style={styles.dashboardSubtitle}>Manage elections and monitor voting activity</Text>
                     </View>
 
@@ -296,86 +271,6 @@ const styles = StyleSheet.create({
         marginTop: 12,
         fontSize: 16,
         color: '#666',
-    },
-    // Header - matches AdminLogin/AdminSignup style exactly
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingBottom: 16,
-        backgroundColor: '#fff',
-        borderBottomWidth: 3,
-        borderBottomColor: '#1a73e8',
-    },
-    headerMobile: {
-        flexWrap: 'wrap',
-        gap: 4,
-    },
-    welcomeTextMobile: {
-        width: '100%',
-        fontSize: 13,
-        color: '#333',
-        fontWeight: '500',
-        paddingHorizontal: 2,
-        paddingBottom: 4,
-    },
-    logoContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    logoIcon: {
-        width: 24,
-        height: 24,
-    },
-    logoText: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#1a73e8',
-    },
-    headerRight: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    headerRightMobile: {
-        gap: 8,
-    },
-    welcomeText: {
-        fontSize: 14,
-        color: '#333',
-        fontWeight: '500',
-    },
-    logoutButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 6,
-        borderWidth: 1,
-        borderColor: '#1a73e8',
-    },
-    logoutButtonPressed: {
-        backgroundColor: '#f0f0f0',
-    },
-    logoutButtonText: {
-        fontSize: 14,
-        color: '#1a73e8',
-        fontWeight: '500',
-    },
-    homeButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 6,
-        borderWidth: 1,
-        borderColor: '#1a73e8',
-    },
-    homeButtonPressed: {
-        backgroundColor: '#f0f0f0',
-    },
-    homeButtonText: {
-        fontSize: 14,
-        color: '#1a73e8',
-        fontWeight: '500',
     },
     content: {
         flex: 1,
