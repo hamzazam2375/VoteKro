@@ -3,5 +3,23 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
-  }
+  },
+  "MicroPython.executeButton": [
+    {
+      "text": "▶",
+      "tooltip": "Run",
+      "alignment": "left",
+      "command": "extension.executeFile",
+      "priority": 3.5
+    }
+  ],
+  "MicroPython.syncButton": [
+    {
+      "text": "$(sync)",
+      "tooltip": "sync",
+      "alignment": "left",
+      "command": "extension.execute",
+      "priority": 4
+    }
+  ]
 }
