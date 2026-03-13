@@ -1,5 +1,6 @@
 import type { ProfileRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
+import { supabase } from '@/class/supabase-client';
 import { Navbar } from '@/components/navbar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -13,6 +14,7 @@ export default function AdminDashboard() {
     const [profile, setProfile] = useState<ProfileRow | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [auditorExists, setAuditorExists] = useState(false);
 
     useEffect(() => {
         loadProfile();
@@ -32,12 +34,34 @@ export default function AdminDashboard() {
                 return;
             }
             setProfile(userProfile);
+            
+            // Check if auditor already exists
+            await checkAuditorExists();
         } catch (error) {
             console.error('Error loading profile:', error);
             Alert.alert('Error', 'Failed to load profile');
             router.replace('/AdminLogin');
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const checkAuditorExists = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('role', 'auditor')
+                .maybeSingle();
+
+            if (error) {
+                console.error('Error checking auditor:', error);
+                return;
+            }
+
+            setAuditorExists(!!data);
+        } catch (error) {
+            console.error('Error in checkAuditorExists:', error);
         }
     };
 
@@ -203,19 +227,24 @@ export default function AdminDashboard() {
                                 </View>
                             </Pressable>
 
-                            <Pressable style={[styles.actionCard, isMobile ? styles.cardFullWidth : styles.cardThirdWidth] as any}>
-                                <View style={styles.cardInner}>
-                                    <LinearGradient colors={['#1a73e8', '#7c3aed', '#e91e8c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cardStripe} />
-                                    <View style={styles.cardBody}>
-                                        <Text style={styles.actionIcon}>🔍</Text>
-                                        <Text style={styles.actionTitle}>Register Auditor</Text>
-                                        <Text style={styles.actionDesc}>Create auditor account with Gmail and random password</Text>
-                                        <View style={styles.actionBtn}>
-                                            <Text style={styles.actionBtnText}>Register Auditor +</Text>
+                            {profile?.role === 'admin' && !auditorExists && (
+                                <Pressable 
+                                    style={[styles.actionCard, isMobile ? styles.cardFullWidth : styles.cardThirdWidth] as any}
+                                    onPress={() => router.push('/AuditorSignup')}
+                                >
+                                    <View style={styles.cardInner}>
+                                        <LinearGradient colors={['#1a73e8', '#7c3aed', '#e91e8c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cardStripe} />
+                                        <View style={styles.cardBody}>
+                                            <Text style={styles.actionIcon}>🔍</Text>
+                                            <Text style={styles.actionTitle}>Register Auditor</Text>
+                                            <Text style={styles.actionDesc}>Create auditor account with Gmail and random password</Text>
+                                            <View style={styles.actionBtn}>
+                                                <Text style={styles.actionBtnText}>Register Auditor +</Text>
+                                            </View>
                                         </View>
                                     </View>
-                                </View>
-                            </Pressable>
+                                </Pressable>
+                            )}
                         </View>
                     </View>
 
