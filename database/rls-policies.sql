@@ -18,49 +18,44 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 -- ============================================
 
 -- Drop existing policies if they exist (for re-running this script)
-DROP POLICY
-IF EXISTS "Users can insert their own profile" ON public.profiles;
-DROP POLICY
-IF EXISTS "Users can read their own profile" ON public.profiles;
-DROP POLICY
-IF EXISTS "Users can read own profile" ON public.profiles;
-DROP POLICY
-IF EXISTS "Users can update their own profile" ON public.profiles;
-DROP POLICY
-IF EXISTS "Users can update own profile" ON public.profiles;
-DROP POLICY
-IF EXISTS "Admins can read all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can insert auditor profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Users can read their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can read own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can read all profiles" ON public.profiles;
 
 -- Allow users to insert their own profile during signup
 CREATE POLICY "Users can insert their own profile"
 ON public.profiles
-FOR
-INSERT
-TO authenticated
-WITH CHECK (
-auth.uid()
-= user_id);
+FOR INSERT
+WITH CHECK (auth.uid() = user_id);
 
 -- Allow users to read their own profile
 CREATE POLICY "Users can read own profile"
 ON public.profiles
-FOR
-SELECT
-    TO authenticated
-USING
-(auth.uid
-() = user_id);
+FOR SELECT
+USING (auth.uid() = user_id);
+
+-- Allow admins to read all profiles
+CREATE POLICY "Admins can read all profiles"
+ON public.profiles
+FOR SELECT
+USING (
+  auth.uid() = user_id OR 
+  EXISTS (
+    SELECT 1 FROM public.profiles 
+    WHERE user_id = auth.uid() AND role = 'admin'
+  )
+);
 
 -- Allow users to update their own profile
 CREATE POLICY "Users can update own profile"
 ON public.profiles
-FOR
-UPDATE
-TO authenticated
+FOR UPDATE
 USING (auth.uid() = user_id)
-WITH CHECK
-(auth.uid
-() = user_id);
+WITH CHECK (auth.uid() = user_id);
 
 -- ============================================
 -- ELECTIONS TABLE POLICIES

@@ -62,6 +62,12 @@ export default function AuditorSignupScreen() {
             return;
         }
 
+        // Verify that current user is admin
+        if (profile?.role !== 'admin') {
+            Alert.alert('Error', 'Only admins can register auditors');
+            return;
+        }
+
         // Extract first name and generate password
         const firstName = fullName.split(' ')[0];
         const password = firstName;
@@ -75,6 +81,9 @@ export default function AuditorSignupScreen() {
                 fullName,
                 role: 'auditor',
             });
+
+            // Sign out the newly created auditor and go back to admin dashboard
+            await serviceFactory.authService.signOut();
 
             // Show success alert and auto-navigate
             Alert.alert(

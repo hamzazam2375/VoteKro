@@ -48,9 +48,13 @@ export default function LoginScreen() {
                 return;
             }
 
-            // Navigate to the current dashboard screen for both roles.
+            // Navigate to the appropriate dashboard based on role
             console.log('Navigating to dashboard...');
-            router.push('/AdminDashboard');
+            if (profile.role === 'auditor') {
+                router.push('/AuditorDashboard');
+            } else {
+                router.push('/AdminDashboard');
+            }
         } catch (error) {
             console.error('Login error:', error);
             const errorMessage = error instanceof Error ? error.message : 'An error occurred during login';

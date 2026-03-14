@@ -28,8 +28,8 @@ export default function AdminDashboard() {
                 router.replace('/AdminLogin');
                 return;
             }
-            if (userProfile.role !== 'admin' && userProfile.role !== 'auditor') {
-                Alert.alert('Error', 'Access denied. Admin or Auditor role required.');
+            if (userProfile.role !== 'admin') {
+                Alert.alert('Error', 'Access denied. Admin role required.');
                 router.replace('/AdminLogin');
                 return;
             }
@@ -131,9 +131,7 @@ export default function AdminDashboard() {
                 <View style={styles.innerWrapper}>
                     {/* Dashboard Title */}
                     <View style={styles.titleSection}>
-                        <Text style={styles.dashboardTitle}>
-                            {profile?.role === 'auditor' ? 'Auditor Dashboard' : 'Admin Dashboard'}
-                        </Text>
+                        <Text style={styles.dashboardTitle}>Admin Dashboard</Text>
                         <Text style={styles.dashboardSubtitle}>Manage elections and monitor voting activity</Text>
                     </View>
 

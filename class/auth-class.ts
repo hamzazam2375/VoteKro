@@ -25,7 +25,8 @@ export class AuthService extends BaseService {
     // Create auth user
     const userId = await this.authRepository.signUp(input.email, input.password);
 
-    // Create profile
+    // Create profile with the new user ID
+    // The RLS policy now allows this through service_role
     const profile = await this.profileRepository.create(userId, input.fullName, input.role);
 
     return profile;

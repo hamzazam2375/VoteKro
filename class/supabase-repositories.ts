@@ -1,23 +1,23 @@
 import type {
-  AuditLogRow,
-  CandidateRow,
-  ElectionRow,
-  ProfileRow,
-  VerifyChainResultRow,
-  VoteBlockRow,
-  VoterRegistryRow,
+    AuditLogRow,
+    CandidateRow,
+    ElectionRow,
+    ProfileRow,
+    VerifyChainResultRow,
+    VoteBlockRow,
+    VoterRegistryRow,
 } from '@/class/database-types';
 import { DataAccessError } from '@/class/errors';
 import type {
-  AddCandidateInput,
-  CreateElectionInput,
-  IAuditLogRepository,
-  IAuthRepository,
-  ICandidateRepository,
-  IElectionRepository,
-  IProfileRepository,
-  IVoteLedgerRepository,
-  IVoterRegistryRepository,
+    AddCandidateInput,
+    CreateElectionInput,
+    IAuditLogRepository,
+    IAuthRepository,
+    ICandidateRepository,
+    IElectionRepository,
+    IProfileRepository,
+    IVoteLedgerRepository,
+    IVoterRegistryRepository,
 } from '@/class/service-contracts';
 import { supabase } from '@/class/supabase-client';
 
@@ -97,6 +97,7 @@ export class SupabaseProfileRepository extends RepositoryBase implements IProfil
       .single();
 
     if (error) {
+      console.error('Profile creation failed:', error.message);
       this.throwOnError('Failed to create profile', error);
     }
 
