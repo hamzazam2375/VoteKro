@@ -2,6 +2,8 @@ import { Navbar } from '@/components/navbar';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
+
+
 export default function HomeScreen() {
     const router = useRouter();
     const { width } = useWindowDimensions();
