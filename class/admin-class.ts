@@ -61,6 +61,39 @@ export class AdminService extends BaseService {
     });
   }
 
+  async registerVoter(input: {
+    fullName: string;
+    email: string;
+    password: string;
+    confirmPassword: string;
+  }): Promise<ProfileRow> {
+    const fullName = input.fullName.trim();
+    const email = input.email.trim();
+    const password = input.password;
+    const confirmPassword = input.confirmPassword;
+
+    await this.authService.getRequiredProfile('admin');
+
+    this.requireNonEmpty(fullName, 'Full name');
+    this.requireNonEmpty(email, 'Email');
+    this.requireNonEmpty(password, 'Password');
+    this.requireNonEmpty(confirmPassword, 'Confirm password');
+    this.requireMinimumLength(password, 8, 'Password');
+
+    if (password !== confirmPassword) {
+      throw new ValidationError('Password and confirm password do not match');
+    }
+
+    this.requireGmailAddress(email);
+
+    return this.authService.signUp({
+      email,
+      password,
+      fullName,
+      role: 'voter',
+    });
+  }
+
   async createElection(input: CreateElectionInput): Promise<ElectionRow> {
     this.requireNonEmpty(input.title, 'Election title');
     this.requireValidDateRange(input.startsAtIso, input.endsAtIso);
@@ -91,6 +124,12 @@ export class AdminService extends BaseService {
   private requireGmailAddress(email: string): void {
     if (!email.includes('@') || !email.toLowerCase().endsWith('@gmail.com')) {
       throw new ValidationError('Email must end with @gmail.com');
+    }
+  }
+
+  private requireMinimumLength(value: string, minLength: number, fieldName: string): void {
+    if (value.length < minLength) {
+      throw new ValidationError(`${fieldName} must be at least ${minLength} characters`);
     }
   }
 }

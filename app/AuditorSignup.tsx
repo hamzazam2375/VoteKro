@@ -54,8 +54,6 @@ export default function AuditorSignupScreen() {
                 email,
             });
 
-            await serviceFactory.authService.signOut();
-
             Alert.alert(
                 'Success! ✓',
                 'Auditor registered and added successfully.',

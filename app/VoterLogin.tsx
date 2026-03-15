@@ -10,14 +10,23 @@ export default function VoterLoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
     const handleLogin = async () => {
         setIsLoading(true);
+        setErrorMessage('');
         try {
+            try {
+                await serviceFactory.authService.signOut();
+            } catch {
+                // Ignore if there is no active session; sign-in still proceeds.
+            }
+
             const profile = await serviceFactory.authService.loginForRole(email, password, 'voter');
             router.push(serviceFactory.authService.getDashboardRoute(profile.role));
         } catch (error) {
             const alertContent = serviceFactory.authService.getLoginErrorAlert(error);
+            setErrorMessage(alertContent.message);
             Alert.alert(alertContent.title, alertContent.message);
         } finally {
             setIsLoading(false);
@@ -78,6 +87,12 @@ export default function VoterLoginScreen() {
                             <Text style={styles.loginButtonText}>Continue to Voting</Text>
                         )}
                     </Pressable>
+
+                    {errorMessage ? (
+                        <View style={styles.errorBox}>
+                            <Text style={styles.errorText}>{errorMessage}</Text>
+                        </View>
+                    ) : null}
 
                     <View style={styles.footerRow}>
                         <Text style={styles.footerText}>Admin or auditor account? </Text>
@@ -183,6 +198,20 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '700',
+    },
+    errorBox: {
+        marginTop: 12,
+        backgroundColor: '#fdecec',
+        borderColor: '#f3b8b8',
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+    },
+    errorText: {
+        color: '#8f2222',
+        fontSize: 13,
+        lineHeight: 18,
     },
     footerRow: {
         flexDirection: 'row',

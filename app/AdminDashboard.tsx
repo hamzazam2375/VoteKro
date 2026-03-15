@@ -85,6 +85,7 @@ export default function AdminDashboard() {
                     </View>
                 </View>
             </Modal>
+
             <Navbar
                 infoText={`Welcome, ${profile?.full_name ?? 'Administrator'}!`}
                 actions={[
@@ -177,13 +178,16 @@ export default function AdminDashboard() {
                                 </View>
                             </Pressable>
 
-                            <Pressable style={[styles.actionCard, isMobile ? styles.cardFullWidth : styles.cardThirdWidth] as any}>
+                            <Pressable
+                                style={[styles.actionCard, isMobile ? styles.cardFullWidth : styles.cardThirdWidth] as any}
+                                onPress={() => router.push('/VoterSignup')}
+                            >
                                 <View style={styles.cardInner}>
                                     <LinearGradient colors={['#1a73e8', '#7c3aed', '#e91e8c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cardStripe} />
                                     <View style={styles.cardBody}>
                                         <Text style={styles.actionIcon}>✅</Text>
                                         <Text style={styles.actionTitle}>Register Voter</Text>
-                                        <Text style={styles.actionDesc}>Create voter account with Gmail and random password</Text>
+                                        <Text style={styles.actionDesc}>Create voter account with Gmail and set a password</Text>
                                         <View style={styles.actionBtn}>
                                             <Text style={styles.actionBtnText}>Register Voter +</Text>
                                         </View>

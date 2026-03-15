@@ -38,6 +38,15 @@ export class SupabaseAuthRepository extends RepositoryBase implements IAuthRepos
   }
 
   async signUp(email: string, password: string): Promise<string> {
+    const {
+      data: { session: previousSession },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError) {
+      this.throwOnError('Failed to read current session before sign up', sessionError);
+    }
+
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
       this.throwOnError('Failed to sign up', error);
@@ -45,6 +54,18 @@ export class SupabaseAuthRepository extends RepositoryBase implements IAuthRepos
     if (!data.user) {
       this.throwOnError('Failed to sign up', new Error('No user returned'));
     }
+
+    if (previousSession?.access_token && previousSession.refresh_token) {
+      const { error: restoreError } = await supabase.auth.setSession({
+        access_token: previousSession.access_token,
+        refresh_token: previousSession.refresh_token,
+      });
+
+      if (restoreError) {
+        this.throwOnError('Failed to restore previous session after sign up', restoreError);
+      }
+    }
+
     return data.user.id;
   }
 

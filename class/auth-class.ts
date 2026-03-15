@@ -56,7 +56,7 @@ export class AuthService extends BaseService {
 
     if (profile.role !== expectedRole) {
       await this.signOut();
-      throw new AuthenticationError(this.getRoleMismatchMessage(expectedRole));
+      throw new AuthenticationError(this.getRoleMismatchMessage(expectedRole, profile.role));
     }
 
     return profile;
@@ -180,11 +180,11 @@ export class AuthService extends BaseService {
     return role.charAt(0).toUpperCase() + role.slice(1);
   }
 
-  private getRoleMismatchMessage(role: ProfileRow['role']): string {
-    if (role === 'voter') {
-      return 'This account is not registered as a voter.';
+  private getRoleMismatchMessage(expectedRole: ProfileRow['role'], actualRole: ProfileRow['role']): string {
+    if (expectedRole === 'voter') {
+      return `This account is registered as ${actualRole}, not voter. Please use a voter account.`;
     }
 
-    return `This account is not registered as ${role}. Please select the correct role.`;
+    return `This account is registered as ${actualRole}, not ${expectedRole}. Please select the correct role.`;
   }
 }
