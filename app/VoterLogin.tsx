@@ -12,42 +12,13 @@ export default function VoterLoginScreen() {
     const [isLoading, setIsLoading] = useState(false);
 
     const handleLogin = async () => {
-        if (!email || !password) {
-            Alert.alert('Error', 'Please fill in all fields');
-            return;
-        }
-
         setIsLoading(true);
         try {
-            await serviceFactory.authService.signIn(email, password);
-            const profile = await serviceFactory.authService.getCurrentProfile();
-
-            if (!profile) {
-                Alert.alert('Error', 'Profile not found. Please contact support.');
-                await serviceFactory.authService.signOut();
-                return;
-            }
-
-            if (profile.role !== 'voter') {
-                Alert.alert('Access denied', 'This account is not registered as a voter.');
-                await serviceFactory.authService.signOut();
-                return;
-            }
-
-            router.push('/VoterDashboard');
+            const profile = await serviceFactory.authService.loginForRole(email, password, 'voter');
+            router.push(serviceFactory.authService.getDashboardRoute(profile.role));
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'An error occurred during login';
-
-            if (errorMessage.includes('Email not confirmed')) {
-                Alert.alert(
-                    'Email Not Verified',
-                    'Please check your email and click the verification link before logging in.'
-                );
-            } else if (errorMessage.includes('Invalid login credentials')) {
-                Alert.alert('Login Failed', 'Invalid email or password. Please try again.');
-            } else {
-                Alert.alert('Login Failed', errorMessage);
-            }
+            const alertContent = serviceFactory.authService.getLoginErrorAlert(error);
+            Alert.alert(alertContent.title, alertContent.message);
         } finally {
             setIsLoading(false);
         }

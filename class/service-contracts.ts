@@ -1,11 +1,11 @@
 import type {
-  AuditLogRow,
-  CandidateRow,
-  ElectionRow,
-  ProfileRow,
-  VerifyChainResultRow,
-  VoteBlockRow,
-  VoterRegistryRow,
+    AuditLogRow,
+    CandidateRow,
+    ElectionRow,
+    ProfileRow,
+    VerifyChainResultRow,
+    VoteBlockRow,
+    VoterRegistryRow,
 } from '@/class/database-types';
 
 export interface CreateElectionInput {
@@ -46,6 +46,7 @@ export interface IAuthRepository {
 
 export interface IProfileRepository {
   getByUserId(userId: string): Promise<ProfileRow | null>;
+  getByRole(role: ProfileRow['role']): Promise<ProfileRow | null>;
   create(userId: string, fullName: string, role: ProfileRow['role']): Promise<ProfileRow>;
 }
 

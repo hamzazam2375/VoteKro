@@ -13,63 +13,13 @@ export default function LoginScreen() {
     const [isLoading, setIsLoading] = useState(false);
 
     const handleLogin = async () => {
-        if (!email || !password) {
-            Alert.alert('Error', 'Please fill in all fields');
-            return;
-        }
-
         setIsLoading(true);
         try {
-            console.log('Attempting login for:', email);
-
-            // Sign in using the auth service
-            await serviceFactory.authService.signIn(email, password);
-
-            console.log('Login successful, fetching profile...');
-
-            // Get the user profile to check their role
-            const profile = await serviceFactory.authService.getCurrentProfile();
-
-            console.log('Profile fetched:', profile);
-
-            if (!profile) {
-                Alert.alert('Error', 'Profile not found. Please contact support.');
-                await serviceFactory.authService.signOut();
-                return;
-            }
-
-            // Check if the account matches the selected role
-            if (profile.role !== selectedRole) {
-                Alert.alert(
-                    'Role Mismatch',
-                    `This account is not registered as ${selectedRole}. Please select the correct role.`
-                );
-                await serviceFactory.authService.signOut();
-                return;
-            }
-
-            // Navigate to the appropriate dashboard based on role
-            console.log('Navigating to dashboard...');
-            if (profile.role === 'auditor') {
-                router.push('/AuditorDashboard');
-            } else {
-                router.push('/AdminDashboard');
-            }
+            const profile = await serviceFactory.authService.loginForRole(email, password, selectedRole);
+            router.push(serviceFactory.authService.getDashboardRoute(profile.role));
         } catch (error) {
-            console.error('Login error:', error);
-            const errorMessage = error instanceof Error ? error.message : 'An error occurred during login';
-
-            // Check for common error messages
-            if (errorMessage.includes('Email not confirmed')) {
-                Alert.alert(
-                    'Email Not Verified',
-                    'Please check your email and click the verification link before logging in.'
-                );
-            } else if (errorMessage.includes('Invalid login credentials')) {
-                Alert.alert('Login Failed', 'Invalid email or password. Please try again.');
-            } else {
-                Alert.alert('Login Failed', errorMessage);
-            }
+            const alertContent = serviceFactory.authService.getLoginErrorAlert(error);
+            Alert.alert(alertContent.title, alertContent.message);
         } finally {
             setIsLoading(false);
         }
@@ -163,7 +113,7 @@ export default function LoginScreen() {
 
                     {selectedRole === 'admin' ? (
                         <View style={styles.registerLinkContainer}>
-                            <Text style={styles.registerText}>Don't have an account? </Text>
+                            <Text style={styles.registerText}>Don&apos;t have an account? </Text>
                             <Pressable onPress={() => router.push('/AdminSignup')}>
                                 <Text style={styles.registerLink}>Register here</Text>
                             </Pressable>

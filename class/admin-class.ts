@@ -1,22 +1,58 @@
 import { AuthService } from '@/class/auth-class';
 import { BaseService } from '@/class/base-service';
-import type { CandidateRow, ElectionRow, VoterRegistryRow } from '@/class/database-types';
+import type { CandidateRow, ElectionRow, ProfileRow, VoterRegistryRow } from '@/class/database-types';
+import { ValidationError } from '@/class/errors';
 import type {
     AddCandidateInput,
     CreateElectionInput,
     ICandidateRepository,
     IElectionRepository,
+    IProfileRepository,
     IVoterRegistryRepository,
 } from '@/class/service-contracts';
 
 export class AdminService extends BaseService {
   constructor(
     private readonly authService: AuthService,
+    private readonly profileRepository: IProfileRepository,
     private readonly electionRepository: IElectionRepository,
     private readonly candidateRepository: ICandidateRepository,
     private readonly voterRegistryRepository: IVoterRegistryRepository
   ) {
     super();
+  }
+
+  async getDashboardOverview(): Promise<{ profile: ProfileRow; auditorExists: boolean }> {
+    const profile = await this.authService.getRequiredProfile('admin');
+    const auditorProfile = await this.profileRepository.getByRole('auditor');
+
+    return {
+      profile,
+      auditorExists: !!auditorProfile,
+    };
+  }
+
+  async registerAuditor(input: { fullName: string; email: string }): Promise<ProfileRow> {
+    const fullName = input.fullName.trim();
+    const email = input.email.trim();
+
+    await this.authService.getRequiredProfile('admin');
+
+    this.requireNonEmpty(fullName, 'Full name');
+    this.requireNonEmpty(email, 'Email');
+    this.requireGmailAddress(email);
+
+    const generatedPassword = fullName.split(/\s+/)[0];
+    if (!generatedPassword) {
+      throw new ValidationError('Password could not be generated from full name');
+    }
+
+    return this.authService.signUp({
+      email,
+      password: generatedPassword,
+      fullName,
+      role: 'auditor',
+    });
   }
 
   async createElection(input: CreateElectionInput): Promise<ElectionRow> {
@@ -44,5 +80,11 @@ export class AdminService extends BaseService {
   async updateElectionStatus(electionId: string, status: ElectionRow['status']): Promise<ElectionRow> {
     this.requireNonEmpty(electionId, 'Election id');
     return this.electionRepository.updateStatus(electionId, status);
+  }
+
+  private requireGmailAddress(email: string): void {
+    if (!email.includes('@') || !email.toLowerCase().endsWith('@gmail.com')) {
+      throw new ValidationError('Email must end with @gmail.com');
+    }
   }
 }

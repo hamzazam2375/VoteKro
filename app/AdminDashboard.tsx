@@ -1,6 +1,5 @@
 import type { ProfileRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
-import { supabase } from '@/class/supabase-client';
 import { Navbar } from '@/components/navbar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -17,53 +16,21 @@ export default function AdminDashboard() {
     const [auditorExists, setAuditorExists] = useState(false);
 
     useEffect(() => {
-        loadProfile();
-    }, []);
-
-    const loadProfile = async () => {
-        try {
-            const userProfile = await serviceFactory.authService.getCurrentProfile();
-            if (!userProfile) {
-                Alert.alert('Error', 'Not authenticated');
+        const loadDashboardOverview = async () => {
+            try {
+                const overview = await serviceFactory.adminService.getDashboardOverview();
+                setProfile(overview.profile);
+                setAuditorExists(overview.auditorExists);
+            } catch (error) {
+                Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to load profile'));
                 router.replace('/AdminLogin');
-                return;
+            } finally {
+                setIsLoading(false);
             }
-            if (userProfile.role !== 'admin') {
-                Alert.alert('Error', 'Access denied. Admin role required.');
-                router.replace('/AdminLogin');
-                return;
-            }
-            setProfile(userProfile);
-            
-            // Check if auditor already exists
-            await checkAuditorExists();
-        } catch (error) {
-            console.error('Error loading profile:', error);
-            Alert.alert('Error', 'Failed to load profile');
-            router.replace('/AdminLogin');
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        };
 
-    const checkAuditorExists = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('role', 'auditor')
-                .maybeSingle();
-
-            if (error) {
-                console.error('Error checking auditor:', error);
-                return;
-            }
-
-            setAuditorExists(!!data);
-        } catch (error) {
-            console.error('Error in checkAuditorExists:', error);
-        }
-    };
+        void loadDashboardOverview();
+    }, [router]);
 
     const handleLogout = () => {
         if (Platform.OS === 'web') {
@@ -86,8 +53,7 @@ export default function AdminDashboard() {
             await serviceFactory.authService.signOut();
             router.replace('/');
         } catch (error) {
-            console.error('Logout error:', error);
-            Alert.alert('Error', 'Failed to logout');
+            Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to logout'));
         }
     };
 

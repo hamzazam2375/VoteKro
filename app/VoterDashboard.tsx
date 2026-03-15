@@ -11,41 +11,27 @@ export default function VoterDashboard() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        loadProfile();
-    }, []);
-
-    const loadProfile = async () => {
-        try {
-            const userProfile = await serviceFactory.authService.getCurrentProfile();
-            if (!userProfile) {
-                Alert.alert('Error', 'Not authenticated');
+        const loadProfile = async () => {
+            try {
+                const userProfile = await serviceFactory.authService.getRequiredProfile('voter');
+                setProfile(userProfile);
+            } catch (error) {
+                Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to load profile'));
                 router.replace('/VoterLogin');
-                return;
+            } finally {
+                setIsLoading(false);
             }
+        };
 
-            if (userProfile.role !== 'voter') {
-                Alert.alert('Error', 'Access denied. Voter role required.');
-                router.replace('/VoterLogin');
-                return;
-            }
-
-            setProfile(userProfile);
-        } catch (error) {
-            console.error('Error loading voter profile:', error);
-            Alert.alert('Error', 'Failed to load profile');
-            router.replace('/VoterLogin');
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        void loadProfile();
+    }, [router]);
 
     const handleLogout = async () => {
         try {
             await serviceFactory.authService.signOut();
             router.replace('/');
         } catch (error) {
-            console.error('Logout error:', error);
-            Alert.alert('Error', 'Failed to logout');
+            Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to logout'));
         }
     };
 

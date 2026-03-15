@@ -11,22 +11,20 @@ export default function AuditorSignupScreen() {
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [profile, setProfile] = useState<ProfileRow | null>(null);
-    const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
     useEffect(() => {
-        loadProfile();
-    }, []);
+        const loadProfile = async () => {
+            try {
+                const userProfile = await serviceFactory.authService.getRequiredProfile('admin');
+                setProfile(userProfile);
+            } catch (error) {
+                Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to load profile'));
+                router.replace('/AdminLogin');
+            }
+        };
 
-    const loadProfile = async () => {
-        try {
-            const userProfile = await serviceFactory.authService.getCurrentProfile();
-            setProfile(userProfile);
-        } catch (error) {
-            console.error('Error loading profile:', error);
-        } finally {
-            setIsLoadingProfile(false);
-        }
-    };
+        void loadProfile();
+    }, [router]);
 
     const handleLogout = () => {
         Alert.alert(
@@ -44,48 +42,20 @@ export default function AuditorSignupScreen() {
             await serviceFactory.authService.signOut();
             router.replace('/');
         } catch (error) {
-            console.error('Logout error:', error);
-            Alert.alert('Error', 'Failed to logout');
+            Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to logout'));
         }
     };
 
     const handleRegister = async () => {
-        // Validate inputs
-        if (!fullName || !email) {
-            Alert.alert('Error', 'Please fill in all fields');
-            return;
-        }
-
-        // Validate email ends with @gmail.com
-        if (!email.endsWith('@gmail.com')) {
-            Alert.alert('Error', 'Email must end with @gmail.com');
-            return;
-        }
-
-        // Verify that current user is admin
-        if (profile?.role !== 'admin') {
-            Alert.alert('Error', 'Only admins can register auditors');
-            return;
-        }
-
-        // Extract first name and generate password
-        const firstName = fullName.split(' ')[0];
-        const password = firstName;
-
         setIsLoading(true);
         try {
-            // Sign up using the auth service
-            await serviceFactory.authService.signUp({
-                email,
-                password,
+            await serviceFactory.adminService.registerAuditor({
                 fullName,
-                role: 'auditor',
+                email,
             });
 
-            // Sign out the newly created auditor and go back to admin dashboard
             await serviceFactory.authService.signOut();
 
-            // Show success alert and auto-navigate
             Alert.alert(
                 'Success! ✓',
                 'Auditor registered and added successfully.',
@@ -97,9 +67,8 @@ export default function AuditorSignupScreen() {
                 ]
             );
         } catch (error) {
-            console.error('Signup error:', error);
-            const errorMessage = error instanceof Error ? error.message : 'An error occurred during registration';
-            Alert.alert('Registration Failed', errorMessage);
+            const alertContent = serviceFactory.authService.getRegistrationErrorAlert(error);
+            Alert.alert(alertContent.title, alertContent.message);
         } finally {
             setIsLoading(false);
         }

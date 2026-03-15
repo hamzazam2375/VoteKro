@@ -15,31 +15,20 @@ export default function AuditorDashboard() {
     const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     useEffect(() => {
-        loadProfile();
-    }, []);
+        const loadProfile = async () => {
+            try {
+                const userProfile = await serviceFactory.authService.getRequiredProfile('auditor');
+                setProfile(userProfile);
+            } catch (error) {
+                Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to load profile'));
+                router.replace('/AdminLogin');
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-    const loadProfile = async () => {
-        try {
-            const userProfile = await serviceFactory.authService.getCurrentProfile();
-            if (!userProfile) {
-                Alert.alert('Error', 'Not authenticated');
-                router.replace('/AdminLogin');
-                return;
-            }
-            if (userProfile.role !== 'auditor') {
-                Alert.alert('Error', 'Access denied. Auditor role required.');
-                router.replace('/AdminLogin');
-                return;
-            }
-            setProfile(userProfile);
-        } catch (error) {
-            console.error('Error loading profile:', error);
-            Alert.alert('Error', 'Failed to load profile');
-            router.replace('/AdminLogin');
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        void loadProfile();
+    }, [router]);
 
     const handleLogout = () => {
         if (Platform.OS === 'web') {
@@ -62,8 +51,7 @@ export default function AuditorDashboard() {
             await serviceFactory.authService.signOut();
             router.replace('/');
         } catch (error) {
-            console.error('Logout error:', error);
-            Alert.alert('Error', 'Failed to logout');
+            Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to logout'));
         }
     };
 

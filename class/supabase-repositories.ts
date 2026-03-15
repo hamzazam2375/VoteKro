@@ -84,6 +84,20 @@ export class SupabaseProfileRepository extends RepositoryBase implements IProfil
     return (data as ProfileRow | null) ?? null;
   }
 
+  async getByRole(role: ProfileRow['role']): Promise<ProfileRow | null> {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', role)
+      .maybeSingle();
+
+    if (error) {
+      this.throwOnError('Failed to fetch profile by role', error);
+    }
+
+    return (data as ProfileRow | null) ?? null;
+  }
+
   async create(userId: string, fullName: string, role: ProfileRow['role']): Promise<ProfileRow> {
     const { data, error } = await supabase
       .from('profiles')

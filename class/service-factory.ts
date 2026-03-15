@@ -24,6 +24,7 @@ export class ServiceFactory {
   private readonly authServiceInstance = new AuthService(this.authRepository, this.profileRepository);
   private readonly adminServiceInstance = new AdminService(
     this.authServiceInstance,
+    this.profileRepository,
     this.electionRepository,
     this.candidateRepository,
     this.voterRegistryRepository

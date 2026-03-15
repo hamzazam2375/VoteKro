@@ -14,35 +14,13 @@ export default function AdminSignupScreen() {
     const [isLoading, setIsLoading] = useState(false);
 
     const handleRegister = async () => {
-        // Validate inputs
-        if (!fullName || !email || !password || !confirmPassword) {
-            Alert.alert('Error', 'Please fill in all fields');
-            return;
-        }
-
-        if (password.length < 8) {
-            Alert.alert('Error', 'Password must be at least 8 characters');
-            return;
-        }
-
-        if (password !== confirmPassword) {
-            Alert.alert('Error', 'Password and confirm password do not match');
-            return;
-        }
-
-        if (!email.includes('@')) {
-            Alert.alert('Error', 'Please enter a valid email address');
-            return;
-        }
-
         setIsLoading(true);
         try {
-            // Sign up using the auth service
-            await serviceFactory.authService.signUp({
+            await serviceFactory.authService.registerAdmin({
+                fullName,
                 email,
                 password,
-                fullName,
-                role: 'admin',
+                confirmPassword,
             });
 
             Alert.alert(
@@ -56,9 +34,8 @@ export default function AdminSignupScreen() {
                 ]
             );
         } catch (error) {
-            console.error('Signup error:', error);
-            const errorMessage = error instanceof Error ? error.message : 'An error occurred during registration';
-            Alert.alert('Registration Failed', errorMessage);
+            const alertContent = serviceFactory.authService.getRegistrationErrorAlert(error);
+            Alert.alert(alertContent.title, alertContent.message);
         } finally {
             setIsLoading(false);
         }
