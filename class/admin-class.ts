@@ -22,9 +22,10 @@ export class AdminService extends BaseService {
     super();
   }
 
-  async getDashboardOverview(): Promise<{ profile: ProfileRow; auditorExists: boolean }> {
+  async getDashboardOverview(): Promise<{ profile: ProfileRow; auditorExists: boolean; registeredVotersCount: number }> {
     const profile = await this.authService.getRequiredProfile('admin');
     let auditorProfile: ProfileRow | null = null;
+    let registeredVotersCount = 0;
     try {
       auditorProfile = await this.profileRepository.getByRole('auditor');
     } catch (error) {
@@ -32,9 +33,17 @@ export class AdminService extends BaseService {
       console.warn('Unable to determine whether an auditor exists:', error);
     }
 
+    try {
+      registeredVotersCount = await this.profileRepository.countByRole('voter');
+    } catch (error) {
+      // Keep dashboard available even if count lookup fails.
+      console.warn('Unable to count registered voters:', error);
+    }
+
     return {
       profile,
       auditorExists: !!auditorProfile,
+      registeredVotersCount,
     };
   }
 

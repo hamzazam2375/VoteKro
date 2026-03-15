@@ -119,6 +119,19 @@ export class SupabaseProfileRepository extends RepositoryBase implements IProfil
     return (data as ProfileRow | null) ?? null;
   }
 
+  async countByRole(role: ProfileRow['role']): Promise<number> {
+    const { count, error } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('role', role);
+
+    if (error) {
+      this.throwOnError('Failed to count profiles by role', error);
+    }
+
+    return count ?? 0;
+  }
+
   async create(userId: string, fullName: string, role: ProfileRow['role']): Promise<ProfileRow> {
     const { data, error } = await supabase
       .from('profiles')

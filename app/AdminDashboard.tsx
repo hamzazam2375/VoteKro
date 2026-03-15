@@ -14,6 +14,7 @@ export default function AdminDashboard() {
     const [isLoading, setIsLoading] = useState(true);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [auditorExists, setAuditorExists] = useState(false);
+    const [registeredVotersCount, setRegisteredVotersCount] = useState(0);
 
     useEffect(() => {
         const loadDashboardOverview = async () => {
@@ -21,6 +22,7 @@ export default function AdminDashboard() {
                 const overview = await serviceFactory.adminService.getDashboardOverview();
                 setProfile(overview.profile);
                 setAuditorExists(overview.auditorExists);
+                setRegisteredVotersCount(overview.registeredVotersCount);
             } catch (error) {
                 Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to load profile'));
                 router.replace('/AdminLogin');
@@ -110,7 +112,7 @@ export default function AdminDashboard() {
                         </View>
                         <View style={[styles.statCard, isMobile ? styles.cardFullWidth : styles.cardThirdWidth]}>
                             <Text style={styles.statLabel}>Registered Voters</Text>
-                            <Text style={styles.statNumber}>0</Text>
+                            <Text style={styles.statNumber}>{registeredVotersCount}</Text>
                         </View>
                         <View style={[styles.statCard, isMobile ? styles.cardFullWidth : styles.cardThirdWidth]}>
                             <Text style={styles.statLabel}>Total Votes Cast</Text>

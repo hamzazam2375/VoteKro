@@ -47,6 +47,7 @@ export interface IAuthRepository {
 export interface IProfileRepository {
   getByUserId(userId: string): Promise<ProfileRow | null>;
   getByRole(role: ProfileRow['role']): Promise<ProfileRow | null>;
+  countByRole(role: ProfileRow['role']): Promise<number>;
   create(userId: string, fullName: string, role: ProfileRow['role']): Promise<ProfileRow>;
 }
 
