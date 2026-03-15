@@ -24,7 +24,13 @@ export class AdminService extends BaseService {
 
   async getDashboardOverview(): Promise<{ profile: ProfileRow; auditorExists: boolean }> {
     const profile = await this.authService.getRequiredProfile('admin');
-    const auditorProfile = await this.profileRepository.getByRole('auditor');
+    let auditorProfile: ProfileRow | null = null;
+    try {
+      auditorProfile = await this.profileRepository.getByRole('auditor');
+    } catch (error) {
+      // This lookup is only used for UI hints; failing it should not block admin access.
+      console.warn('Unable to determine whether an auditor exists:', error);
+    }
 
     return {
       profile,
