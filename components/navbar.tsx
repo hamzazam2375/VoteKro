@@ -11,9 +11,10 @@ export type NavbarAction = {
 type NavbarProps = {
     actions?: NavbarAction[];
     infoText?: string;
+    compact?: boolean;
 };
 
-export function Navbar({ actions = [], infoText }: NavbarProps) {
+export function Navbar({ actions = [], infoText, compact = false }: NavbarProps) {
     const router = useRouter();
     const { width } = useWindowDimensions();
     const isMobile = width < 760;
@@ -24,21 +25,27 @@ export function Navbar({ actions = [], infoText }: NavbarProps) {
     };
 
     return (
-        <View style={[styles.navbar, { paddingTop: insets.top + 10 }]}>
+        <View
+            style={[
+                styles.navbar,
+                compact && styles.navbarCompact,
+                { paddingTop: insets.top + (compact ? 8 : 10) },
+            ]}
+        >
             {/* Top row: brand on left, action buttons on right */}
-            <View style={styles.topRow}>
+            <View style={[styles.topRow, compact && styles.topRowCompact]}>
                 <Pressable
                     style={({ pressed }) => [styles.brandWrap, pressed && styles.brandWrapPressed]}
                     onPress={handleBrandPress}
                 >
-                    <Text style={styles.brandIcon}>🗳️</Text>
-                    <Text style={styles.brandName}>VoteKro</Text>
+                    <Text style={[styles.brandIcon, compact && styles.brandIconCompact]}>🗳️</Text>
+                    <Text style={[styles.brandName, compact && styles.brandNameCompact]}>VoteKro</Text>
                 </Pressable>
 
                 <View style={styles.actionsRow}>
                     {/* On desktop, show infoText inline before buttons */}
                     {!!infoText && !isMobile && (
-                        <Text style={styles.infoText}>{infoText}</Text>
+                        <Text style={[styles.infoText, compact && styles.infoTextCompact]}>{infoText}</Text>
                     )}
                     {actions.map((action, index) => {
                         const isSolid = action.variant === 'solid';
@@ -47,12 +54,19 @@ export function Navbar({ actions = [], infoText }: NavbarProps) {
                                 key={`${action.label}-${index}`}
                                 style={({ pressed }) => [
                                     styles.actionButton,
+                                    compact && styles.actionButtonCompact,
                                     isSolid ? styles.actionButtonSolid : styles.actionButtonOutline,
                                     pressed && styles.actionButtonPressed,
                                 ]}
                                 onPress={action.onPress}
                             >
-                                <Text style={[styles.actionText, isSolid ? styles.actionTextSolid : styles.actionTextOutline]}>
+                                <Text
+                                    style={[
+                                        styles.actionText,
+                                        compact && styles.actionTextCompact,
+                                        isSolid ? styles.actionTextSolid : styles.actionTextOutline,
+                                    ]}
+                                >
                                     {action.label}
                                 </Text>
                             </Pressable>
@@ -63,7 +77,7 @@ export function Navbar({ actions = [], infoText }: NavbarProps) {
 
             {/* On mobile, show infoText below the top row as a full-width second line */}
             {!!infoText && isMobile && (
-                <Text style={styles.infoTextMobile}>{infoText}</Text>
+                <Text style={[styles.infoTextMobile, compact && styles.infoTextMobileCompact]}>{infoText}</Text>
             )}
         </View>
     );
@@ -78,11 +92,19 @@ const styles = StyleSheet.create({
         borderBottomColor: '#2d63ea',
         zIndex: 2,
     },
+    navbarCompact: {
+        paddingHorizontal: 16,
+        paddingBottom: 10,
+        backgroundColor: '#f6f7fa',
+    },
     topRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         minHeight: 48,
+    },
+    topRowCompact: {
+        minHeight: 40,
     },
     brandWrap: {
         flexDirection: 'row',
@@ -95,11 +117,17 @@ const styles = StyleSheet.create({
     brandIcon: {
         fontSize: 24,
     },
+    brandIconCompact: {
+        fontSize: 14,
+    },
     brandName: {
         color: '#2c63dd',
         fontSize: 28,
         fontWeight: '800',
         letterSpacing: 0.2,
+    },
+    brandNameCompact: {
+        fontSize: 30,
     },
     actionsRow: {
         flexDirection: 'row',
@@ -112,6 +140,11 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         marginRight: 8,
     },
+    infoTextCompact: {
+        fontSize: 14,
+        color: '#2f64e6',
+        marginRight: 8,
+    },
     infoTextMobile: {
         fontSize: 13,
         color: '#233449',
@@ -119,11 +152,19 @@ const styles = StyleSheet.create({
         marginTop: 4,
         paddingHorizontal: 2,
     },
+    infoTextMobileCompact: {
+        color: '#2f64e6',
+    },
     actionButton: {
         borderRadius: 10,
         paddingVertical: 8,
         paddingHorizontal: 16,
         borderWidth: 1.5,
+    },
+    actionButtonCompact: {
+        borderRadius: 10,
+        paddingVertical: 6,
+        paddingHorizontal: 14,
     },
     actionButtonSolid: {
         backgroundColor: '#2e63e3',
@@ -139,6 +180,10 @@ const styles = StyleSheet.create({
     },
     actionText: {
         fontSize: 16,
+        fontWeight: '700',
+    },
+    actionTextCompact: {
+        fontSize: 14,
         fontWeight: '700',
     },
     actionTextSolid: {

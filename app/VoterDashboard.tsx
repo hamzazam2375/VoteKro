@@ -1,14 +1,19 @@
 import type { ProfileRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
 import { Navbar } from '@/components/navbar';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 export default function VoterDashboard() {
     const router = useRouter();
+    const { width } = useWindowDimensions();
     const [profile, setProfile] = useState<ProfileRow | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+
+    const displayName = profile?.full_name?.trim() || 'Voter';
+    const electionCardWidth = Math.min(330, Math.max(250, width - 48));
 
     useEffect(() => {
         const loadProfile = async () => {
@@ -47,40 +52,53 @@ export default function VoterDashboard() {
     return (
         <View style={styles.container}>
             <Navbar
-                infoText={`Welcome, ${profile?.full_name ?? 'Voter'}!`}
+                compact
+                infoText={`Welcome, ${displayName}!`}
                 actions={[{ label: 'Logout', onPress: handleLogout, variant: 'outline' }]}
             />
 
             <ScrollView contentContainerStyle={styles.contentContainer}>
                 <View style={styles.contentWrap}>
-                    <Text style={styles.pageTitle}>Voter Dashboard</Text>
-                    <Text style={styles.pageSubtitle}>Access your upcoming elections and verify your voting status securely.</Text>
+                    <Text style={styles.pageTitle}>Welcome, {displayName}!</Text>
+                    <Text style={styles.pageSubtitle}>Cast your vote securely using our blockchain-based system</Text>
 
-                    <View style={styles.featureCard}>
-                        <Text style={styles.featureEyebrow}>Account Status</Text>
-                        <Text style={styles.featureTitle}>You are signed in and ready to vote</Text>
-                        <Text style={styles.featureBody}>
-                            Your voter workspace is active. Election-specific ballot views can be connected here next.
-                        </Text>
+                    <View style={styles.sectionHeaderRow}>
+                        <Text style={styles.sectionIcon}>🗳️</Text>
+                        <Text style={styles.sectionTitle}>Available Elections</Text>
                     </View>
 
-                    <View style={styles.summaryRow}>
-                        <View style={styles.summaryCard}>
-                            <Text style={styles.summaryLabel}>Role</Text>
-                            <Text style={styles.summaryValue}>Voter</Text>
-                        </View>
-                        <View style={styles.summaryCard}>
-                            <Text style={styles.summaryLabel}>Verification</Text>
-                            <Text style={styles.summaryValue}>{profile?.is_verified ? 'Verified' : 'Pending'}</Text>
-                        </View>
-                    </View>
+                    <View style={[styles.electionCard, { width: electionCardWidth }]}>
+                        <LinearGradient
+                            colors={['#2f64e6', '#d154a7']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.cardTopAccent}
+                        />
 
-                    <Pressable
-                        style={({ pressed }) => [styles.primaryAction, pressed && styles.primaryActionPressed]}
-                        onPress={() => Alert.alert('Coming Soon', 'Election ballot view will be available in the next update.')}
-                    >
-                        <Text style={styles.primaryActionText}>View Available Elections</Text>
-                    </Pressable>
+                        <Text style={styles.electionTitle}>Presidential Election 2024</Text>
+                        <Text style={styles.electionDescription}>Vote for the presidential candidate of your choice</Text>
+
+                        <View style={styles.dateBlock}>
+                            <Text style={styles.dateText}>📅 Start: 2026-02-28</Text>
+                            <Text style={styles.dateText}>📅 End: 2026-03-05</Text>
+                        </View>
+
+                        <Text style={styles.candidateCount}>Candidates: 3</Text>
+
+                        <Pressable
+                            style={({ pressed }) => [styles.voteAction, pressed && styles.voteActionPressed]}
+                            onPress={() => Alert.alert('Coming Soon', 'Ballot view will be available in the next update.')}
+                        >
+                            <LinearGradient
+                                colors={['#2f64e6', '#2a58d0']}
+                                start={{ x: 0, y: 0.5 }}
+                                end={{ x: 1, y: 0.5 }}
+                                style={styles.voteButtonGradient}
+                            >
+                                <Text style={styles.voteActionText}>Vote Now</Text>
+                            </LinearGradient>
+                        </Pressable>
+                    </View>
                 </View>
             </ScrollView>
         </View>
@@ -90,13 +108,13 @@ export default function VoterDashboard() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f7fb',
+        backgroundColor: '#eceff3',
     },
     centerContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#f5f7fb',
+        backgroundColor: '#eceff3',
     },
     loadingText: {
         marginTop: 12,
@@ -104,96 +122,112 @@ const styles = StyleSheet.create({
         color: '#5c6f89',
     },
     contentContainer: {
-        padding: 24,
+        paddingHorizontal: 24,
+        paddingTop: 30,
+        paddingBottom: 60,
         alignItems: 'center',
     },
     contentWrap: {
         width: '100%',
-        maxWidth: 900,
+        maxWidth: 980,
     },
     pageTitle: {
-        fontSize: 28,
+        fontSize: 48,
         fontWeight: '800',
-        color: '#0d1b3f',
-        marginBottom: 8,
+        color: '#131f38',
+        marginBottom: 12,
     },
     pageSubtitle: {
-        fontSize: 15,
-        lineHeight: 24,
-        color: '#51647f',
-        marginBottom: 24,
+        fontSize: 21,
+        lineHeight: 30,
+        color: '#677b94',
+        marginBottom: 46,
     },
-    featureCard: {
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 18,
+    },
+    sectionIcon: {
+        fontSize: 17,
+    },
+    sectionTitle: {
+        fontSize: 30,
+        fontWeight: '800',
+        color: '#2f64e6',
+    },
+    electionCard: {
+        borderRadius: 18,
         backgroundColor: '#ffffff',
         borderWidth: 1,
-        borderColor: '#dce5f2',
-        borderRadius: 18,
-        padding: 22,
-        marginBottom: 18,
-        shadowColor: '#1b2b4a',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.05,
-        shadowRadius: 14,
+        borderColor: '#d9e0ec',
+        paddingHorizontal: 22,
+        paddingTop: 24,
+        paddingBottom: 20,
+        overflow: 'hidden',
+        shadowColor: '#243b63',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
         elevation: 3,
     },
-    featureEyebrow: {
-        fontSize: 12,
+    cardTopAccent: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 4,
+    },
+    electionTitle: {
+        fontSize: 26,
         fontWeight: '700',
         color: '#2f64e6',
-        marginBottom: 8,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        marginBottom: 10,
     },
-    featureTitle: {
-        fontSize: 22,
+    electionDescription: {
+        fontSize: 18,
+        lineHeight: 26,
+        color: '#5f6f83',
+        marginBottom: 16,
+    },
+    dateBlock: {
+        marginBottom: 14,
+        gap: 4,
+    },
+    dateText: {
+        fontSize: 15,
+        color: '#6a7a90',
+        lineHeight: 23,
+    },
+    candidateCount: {
+        fontSize: 21,
         fontWeight: '700',
-        color: '#0d1b3f',
-        marginBottom: 8,
-    },
-    featureBody: {
-        fontSize: 14,
-        lineHeight: 22,
-        color: '#5b6d86',
-    },
-    summaryRow: {
-        flexDirection: 'row',
-        gap: 16,
+        color: '#3c4e69',
         marginBottom: 20,
     },
-    summaryCard: {
-        flex: 1,
-        backgroundColor: '#edf3fc',
-        borderRadius: 16,
-        padding: 18,
-        borderWidth: 1,
-        borderColor: '#d7e4f6',
-    },
-    summaryLabel: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#5a6d88',
-        marginBottom: 8,
-        textTransform: 'uppercase',
-        letterSpacing: 0.4,
-    },
-    summaryValue: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#0d1b3f',
-    },
-    primaryAction: {
-        alignSelf: 'flex-start',
-        backgroundColor: '#2f64e6',
+    voteAction: {
         borderRadius: 12,
-        paddingHorizontal: 18,
+        overflow: 'hidden',
+    },
+    voteActionPressed: {
+        opacity: 0.93,
+        transform: [{ scale: 0.985 }],
+    },
+    voteButtonGradient: {
+        width: '100%',
         paddingVertical: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#2f64e6',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+        elevation: 4,
     },
-    primaryActionPressed: {
-        opacity: 0.9,
-    },
-    primaryActionText: {
+    voteActionText: {
         color: '#ffffff',
-        fontSize: 15,
+        fontSize: 24,
         fontWeight: '700',
     },
 });
