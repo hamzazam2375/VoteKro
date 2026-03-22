@@ -1,6 +1,7 @@
 import type { ProfileRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
 import { Navbar } from '@/components/navbar';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -9,8 +10,12 @@ export default function AuditorSignupScreen() {
     const router = useRouter();
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [profile, setProfile] = useState<ProfileRow | null>(null);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     useEffect(() => {
         const loadProfile = async () => {
@@ -47,11 +52,38 @@ export default function AuditorSignupScreen() {
     };
 
     const handleRegister = async () => {
+        // Validation
+        if (!fullName.trim()) {
+            Alert.alert('Error', 'Please enter auditor name');
+            return;
+        }
+        if (!email.trim()) {
+            Alert.alert('Error', 'Please enter auditor gmail');
+            return;
+        }
+        if (!password.trim()) {
+            Alert.alert('Error', 'Please enter password');
+            return;
+        }
+        if (!confirmPassword.trim()) {
+            Alert.alert('Error', 'Please confirm password');
+            return;
+        }
+        if (password.length < 8) {
+            Alert.alert('Error', 'Password must be at least 8 characters');
+            return;
+        }
+        if (password !== confirmPassword) {
+            Alert.alert('Error', 'Passwords do not match');
+            return;
+        }
+
         setIsLoading(true);
         try {
             await serviceFactory.adminService.registerAuditor({
                 fullName,
                 email,
+                password,
             });
 
             Alert.alert(
@@ -96,7 +128,7 @@ export default function AuditorSignupScreen() {
 
                         {/* Description */}
                         <Text style={styles.description}>
-                            Create auditor using Gmail. A random password is generated.
+                            Create auditor using Gmail with custom password.
                         </Text>
 
                         {/* Full Name Input */}
@@ -125,6 +157,60 @@ export default function AuditorSignupScreen() {
                                 autoCapitalize="none"
                                 editable={!isLoading}
                             />
+                        </View>
+
+                        {/* Password Input */}
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Password</Text>
+                            <View style={styles.passwordInputWrap}>
+                                <TextInput
+                                    style={styles.passwordInput}
+                                    placeholder="Enter password"
+                                    placeholderTextColor="#999"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    secureTextEntry={!showPassword}
+                                    editable={!isLoading}
+                                />
+                                <Pressable
+                                    style={({ pressed }) => [styles.toggleButton, pressed && styles.toggleButtonPressed]}
+                                    onPress={() => setShowPassword(!showPassword)}
+                                    disabled={isLoading}
+                                >
+                                    <Ionicons
+                                        name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                                        size={20}
+                                        color="#666"
+                                    />
+                                </Pressable>
+                            </View>
+                        </View>
+
+                        {/* Confirm Password Input */}
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.label}>Confirm Password</Text>
+                            <View style={styles.passwordInputWrap}>
+                                <TextInput
+                                    style={styles.passwordInput}
+                                    placeholder="Confirm password"
+                                    placeholderTextColor="#999"
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    secureTextEntry={!showConfirmPassword}
+                                    editable={!isLoading}
+                                />
+                                <Pressable
+                                    style={({ pressed }) => [styles.toggleButton, pressed && styles.toggleButtonPressed]}
+                                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    disabled={isLoading}
+                                >
+                                    <Ionicons
+                                        name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                                        size={20}
+                                        color="#666"
+                                    />
+                                </Pressable>
+                            </View>
                         </View>
 
                         {/* Register Button */}
@@ -239,6 +325,31 @@ const styles = StyleSheet.create({
         fontSize: 13,
         backgroundColor: '#fafafa',
         color: '#1a1a1a',
+    },
+    passwordInputWrap: {
+        position: 'relative',
+        justifyContent: 'center',
+    },
+    passwordInput: {
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 6,
+        paddingHorizontal: 14,
+        paddingRight: 44,
+        paddingVertical: 11,
+        fontSize: 13,
+        backgroundColor: '#fafafa',
+        color: '#1a1a1a',
+    },
+    toggleButton: {
+        position: 'absolute',
+        right: 12,
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    toggleButtonPressed: {
+        opacity: 0.6,
     },
     registerButton: {
         backgroundColor: '#0f8a3d',
