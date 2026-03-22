@@ -4,12 +4,12 @@ import type { CandidateRow, ElectionRow, ProfileRow, VoterRegistryRow } from '@/
 import { EmailService } from '@/class/email-service';
 import { ValidationError } from '@/class/errors';
 import type {
-  AddCandidateInput,
-  CreateElectionInput,
-  ICandidateRepository,
-  IElectionRepository,
-  IProfileRepository,
-  IVoterRegistryRepository,
+    AddCandidateInput,
+    CreateElectionInput,
+    ICandidateRepository,
+    IElectionRepository,
+    IProfileRepository,
+    IVoterRegistryRepository,
 } from '@/class/service-contracts';
 
 type RegisterUserInput = {
@@ -109,8 +109,9 @@ export class AdminService extends BaseService {
     try {
       await this.emailService.sendVoterCredentials(email, fullName, generatedPassword);
     } catch (emailError) {
-      throw new ValidationError(
-        `Voter account was created but credentials email could not be sent: ${
+      // Registration should not fail if email delivery fails. The admin can still share credentials manually.
+      console.warn(
+        `Voter account created but credentials email failed for ${email}: ${
           emailError instanceof Error ? emailError.message : 'Unknown email error'
         }`
       );

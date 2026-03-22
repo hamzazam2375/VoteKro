@@ -1,19 +1,23 @@
 import type { ProfileRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
 import { Navbar } from '@/components/navbar';
+import { PasswordField } from '@/components/password-field';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { toast } from 'react-toastify';
 
 export default function VoterSignupScreen() {
     const router = useRouter();
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isSuccess, setIsSuccess] = useState(false);
     const [profile, setProfile] = useState<ProfileRow | null>(null);
+    const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+    const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string } | null>(null);
 
     useEffect(() => {
         const loadProfile = async () => {
@@ -48,13 +52,36 @@ export default function VoterSignupScreen() {
 
     const handleRegister = async () => {
         setError(null);
-        setIsSuccess(false);
         setIsLoading(true);
+
+        const normalizedFullName = fullName.trim();
+        const normalizedEmail = email.trim().toLowerCase();
+        const trimmedPassword = password.trim();
+        const trimmedConfirmPassword = confirmPassword.trim();
+
+        if (!normalizedFullName || !normalizedEmail || !trimmedPassword || !trimmedConfirmPassword) {
+            setError('Please fill in all fields.');
+            setIsLoading(false);
+            return;
+        }
+
+        if (trimmedPassword.length < 8) {
+            setError('Password must be at least 8 characters.');
+            setIsLoading(false);
+            return;
+        }
+
+        if (trimmedPassword !== trimmedConfirmPassword) {
+            setError('Password and confirm password do not match.');
+            setIsLoading(false);
+            return;
+        }
+
         try {
-            const normalizedEmail = email.trim();
             const createdProfile = await serviceFactory.adminService.registerVoter({
-                fullName,
+                fullName: normalizedFullName,
                 email: normalizedEmail,
+                password: trimmedPassword,
             });
 
             if (createdProfile.role !== 'voter') {
@@ -63,10 +90,16 @@ export default function VoterSignupScreen() {
 
             setFullName('');
             setEmail('');
-            setIsSuccess(true);
-            toast.success('✓ Voter registered. Credentials sent by email.', {
+            setPassword('');
+            setConfirmPassword('');
+            setCreatedCredentials({
+                email: normalizedEmail,
+                password: trimmedPassword,
+            });
+            setIsSuccessModalVisible(true);
+            toast.success('Voter registered successfully.', {
                 position: 'top-right',
-                autoClose: 2000,
+                autoClose: 1800,
             });
         } catch (error) {
             const errorMessage = serviceFactory.authService.getErrorMessage(
@@ -74,7 +107,7 @@ export default function VoterSignupScreen() {
                 'Registration failed. Please try again.'
             );
             setError(errorMessage);
-            toast.error('✗ ' + errorMessage, {
+            toast.error(errorMessage, {
                 position: 'top-right',
                 autoClose: 3000,
             });
@@ -103,24 +136,12 @@ export default function VoterSignupScreen() {
                         </View>
 
                         <Text style={styles.description}>
-                            Create a voter account using Gmail. A random password is generated.
+                            Create a voter account using Gmail and set the password directly.
                         </Text>
 
-                        {/* Success Message */}
-                        {isSuccess && (
-                            <View style={styles.successMessage}>
-                                <Text style={styles.successIcon}>✓</Text>
-                                <View>
-                                    <Text style={styles.successTitle}>Registration Successful!</Text>
-                                    <Text style={styles.successText}>Voter account created. Credentials were emailed to the voter.</Text>
-                                </View>
-                            </View>
-                        )}
-
                         {/* Error Message */}
-                        {error && !isSuccess && (
+                        {error && (
                             <View style={styles.errorMessage}>
-                                <Text style={styles.errorIcon}>⚠</Text>
                                 <Text style={styles.errorText}>{error}</Text>
                             </View>
                         )}
@@ -151,6 +172,22 @@ export default function VoterSignupScreen() {
                             />
                         </View>
 
+                        <PasswordField
+                            label="Password"
+                            value={password}
+                            onChangeText={setPassword}
+                            placeholder="Set voter password (min 8 characters)"
+                            editable={!isLoading}
+                        />
+
+                        <PasswordField
+                            label="Confirm Password"
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            placeholder="Re-enter voter password"
+                            editable={!isLoading}
+                        />
+
                         <Pressable
                             style={({ pressed }) => [
                                 styles.registerButton,
@@ -173,6 +210,70 @@ export default function VoterSignupScreen() {
                     </View>
                 </View>
             </ScrollView>
+
+            <Modal
+                transparent
+                visible={isSuccessModalVisible}
+                animationType="fade"
+                onRequestClose={() => setIsSuccessModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalCard}>
+                        <Text style={styles.modalTitle}>Voter Registered</Text>
+                        <Text style={styles.modalSubtitle}>Account created successfully.</Text>
+
+                        <Text style={styles.modalCredentialText}>
+                            <Text style={styles.modalCredentialLabel}>Email:</Text> {createdCredentials?.email}
+                        </Text>
+                        <Text style={styles.modalCredentialText}>
+                            <Text style={styles.modalCredentialLabel}>Password:</Text> {createdCredentials?.password}
+                        </Text>
+
+                        <Text style={styles.modalHint}>
+                            If login says Email Not Verified, ask the voter to verify email from inbox first.
+                        </Text>
+
+                        <View style={styles.modalButtonRow}>
+                            <Pressable
+                                style={({ pressed }) => [styles.modalSecondaryButton, pressed && styles.modalSecondaryPressed]}
+                                onPress={() => setIsSuccessModalVisible(false)}
+                            >
+                                <Text style={styles.modalSecondaryButtonText}>Register Another</Text>
+                            </Pressable>
+
+                            <Pressable
+                                style={({ pressed }) => [styles.modalPrimaryButton, pressed && styles.modalPrimaryPressed]}
+                                onPress={() => {
+                                    setIsSuccessModalVisible(false);
+                                    router.replace('/VoterLogin');
+                                }}
+                            >
+                                <Text style={styles.modalPrimaryButtonText}>Sign In as Voter</Text>
+                            </Pressable>
+                        </View>
+
+                        <Pressable
+                            style={styles.modalLinkWrap}
+                            onPress={() => {
+                                setIsSuccessModalVisible(false);
+                                router.replace('/VoterLogin');
+                            }}
+                        >
+                            <Text style={styles.modalLinkText}>Go to Voter Login Page</Text>
+                        </Pressable>
+
+                        <Pressable
+                            style={styles.modalLinkWrap}
+                            onPress={() => {
+                                setIsSuccessModalVisible(false);
+                                router.replace('/AdminDashboard');
+                            }}
+                        >
+                            <Text style={styles.modalLinkText}>Back to Dashboard</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -278,8 +379,6 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     errorMessage: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
         backgroundColor: '#fee2e2',
         borderColor: '#dc2626',
         borderWidth: 1,
@@ -288,44 +387,102 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         marginBottom: 20,
     },
-    errorIcon: {
-        fontSize: 18,
-        marginRight: 10,
-        marginTop: 2,
-    },
     errorText: {
-        flex: 1,
         fontSize: 14,
         color: '#991b1b',
         fontWeight: '500',
         lineHeight: 20,
     },
-    successMessage: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        backgroundColor: '#dcfce7',
-        borderColor: '#16a34a',
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingVertical: 12,
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        justifyContent: 'center',
+        alignItems: 'center',
         paddingHorizontal: 14,
-        marginBottom: 20,
     },
-    successIcon: {
-        fontSize: 20,
-        marginRight: 10,
-        marginTop: 1,
-        color: '#16a34a',
+    modalCard: {
+        width: '100%',
+        maxWidth: 560,
+        backgroundColor: '#fff',
+        borderRadius: 14,
+        paddingVertical: 24,
+        paddingHorizontal: 24,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
     },
-    successTitle: {
+    modalTitle: {
+        fontSize: 42,
+        fontWeight: '800',
+        color: '#0f2342',
+        marginBottom: 8,
+    },
+    modalSubtitle: {
+        fontSize: 29,
+        color: '#4d6485',
+        marginBottom: 16,
+    },
+    modalCredentialText: {
         fontSize: 15,
-        fontWeight: '700',
-        color: '#166534',
-        marginBottom: 4,
+        color: '#21334f',
+        marginBottom: 6,
     },
-    successText: {
+    modalCredentialLabel: {
+        fontWeight: '700',
+        color: '#112745',
+    },
+    modalHint: {
+        marginTop: 12,
+        marginBottom: 16,
+        color: '#6b7f99',
         fontSize: 14,
-        color: '#166534',
-        fontWeight: '500',
+        lineHeight: 21,
+    },
+    modalButtonRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 10,
+    },
+    modalSecondaryButton: {
+        flex: 1,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#d1d7e0',
+        backgroundColor: '#fff',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+    },
+    modalSecondaryPressed: {
+        backgroundColor: '#f6f8fb',
+    },
+    modalSecondaryButtonText: {
+        color: '#4a5f7f',
+        fontWeight: '700',
+        fontSize: 14,
+    },
+    modalPrimaryButton: {
+        flex: 1,
+        borderRadius: 12,
+        backgroundColor: '#2f63d5',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+    },
+    modalPrimaryPressed: {
+        backgroundColor: '#1f52c2',
+    },
+    modalPrimaryButtonText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 14,
+    },
+    modalLinkWrap: {
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    modalLinkText: {
+        color: '#4268b5',
+        fontSize: 15,
+        fontWeight: '600',
     },
 });
