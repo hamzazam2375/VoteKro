@@ -3,7 +3,7 @@ import { Navbar } from '@/components/navbar';
 import { PasswordField } from '@/components/password-field';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 export default function AdminSignupScreen() {
     const router = useRouter();
@@ -12,8 +12,11 @@ export default function AdminSignupScreen() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [isSuccess, setIsSuccess] = useState(false);
 
     const handleRegister = async () => {
+        setError(null);
         setIsLoading(true);
         try {
             await serviceFactory.authService.registerAdmin({
@@ -23,19 +26,17 @@ export default function AdminSignupScreen() {
                 confirmPassword,
             });
 
-            Alert.alert(
-                'Registration Successful!',
-                'Admin account created successfully! You can now login with your credentials.',
-                [
-                    {
-                        text: 'OK',
-                        onPress: () => router.push('/AdminLogin'),
-                    },
-                ]
-            );
+            setIsSuccess(true);
+            // Navigate to admin dashboard after successful registration
+            setTimeout(() => {
+                router.replace('/AdminDashboard');
+            }, 500);
         } catch (error) {
-            const alertContent = serviceFactory.authService.getRegistrationErrorAlert(error);
-            Alert.alert(alertContent.title, alertContent.message);
+            const errorMessage = serviceFactory.authService.getErrorMessage(
+                error,
+                'Registration failed. Please try again.'
+            );
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -56,6 +57,25 @@ export default function AdminSignupScreen() {
                         <Text style={styles.shieldIcon}>🛡️</Text>
                         <Text style={styles.title}>Admin Registration</Text>
                     </View>
+
+                    {/* Success Message */}
+                    {isSuccess && (
+                        <View style={styles.successMessage}>
+                            <Text style={styles.successIcon}>✓</Text>
+                            <View>
+                                <Text style={styles.successTitle}>Registration Successful!</Text>
+                                <Text style={styles.successText}>Welcome admin. Taking you to dashboard...</Text>
+                            </View>
+                        </View>
+                    )}
+
+                    {/* Error Message */}
+                    {error && !isSuccess && (
+                        <View style={styles.errorMessage}>
+                            <Text style={styles.errorIcon}>⚠</Text>
+                            <Text style={styles.errorText}>{error}</Text>
+                        </View>
+                    )}
 
                     {/* Full Name Input */}
                     <View style={styles.inputContainer}>
@@ -116,7 +136,7 @@ export default function AdminSignupScreen() {
                         {isLoading ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
-                            <Text style={styles.registerButtonText}>✓ Register Admin</Text>
+                            <Text style={styles.registerButtonText}>Register Admin</Text>
                         )}
                     </Pressable>
 
@@ -223,5 +243,56 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#1a73e8',
         fontWeight: '600',
+    },
+    errorMessage: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        backgroundColor: '#fee2e2',
+        borderColor: '#dc2626',
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        marginBottom: 20,
+    },
+    errorIcon: {
+        fontSize: 18,
+        marginRight: 10,
+        marginTop: 2,
+    },
+    errorText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#991b1b',
+        fontWeight: '500',
+        lineHeight: 20,
+    },
+    successMessage: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        backgroundColor: '#dcfce7',
+        borderColor: '#16a34a',
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        marginBottom: 20,
+    },
+    successIcon: {
+        fontSize: 20,
+        marginRight: 10,
+        marginTop: 1,
+        color: '#16a34a',
+    },
+    successTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#166534',
+        marginBottom: 4,
+    },
+    successText: {
+        fontSize: 14,
+        color: '#166534',
+        fontWeight: '500',
     },
 });

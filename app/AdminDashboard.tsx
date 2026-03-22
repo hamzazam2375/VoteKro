@@ -132,7 +132,7 @@ export default function AdminDashboard() {
                                         <Text style={styles.actionTitle}>Create New Election</Text>
                                         <Text style={styles.actionDesc}>Create and configure a new election event</Text>
                                         <View style={styles.actionBtn}>
-                                            <Text style={styles.actionBtnText}>Create Election +</Text>
+                                            <Text style={styles.actionBtnText}>Create Election</Text>
                                         </View>
                                     </View>
                                 </View>
@@ -146,7 +146,7 @@ export default function AdminDashboard() {
                                         <Text style={styles.actionTitle}>Manage Elections</Text>
                                         <Text style={styles.actionDesc}>Edit, delete, or update election details</Text>
                                         <View style={styles.actionBtn}>
-                                            <Text style={styles.actionBtnText}>Manage Elections →</Text>
+                                            <Text style={styles.actionBtnText}>Manage Elections</Text>
                                         </View>
                                     </View>
                                 </View>
@@ -160,7 +160,7 @@ export default function AdminDashboard() {
                                         <Text style={styles.actionTitle}>Manage Candidates</Text>
                                         <Text style={styles.actionDesc}>Add, edit, or delete candidates</Text>
                                         <View style={styles.actionBtn}>
-                                            <Text style={styles.actionBtnText}>Add Candidates +</Text>
+                                            <Text style={styles.actionBtnText}>Add Candidates</Text>
                                         </View>
                                     </View>
                                 </View>
@@ -174,7 +174,7 @@ export default function AdminDashboard() {
                                         <Text style={styles.actionTitle}>View Results</Text>
                                         <Text style={styles.actionDesc}>See voting results and statistics</Text>
                                         <View style={styles.actionBtn}>
-                                            <Text style={styles.actionBtnText}>View Results →</Text>
+                                            <Text style={styles.actionBtnText}>View Results</Text>
                                         </View>
                                     </View>
                                 </View>
@@ -189,9 +189,9 @@ export default function AdminDashboard() {
                                     <View style={styles.cardBody}>
                                         <Text style={styles.actionIcon}>✅</Text>
                                         <Text style={styles.actionTitle}>Register Voter</Text>
-                                        <Text style={styles.actionDesc}>Create voter account with Gmail and set a password</Text>
+                                        <Text style={styles.actionDesc}>Create voter account with Gmail</Text>
                                         <View style={styles.actionBtn}>
-                                            <Text style={styles.actionBtnText}>Register Voter +</Text>
+                                            <Text style={styles.actionBtnText}>Register Voter</Text>
                                         </View>
                                     </View>
                                 </View>
@@ -207,9 +207,9 @@ export default function AdminDashboard() {
                                         <View style={styles.cardBody}>
                                             <Text style={styles.actionIcon}>🔍</Text>
                                             <Text style={styles.actionTitle}>Register Auditor</Text>
-                                            <Text style={styles.actionDesc}>Create auditor account with Gmail and random password</Text>
+                                            <Text style={styles.actionDesc}>Create auditor account with Gmail</Text>
                                             <View style={styles.actionBtn}>
-                                                <Text style={styles.actionBtnText}>Register Auditor +</Text>
+                                                <Text style={styles.actionBtnText}>Register Auditor</Text>
                                             </View>
                                         </View>
                                     </View>

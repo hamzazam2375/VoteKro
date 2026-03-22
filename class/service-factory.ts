@@ -1,14 +1,15 @@
 import { AdminService } from '@/class/admin-class';
 import { AuditorService } from '@/class/auditor-class';
 import { AuthService } from '@/class/auth-class';
+import { EmailService } from '@/class/email-service';
 import {
-    SupabaseAuditLogRepository,
-    SupabaseAuthRepository,
-    SupabaseCandidateRepository,
-    SupabaseElectionRepository,
-    SupabaseProfileRepository,
-    SupabaseVoteLedgerRepository,
-    SupabaseVoterRegistryRepository,
+  SupabaseAuditLogRepository,
+  SupabaseAuthRepository,
+  SupabaseCandidateRepository,
+  SupabaseElectionRepository,
+  SupabaseProfileRepository,
+  SupabaseVoteLedgerRepository,
+  SupabaseVoterRegistryRepository,
 } from '@/class/supabase-repositories';
 import { VotingService } from '@/class/voting-class';
 
@@ -20,6 +21,7 @@ export class ServiceFactory {
   private readonly voterRegistryRepository = new SupabaseVoterRegistryRepository();
   private readonly voteLedgerRepository = new SupabaseVoteLedgerRepository();
   private readonly auditLogRepository = new SupabaseAuditLogRepository();
+  private readonly emailServiceInstance = new EmailService();
 
   private readonly authServiceInstance = new AuthService(this.authRepository, this.profileRepository);
   private readonly adminServiceInstance = new AdminService(
@@ -27,7 +29,8 @@ export class ServiceFactory {
     this.profileRepository,
     this.electionRepository,
     this.candidateRepository,
-    this.voterRegistryRepository
+    this.voterRegistryRepository,
+    this.emailServiceInstance
   );
   private readonly votingServiceInstance = new VotingService(
     this.authRepository,

@@ -1,6 +1,8 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export default function RootLayout() {
   return (
@@ -16,6 +18,18 @@ export default function RootLayout() {
         <Stack.Screen name="AuditorDashboard" options={{ headerShown: false }} />
         <Stack.Screen name="VoterDashboard" options={{ headerShown: false }} />
       </Stack>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
       <StatusBar style="dark" />
     </>
   );

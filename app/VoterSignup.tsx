@@ -1,23 +1,19 @@
 import type { ProfileRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
 import { Navbar } from '@/components/navbar';
-import { PasswordField } from '@/components/password-field';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { toast } from 'react-toastify';
 
 export default function VoterSignupScreen() {
     const router = useRouter();
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [isSuccess, setIsSuccess] = useState(false);
     const [profile, setProfile] = useState<ProfileRow | null>(null);
-    const [showSuccessModal, setShowSuccessModal] = useState(false);
-    const [registeredEmail, setRegisteredEmail] = useState('');
-    const [registeredPassword, setRegisteredPassword] = useState('');
-    const [isSigningInRegisteredVoter, setIsSigningInRegisteredVoter] = useState(false);
 
     useEffect(() => {
         const loadProfile = async () => {
@@ -25,7 +21,8 @@ export default function VoterSignupScreen() {
                 const userProfile = await serviceFactory.authService.getRequiredProfile('admin');
                 setProfile(userProfile);
             } catch (error) {
-                Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to load profile'));
+                const errorMsg = serviceFactory.authService.getErrorMessage(error, 'Failed to load profile');
+                toast.error(errorMsg);
                 router.replace('/AdminLogin');
             }
         };
@@ -34,141 +31,60 @@ export default function VoterSignupScreen() {
     }, [router]);
 
     const handleLogout = () => {
-        Alert.alert(
-            'Logout',
-            'Are you sure you want to logout?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Logout', style: 'destructive', onPress: doLogout },
-            ]
-        );
+        toast.info('Logging out...');
+        doLogout();
     };
 
     const doLogout = async () => {
         try {
             await serviceFactory.authService.signOut();
+            toast.success('Logged out successfully');
             router.replace('/');
         } catch (error) {
-            Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to logout'));
+            const errorMsg = serviceFactory.authService.getErrorMessage(error, 'Failed to logout');
+            toast.error(errorMsg);
         }
     };
 
     const handleRegister = async () => {
+        setError(null);
+        setIsSuccess(false);
         setIsLoading(true);
         try {
             const normalizedEmail = email.trim();
-            const selectedPassword = password;
             const createdProfile = await serviceFactory.adminService.registerVoter({
                 fullName,
                 email: normalizedEmail,
-                password,
-                confirmPassword,
             });
 
             if (createdProfile.role !== 'voter') {
                 throw new Error('Account was created, but role is not voter. Please contact support.');
             }
 
-            setRegisteredEmail(normalizedEmail);
-            setRegisteredPassword(selectedPassword);
             setFullName('');
             setEmail('');
-            setPassword('');
-            setConfirmPassword('');
-            setShowSuccessModal(true);
+            setIsSuccess(true);
+            toast.success('✓ Voter registered. Credentials sent by email.', {
+                position: 'top-right',
+                autoClose: 2000,
+            });
         } catch (error) {
-            const alertContent = serviceFactory.authService.getRegistrationErrorAlert(error);
-            Alert.alert(alertContent.title, alertContent.message);
+            const errorMessage = serviceFactory.authService.getErrorMessage(
+                error,
+                'Registration failed. Please try again.'
+            );
+            setError(errorMessage);
+            toast.error('✗ ' + errorMessage, {
+                position: 'top-right',
+                autoClose: 3000,
+            });
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleSignInRegisteredVoter = async () => {
-        setIsSigningInRegisteredVoter(true);
-        try {
-            try {
-                await serviceFactory.authService.signOut();
-            } catch {
-                // Ignore if there is no active session.
-            }
-
-            const signedInProfile = await serviceFactory.authService.loginForRole(
-                registeredEmail,
-                registeredPassword,
-                'voter'
-            );
-
-            setShowSuccessModal(false);
-            router.replace(serviceFactory.authService.getDashboardRoute(signedInProfile.role));
-        } catch (error) {
-            const alertContent = serviceFactory.authService.getLoginErrorAlert(error);
-            Alert.alert('Voter Sign In Failed', alertContent.message);
-        } finally {
-            setIsSigningInRegisteredVoter(false);
-        }
-    };
-
     return (
         <View style={styles.container}>
-            <Modal
-                transparent
-                visible={showSuccessModal}
-                animationType="fade"
-                onRequestClose={() => setShowSuccessModal(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalBox}>
-                        <Text style={styles.modalTitle}>Voter Registered</Text>
-                        <Text style={styles.modalMessage}>
-                            Account created successfully.
-                        </Text>
-                        <Text style={styles.modalCredentials}>Email: {registeredEmail}</Text>
-                        <Text style={styles.modalCredentials}>Password: {registeredPassword}</Text>
-                        <Text style={styles.modalHint}>
-                            If login says Email Not Verified, ask the voter to verify email from inbox first.
-                        </Text>
-
-                        <View style={styles.modalActions}>
-                            <Pressable style={styles.modalSecondaryBtn} onPress={() => setShowSuccessModal(false)}>
-                                <Text style={styles.modalSecondaryText}>Register Another</Text>
-                            </Pressable>
-                            <Pressable
-                                style={styles.modalPrimaryBtn}
-                                onPress={handleSignInRegisteredVoter}
-                                disabled={isSigningInRegisteredVoter}
-                            >
-                                {isSigningInRegisteredVoter ? (
-                                    <ActivityIndicator color="#fff" size="small" />
-                                ) : (
-                                    <Text style={styles.modalPrimaryText}>Sign In as Voter</Text>
-                                )}
-                            </Pressable>
-                        </View>
-
-                        <Pressable
-                            style={styles.modalSecondaryLinkBtn}
-                            onPress={() => {
-                                setShowSuccessModal(false);
-                                router.replace('/VoterLogin');
-                            }}
-                        >
-                            <Text style={styles.modalSecondaryLinkText}>Go to Voter Login Page</Text>
-                        </Pressable>
-
-                        <Pressable
-                            style={styles.modalLinkBtn}
-                            onPress={() => {
-                                setShowSuccessModal(false);
-                                router.replace('/AdminDashboard');
-                            }}
-                        >
-                            <Text style={styles.modalLinkText}>Back to Dashboard</Text>
-                        </Pressable>
-                    </View>
-                </View>
-            </Modal>
-
             <Navbar
                 infoText={`Welcome, ${profile?.full_name ?? 'Administrator'}!`}
                 actions={[
@@ -187,8 +103,27 @@ export default function VoterSignupScreen() {
                         </View>
 
                         <Text style={styles.description}>
-                            Create a voter account using Gmail and set the password directly.
+                            Create a voter account using Gmail. A random password is generated.
                         </Text>
+
+                        {/* Success Message */}
+                        {isSuccess && (
+                            <View style={styles.successMessage}>
+                                <Text style={styles.successIcon}>✓</Text>
+                                <View>
+                                    <Text style={styles.successTitle}>Registration Successful!</Text>
+                                    <Text style={styles.successText}>Voter account created. Credentials were emailed to the voter.</Text>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Error Message */}
+                        {error && !isSuccess && (
+                            <View style={styles.errorMessage}>
+                                <Text style={styles.errorIcon}>⚠</Text>
+                                <Text style={styles.errorText}>{error}</Text>
+                            </View>
+                        )}
 
                         <View style={styles.inputContainer}>
                             <Text style={styles.label}>Voter Full Name</Text>
@@ -216,24 +151,6 @@ export default function VoterSignupScreen() {
                             />
                         </View>
 
-                        <PasswordField
-                            label="Password"
-                            placeholder="Set voter password (min 8 characters)"
-                            placeholderTextColor="#999"
-                            value={password}
-                            onChangeText={setPassword}
-                            editable={!isLoading}
-                        />
-
-                        <PasswordField
-                            label="Confirm Password"
-                            placeholder="Re-enter voter password"
-                            placeholderTextColor="#999"
-                            value={confirmPassword}
-                            onChangeText={setConfirmPassword}
-                            editable={!isLoading}
-                        />
-
                         <Pressable
                             style={({ pressed }) => [
                                 styles.registerButton,
@@ -251,7 +168,7 @@ export default function VoterSignupScreen() {
                         </Pressable>
 
                         <Pressable style={styles.backButton} onPress={() => router.replace('/AdminDashboard')}>
-                            <Text style={styles.backButtonText}>Back</Text>
+                            <Text style={styles.backButtonText}>← Back</Text>
                         </Pressable>
                     </View>
                 </View>
@@ -360,91 +277,55 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '500',
     },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.35)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-    },
-    modalBox: {
-        width: '100%',
-        maxWidth: 420,
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 20,
-        borderWidth: 1,
-        borderColor: '#e7edf7',
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#0d1b3f',
-        marginBottom: 8,
-    },
-    modalMessage: {
-        fontSize: 14,
-        color: '#4a607f',
-        marginBottom: 10,
-    },
-    modalCredentials: {
-        fontSize: 14,
-        color: '#1a2438',
-        marginBottom: 4,
-        fontWeight: '600',
-    },
-    modalHint: {
-        fontSize: 12,
-        color: '#667a96',
-        marginTop: 10,
-        lineHeight: 18,
-    },
-    modalActions: {
+    errorMessage: {
         flexDirection: 'row',
-        gap: 10,
-        marginTop: 16,
-    },
-    modalSecondaryBtn: {
-        flex: 1,
-        borderRadius: 8,
+        alignItems: 'flex-start',
+        backgroundColor: '#fee2e2',
+        borderColor: '#dc2626',
         borderWidth: 1,
-        borderColor: '#c7d2e2',
-        paddingVertical: 10,
-        alignItems: 'center',
-    },
-    modalSecondaryText: {
-        color: '#32527c',
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    modalPrimaryBtn: {
-        flex: 1,
         borderRadius: 8,
-        backgroundColor: '#2f64e6',
-        paddingVertical: 10,
-        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        marginBottom: 20,
     },
-    modalPrimaryText: {
-        color: '#fff',
-        fontSize: 13,
+    errorIcon: {
+        fontSize: 18,
+        marginRight: 10,
+        marginTop: 2,
+    },
+    errorText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#991b1b',
+        fontWeight: '500',
+        lineHeight: 20,
+    },
+    successMessage: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        backgroundColor: '#dcfce7',
+        borderColor: '#16a34a',
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        marginBottom: 20,
+    },
+    successIcon: {
+        fontSize: 20,
+        marginRight: 10,
+        marginTop: 1,
+        color: '#16a34a',
+    },
+    successTitle: {
+        fontSize: 15,
         fontWeight: '700',
+        color: '#166534',
+        marginBottom: 4,
     },
-    modalSecondaryLinkBtn: {
-        alignSelf: 'center',
-        marginTop: 10,
-    },
-    modalSecondaryLinkText: {
-        color: '#32527c',
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    modalLinkBtn: {
-        alignSelf: 'center',
-        marginTop: 12,
-    },
-    modalLinkText: {
-        color: '#2f64e6',
-        fontSize: 13,
-        fontWeight: '600',
+    successText: {
+        fontSize: 14,
+        color: '#166534',
+        fontWeight: '500',
     },
 });

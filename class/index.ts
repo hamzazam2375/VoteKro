@@ -5,6 +5,7 @@ export { AppError, AuthenticationError, DataAccessError, ValidationError } from 
 export { AdminService } from '@/class/admin-class';
 export { AuditorService } from '@/class/auditor-class';
 export { AuthService } from '@/class/auth-class';
+export { EmailService } from '@/class/email-service';
 export { VotingService } from '@/class/voting-class';
 
 export { ServiceFactory, serviceFactory } from '@/class/service-factory';

@@ -1,15 +1,22 @@
 import { AuthService } from '@/class/auth-class';
 import { BaseService } from '@/class/base-service';
 import type { CandidateRow, ElectionRow, ProfileRow, VoterRegistryRow } from '@/class/database-types';
+import { EmailService } from '@/class/email-service';
 import { ValidationError } from '@/class/errors';
 import type {
-    AddCandidateInput,
-    CreateElectionInput,
-    ICandidateRepository,
-    IElectionRepository,
-    IProfileRepository,
-    IVoterRegistryRepository,
+  AddCandidateInput,
+  CreateElectionInput,
+  ICandidateRepository,
+  IElectionRepository,
+  IProfileRepository,
+  IVoterRegistryRepository,
 } from '@/class/service-contracts';
+
+type RegisterUserInput = {
+  fullName: string;
+  email: string;
+  password?: string;
+};
 
 export class AdminService extends BaseService {
   constructor(
@@ -17,7 +24,8 @@ export class AdminService extends BaseService {
     private readonly profileRepository: IProfileRepository,
     private readonly electionRepository: IElectionRepository,
     private readonly candidateRepository: ICandidateRepository,
-    private readonly voterRegistryRepository: IVoterRegistryRepository
+    private readonly voterRegistryRepository: IVoterRegistryRepository,
+    private readonly emailService: EmailService
   ) {
     super();
   }
@@ -47,7 +55,7 @@ export class AdminService extends BaseService {
     };
   }
 
-  async registerAuditor(input: { fullName: string; email: string }): Promise<ProfileRow> {
+  async registerAuditor(input: RegisterUserInput): Promise<ProfileRow> {
     const fullName = input.fullName.trim();
     const email = input.email.trim();
 
@@ -55,52 +63,60 @@ export class AdminService extends BaseService {
 
     this.requireNonEmpty(fullName, 'Full name');
     this.requireNonEmpty(email, 'Email');
-    this.requireGmailAddress(email);
+    this.requireValidEmail(email);
 
-    const generatedPassword = fullName.split(/\s+/)[0];
-    if (!generatedPassword) {
-      throw new ValidationError('Password could not be generated from full name');
-    }
+    const generatedPassword = input.password?.trim() || this.generateRandomPassword();
 
-    return this.authService.signUp({
+    const profile = await this.authService.signUp({
       email,
       password: generatedPassword,
       fullName,
       role: 'auditor',
     });
+
+    try {
+      await this.emailService.sendAuditorCredentials(email, fullName, generatedPassword);
+    } catch (emailError) {
+      throw new ValidationError(
+        `Auditor account was created but credentials email could not be sent: ${
+          emailError instanceof Error ? emailError.message : 'Unknown email error'
+        }`
+      );
+    }
+
+    return profile;
   }
 
-  async registerVoter(input: {
-    fullName: string;
-    email: string;
-    password: string;
-    confirmPassword: string;
-  }): Promise<ProfileRow> {
+  async registerVoter(input: RegisterUserInput): Promise<ProfileRow> {
     const fullName = input.fullName.trim();
     const email = input.email.trim();
-    const password = input.password;
-    const confirmPassword = input.confirmPassword;
 
     await this.authService.getRequiredProfile('admin');
 
     this.requireNonEmpty(fullName, 'Full name');
     this.requireNonEmpty(email, 'Email');
-    this.requireNonEmpty(password, 'Password');
-    this.requireNonEmpty(confirmPassword, 'Confirm password');
-    this.requireMinimumLength(password, 8, 'Password');
+    this.requireValidEmail(email);
 
-    if (password !== confirmPassword) {
-      throw new ValidationError('Password and confirm password do not match');
-    }
+    const generatedPassword = input.password?.trim() || this.generateRandomPassword();
 
-    this.requireGmailAddress(email);
-
-    return this.authService.signUp({
+    const profile = await this.authService.signUp({
       email,
-      password,
+      password: generatedPassword,
       fullName,
       role: 'voter',
     });
+
+    try {
+      await this.emailService.sendVoterCredentials(email, fullName, generatedPassword);
+    } catch (emailError) {
+      throw new ValidationError(
+        `Voter account was created but credentials email could not be sent: ${
+          emailError instanceof Error ? emailError.message : 'Unknown email error'
+        }`
+      );
+    }
+
+    return profile;
   }
 
   async createElection(input: CreateElectionInput): Promise<ElectionRow> {
@@ -130,10 +146,21 @@ export class AdminService extends BaseService {
     return this.electionRepository.updateStatus(electionId, status);
   }
 
-  private requireGmailAddress(email: string): void {
-    if (!email.includes('@') || !email.toLowerCase().endsWith('@gmail.com')) {
-      throw new ValidationError('Email must end with @gmail.com');
+  private requireValidEmail(email: string): void {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new ValidationError('Please provide a valid email address');
     }
+  }
+
+  private generateRandomPassword(length: number = 10): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * chars.length);
+      password += chars[randomIndex];
+    }
+    return password;
   }
 
   private requireMinimumLength(value: string, minLength: number, fieldName: string): void {

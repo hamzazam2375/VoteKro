@@ -1,6 +1,6 @@
 import { Navbar } from '@/components/navbar';
 import { useRouter } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 const featureHighlights = [
     {
@@ -48,8 +48,57 @@ const votingSteps = [
     },
 ];
 
+const electionSetupSteps = [
+    {
+        number: '01',
+        title: 'Create Admin Account',
+        body: 'Click Sign Up, choose Admin, and complete your profile to start managing elections.',
+    },
+    {
+        number: '02',
+        title: 'Create Election',
+        body: 'Set election title, timeline, and status in your dashboard so the event is properly configured.',
+    },
+    {
+        number: '03',
+        title: 'Add Candidates',
+        body: 'Add each candidate with details and unique number so voters can review options clearly.',
+    },
+    {
+        number: '04',
+        title: 'Register Voters',
+        body: 'Approve voter eligibility before opening the election to enforce one-person-one-vote rules.',
+    },
+    {
+        number: '05',
+        title: 'Open and Monitor',
+        body: 'Open election, monitor activity logs, and close when voting ends for verifiable results.',
+    },
+];
+
+const roleJourneys = [
+    {
+        icon: '🧑‍💼',
+        title: 'Election Organizer',
+        body: 'Create elections, publish timelines, manage candidates, and approve eligible voters.',
+        actionLabel: 'Start as Organizer',
+    },
+    {
+        icon: '🗳️',
+        title: 'Voter',
+        body: 'Access active elections, review candidates, and cast your vote securely in one flow.',
+        actionLabel: 'Continue as Voter',
+    },
+    {
+        icon: '🛡️',
+        title: 'Auditor',
+        body: 'Verify election integrity, inspect vote chain checks, and monitor audit activity logs.',
+        actionLabel: 'Enter as Auditor',
+    },
+];
+
 const trustStats = [
-    { value: '3 Roles', label: 'Admin, Voter, Auditor' },
+    { value: '3 Roles', label: 'Voter, Organizer, Auditor' },
     { value: 'End-to-End', label: 'Blockchain-based traceability' },
     { value: '24/7', label: 'Election system availability' },
 ];
@@ -90,7 +139,8 @@ export default function HomeScreen() {
                         <Text style={[styles.title, styles.titleSecondLine, isMobile && styles.titleMobile]}>VoteKro</Text>
 
                         <Text style={[styles.subtitle, isMobile && styles.subtitleMobile]}>
-                            A secure, transparent, and decentralized voting platform using blockchain technology
+                            Professional digital voting for voters, election organizers, and auditors with
+                            blockchain-backed integrity.
                         </Text>
 
                         <Pressable
@@ -115,6 +165,33 @@ export default function HomeScreen() {
                     </View>
                 </View>
 
+                <View style={[styles.sectionShell, styles.sectionShellMuted]}>
+                    <Text style={styles.sectionEyebrow}>NEW ORGANIZER GUIDE</Text>
+                    <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>
+                        First Time Setting Up an Election?
+                    </Text>
+                    <Text style={styles.aboutBody}>
+                        This path is for new users who want to run an election. Start with Admin Sign Up, then follow
+                        these setup steps in order.
+                    </Text>
+                    <View style={[styles.setupGrid, isMobile && styles.setupGridMobile]}>
+                        {electionSetupSteps.map((step) => (
+                            <View key={step.number} style={styles.setupCard}>
+                                <Text style={styles.stepNumber}>{step.number}</Text>
+                                <Text style={styles.stepTitle}>{step.title}</Text>
+                                <Text style={styles.stepBody}>{step.body}</Text>
+                            </View>
+                        ))}
+                    </View>
+
+                    <Pressable
+                        style={({ pressed }) => [styles.aboutButton, pressed && styles.aboutButtonPressed]}
+                        onPress={handleSignUp}
+                    >
+                        <Text style={styles.aboutButtonText}>Start Election Setup</Text>
+                    </Pressable>
+                </View>
+
                 <View style={styles.sectionShell}>
                     <Text style={styles.sectionEyebrow}>WHY VOTEKRO</Text>
                     <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>
@@ -132,16 +209,29 @@ export default function HomeScreen() {
                 </View>
 
                 <View style={[styles.sectionShell, styles.sectionShellMuted]}>
-                    <Text style={styles.sectionEyebrow}>HOW IT WORKS</Text>
+                    <Text style={styles.sectionEyebrow}>CHOOSE YOUR PATH</Text>
                     <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>
-                        Simple from Start to Finish
+                        Built for Every Role in an Election
                     </Text>
-                    <View style={[styles.stepsGrid, isMobile && styles.stepsGridMobile]}>
-                        {votingSteps.map((step) => (
-                            <View key={step.number} style={styles.stepCard}>
-                                <Text style={styles.stepNumber}>{step.number}</Text>
-                                <Text style={styles.stepTitle}>{step.title}</Text>
-                                <Text style={styles.stepBody}>{step.body}</Text>
+
+                    <View style={[styles.rolesGrid, isMobile && styles.rolesGridMobile]}>
+                        {roleJourneys.map((role) => (
+                            <View key={role.title} style={styles.roleCard}>
+                                <Text style={styles.roleIcon}>{role.icon}</Text>
+                                <Text style={styles.roleTitle}>{role.title}</Text>
+                                <Text style={styles.roleBody}>{role.body}</Text>
+                                <Pressable
+                                    style={({ pressed }) => [styles.roleButton, pressed && styles.secondaryButtonPressed]}
+                                    onPress={
+                                        role.title === 'Voter'
+                                            ? handleVoterContinue
+                                            : role.title === 'Election Organizer'
+                                                ? handleSignUp
+                                                : handleAdminAuditorLogin
+                                    }
+                                >
+                                    <Text style={styles.roleButtonText}>{role.actionLabel}</Text>
+                                </Pressable>
                             </View>
                         ))}
                     </View>
@@ -165,37 +255,8 @@ export default function HomeScreen() {
                             </View>
                         ))}
                     </View>
-
-                    <Pressable
-                        style={({ pressed }) => [styles.aboutButton, pressed && styles.aboutButtonPressed]}
-                        onPress={() => Alert.alert('About VoteKro', 'Detailed about page will be added soon.')}
-                    >
-                        <Text style={styles.aboutButtonText}>Learn More About VoteKro</Text>
-                    </Pressable>
                 </View>
 
-                <View style={styles.ctaSection}>
-                    <Text style={[styles.ctaTitle, isMobile && styles.ctaTitleMobile]}>
-                        Ready to Cast Your Vote Securely?
-                    </Text>
-                    <Text style={styles.ctaSubtitle}>
-                        Join the trusted election flow and experience transparent digital voting.
-                    </Text>
-                    <View style={[styles.ctaButtonsRow, isMobile && styles.ctaButtonsRowMobile]}>
-                        <Pressable
-                            style={({ pressed }) => [styles.ctaPrimaryButton, pressed && styles.primaryButtonPressed]}
-                            onPress={handleVoterContinue}
-                        >
-                            <Text style={styles.primaryButtonText}>Go to Voter Login</Text>
-                        </Pressable>
-                        <Pressable
-                            style={({ pressed }) => [styles.ctaSecondaryButton, pressed && styles.secondaryButtonPressed]}
-                            onPress={handleAdminAuditorLogin}
-                        >
-                            <Text style={styles.secondaryButtonText}>Admin / Auditor Login</Text>
-                        </Pressable>
-                    </View>
-                </View>
             </ScrollView>
         </View>
     );
@@ -204,7 +265,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#d9e4ef',
+        backgroundColor: '#f0f4f9',
     },
     scrollContent: {
         paddingBottom: 56,
@@ -263,11 +324,12 @@ const styles = StyleSheet.create({
         fontSize: 48,
     },
     title: {
-        color: '#0a163d',
+        color: '#0f2851',
         fontSize: 54,
         fontWeight: '800',
         lineHeight: 62,
         textAlign: 'center',
+        letterSpacing: -0.8,
     },
     titleSecondLine: {
         marginTop: 0,
@@ -278,35 +340,147 @@ const styles = StyleSheet.create({
         lineHeight: 48,
     },
     subtitle: {
-        color: '#50627a',
-        fontSize: 16,
-        lineHeight: 24,
+        color: '#5a6f87',
+        fontSize: 18,
+        lineHeight: 28,
         maxWidth: 760,
         textAlign: 'center',
-        marginBottom: 30,
+        marginBottom: 28,
+        fontWeight: '400',
     },
     subtitleMobile: {
         fontSize: 16,
         lineHeight: 24,
         marginBottom: 26,
     },
+    heroTrustRow: {
+        marginTop: 14,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        gap: 10,
+    },
+    heroTrustRowMobile: {
+        flexDirection: 'column',
+        width: '100%',
+        alignItems: 'center',
+    },
+    heroTrustChip: {
+        backgroundColor: '#eaf2ff',
+        borderColor: '#c4d7f7',
+        borderWidth: 1,
+        borderRadius: 999,
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+    },
+    heroTrustChipText: {
+        color: '#264c8d',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    organizerBanner: {
+        width: '100%',
+        maxWidth: 760,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: '#b8ccee',
+        backgroundColor: '#eef4ff',
+        paddingVertical: 16,
+        paddingHorizontal: 18,
+        marginBottom: 20,
+        shadowColor: '#2f64e6',
+        shadowOffset: {
+            width: 0,
+            height: 6,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 2,
+    },
+    organizerBannerMobile: {
+        paddingVertical: 14,
+        paddingHorizontal: 14,
+    },
+    organizerBannerTopRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 6,
+    },
+    organizerBannerTopRowMobile: {
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: 8,
+    },
+    organizerBadge: {
+        color: '#244f94',
+        fontSize: 11,
+        fontWeight: '800',
+        letterSpacing: 1,
+    },
+    organizerBannerCta: {
+        backgroundColor: '#2f64e6',
+        borderRadius: 999,
+        paddingVertical: 7,
+        paddingHorizontal: 14,
+    },
+    organizerBannerCtaText: {
+        color: '#ffffff',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    organizerBannerTitle: {
+        fontSize: 20,
+        lineHeight: 26,
+        color: '#13284f',
+        fontWeight: '800',
+        marginBottom: 4,
+    },
+    organizerBannerBody: {
+        fontSize: 14,
+        lineHeight: 21,
+        color: '#4a5e7d',
+        marginBottom: 12,
+    },
+    organizerPillRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    organizerPillRowMobile: {
+        flexDirection: 'column',
+        gap: 7,
+    },
+    organizerPill: {
+        backgroundColor: '#dce9ff',
+        borderRadius: 999,
+        paddingVertical: 7,
+        paddingHorizontal: 11,
+        borderWidth: 1,
+        borderColor: '#bfd4f8',
+    },
+    organizerPillText: {
+        color: '#1d427a',
+        fontSize: 12,
+        fontWeight: '700',
+    },
     primaryButton: {
         backgroundColor: '#2f64e6',
         borderRadius: 12,
         minWidth: 330,
-        paddingVertical: 12,
-        paddingHorizontal: 22,
+        paddingVertical: 13,
+        paddingHorizontal: 24,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 16,
         shadowColor: '#2f64e6',
         shadowOffset: {
             width: 0,
-            height: 6,
+            height: 8,
         },
-        shadowOpacity: 0.2,
-        shadowRadius: 10,
-        elevation: 4,
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        elevation: 5,
     },
     primaryButtonPressed: {
         opacity: 0.9,
@@ -314,9 +488,9 @@ const styles = StyleSheet.create({
     },
     primaryButtonText: {
         color: '#ffffff',
-        fontSize: 17,
+        fontSize: 16,
         fontWeight: '700',
-        letterSpacing: 0.1,
+        letterSpacing: 0.3,
     },
     secondaryButton: {
         backgroundColor: 'transparent',
@@ -324,8 +498,8 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderRadius: 12,
         minWidth: 330,
-        paddingVertical: 11,
-        paddingHorizontal: 22,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -335,9 +509,9 @@ const styles = StyleSheet.create({
     },
     secondaryButtonText: {
         color: '#2f64e6',
-        fontSize: 17,
+        fontSize: 16,
         fontWeight: '700',
-        letterSpacing: 0.1,
+        letterSpacing: 0.3,
     },
     sectionShell: {
         width: '100%',
@@ -347,24 +521,26 @@ const styles = StyleSheet.create({
         paddingVertical: 54,
     },
     sectionShellMuted: {
-        backgroundColor: '#e8eff7',
+        backgroundColor: '#f7fafD',
         borderTopWidth: 1,
         borderBottomWidth: 1,
-        borderColor: '#d2ddec',
+        borderColor: '#e8eff7',
     },
     sectionEyebrow: {
-        fontSize: 12,
-        fontWeight: '700',
-        letterSpacing: 1,
-        color: '#4d6485',
-        marginBottom: 8,
+        fontSize: 11,
+        fontWeight: '800',
+        letterSpacing: 1.5,
+        color: '#5a7c9e',
+        marginBottom: 10,
+        textTransform: 'uppercase',
     },
     sectionTitle: {
         fontSize: 36,
         lineHeight: 44,
         fontWeight: '800',
-        color: '#0a163d',
-        marginBottom: 24,
+        color: '#0f2851',
+        marginBottom: 28,
+        letterSpacing: -0.5,
     },
     sectionTitleMobile: {
         fontSize: 30,
@@ -381,26 +557,92 @@ const styles = StyleSheet.create({
     featureCard: {
         flexBasis: '48%',
         minHeight: 170,
-        backgroundColor: '#f8fbff',
-        borderColor: '#cfddee',
+        backgroundColor: '#ffffff',
+        borderColor: '#e2ecf7',
         borderWidth: 1,
         borderRadius: 16,
-        padding: 18,
+        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 2,
     },
     featureIcon: {
-        fontSize: 26,
-        marginBottom: 10,
+        fontSize: 32,
+        marginBottom: 12,
     },
     featureTitle: {
-        fontSize: 20,
-        color: '#183562',
-        fontWeight: '700',
-        marginBottom: 8,
+        fontSize: 18,
+        color: '#0f2851',
+        fontWeight: '800',
+        marginBottom: 10,
+        letterSpacing: 0.3,
     },
     featureBody: {
-        fontSize: 15,
-        lineHeight: 22,
-        color: '#50627b',
+        fontSize: 14,
+        lineHeight: 21,
+        color: '#5a6f87',
+    },
+    rolesGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 16,
+    },
+    rolesGridMobile: {
+        flexDirection: 'column',
+    },
+    roleCard: {
+        flex: 1,
+        minWidth: 280,
+        backgroundColor: '#ffffff',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#e2ecf7',
+        padding: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 3,
+    },
+    roleIcon: {
+        fontSize: 40,
+        marginBottom: 14,
+    },
+    roleTitle: {
+        fontSize: 20,
+        lineHeight: 27,
+        color: '#0f2851',
+        fontWeight: '800',
+        marginBottom: 10,
+        letterSpacing: 0.3,
+    },
+    roleBody: {
+        fontSize: 14,
+        lineHeight: 21,
+        color: '#5a6f87',
+        marginBottom: 18,
+    },
+    roleButton: {
+        alignSelf: 'flex-start',
+        borderRadius: 10,
+        borderWidth: 1.5,
+        borderColor: '#2f64e6',
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        backgroundColor: '#eef3ff',
+        shadowColor: '#2f64e6',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 1,
+    },
+    roleButtonText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#1f52cb',
+        letterSpacing: 0.2,
     },
     stepsGrid: {
         flexDirection: 'row',
@@ -410,38 +652,68 @@ const styles = StyleSheet.create({
     stepsGridMobile: {
         flexDirection: 'column',
     },
+    setupGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 14,
+        marginBottom: 18,
+    },
+    setupGridMobile: {
+        flexDirection: 'column',
+    },
+    setupCard: {
+        flexBasis: '31.5%',
+        minWidth: 250,
+        backgroundColor: '#ffffff',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#e2ecf7',
+        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 2,
+    },
     stepCard: {
         flexBasis: '48%',
         backgroundColor: '#ffffff',
         borderRadius: 14,
         borderWidth: 1,
-        borderColor: '#cfddee',
-        padding: 18,
+        borderColor: '#e2ecf7',
+        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 2,
     },
     stepNumber: {
-        fontSize: 13,
-        color: '#2e63e3',
+        fontSize: 12,
+        color: '#2f64e6',
         fontWeight: '800',
-        letterSpacing: 0.8,
-        marginBottom: 8,
+        letterSpacing: 1.2,
+        marginBottom: 10,
     },
     stepTitle: {
-        fontSize: 21,
-        color: '#13284f',
-        fontWeight: '700',
-        marginBottom: 7,
+        fontSize: 18,
+        color: '#0f2851',
+        fontWeight: '800',
+        marginBottom: 8,
+        letterSpacing: 0.3,
     },
     stepBody: {
-        fontSize: 15,
-        lineHeight: 22,
-        color: '#52667f',
+        fontSize: 14,
+        lineHeight: 21,
+        color: '#5a6f87',
     },
     aboutBody: {
         fontSize: 16,
-        lineHeight: 25,
-        color: '#4b5f79',
+        lineHeight: 26,
+        color: '#5a6f87',
         maxWidth: 940,
-        marginBottom: 22,
+        marginBottom: 24,
+        fontWeight: '400',
     },
     statsRow: {
         flexDirection: 'row',
@@ -454,39 +726,52 @@ const styles = StyleSheet.create({
     statCard: {
         flex: 1,
         borderRadius: 12,
-        backgroundColor: '#f4f8ff',
+        backgroundColor: '#ffffff',
         borderWidth: 1,
-        borderColor: '#cfddf0',
-        paddingVertical: 14,
-        paddingHorizontal: 16,
+        borderColor: '#e2ecf7',
+        paddingVertical: 16,
+        paddingHorizontal: 18,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 6,
+        elevation: 1,
     },
     statValue: {
-        color: '#183562',
+        color: '#1f52cb',
         fontWeight: '800',
-        fontSize: 18,
-        marginBottom: 5,
+        fontSize: 20,
+        marginBottom: 6,
+        letterSpacing: 0.2,
     },
     statLabel: {
-        color: '#546884',
-        fontSize: 14,
+        color: '#5a6f87',
+        fontSize: 13,
+        fontWeight: '500',
     },
     aboutButton: {
         alignSelf: 'flex-start',
-        borderRadius: 12,
+        borderRadius: 10,
         borderWidth: 1.5,
         borderColor: '#2f64e6',
-        paddingVertical: 11,
-        paddingHorizontal: 16,
+        paddingVertical: 10,
+        paddingHorizontal: 18,
         backgroundColor: '#ffffff',
+        shadowColor: '#2f64e6',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 1,
     },
     aboutButtonPressed: {
         opacity: 0.9,
         transform: [{ scale: 0.99 }],
     },
     aboutButtonText: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '700',
-        color: '#2f64e6',
+        color: '#1f52cb',
+        letterSpacing: 0.2,
     },
     ctaSection: {
         width: '100%',

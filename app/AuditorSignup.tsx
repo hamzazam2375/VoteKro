@@ -140,7 +140,7 @@ export default function AuditorSignupScreen() {
                             {isLoading ? (
                                 <ActivityIndicator color="#fff" />
                             ) : (
-                                <Text style={styles.registerButtonText}>✓ Register Auditor</Text>
+                                <Text style={styles.registerButtonText}>Register Auditor</Text>
                             )}
                         </Pressable>
 
