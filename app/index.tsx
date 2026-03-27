@@ -133,7 +133,6 @@ export default function HomeScreen() {
 
                     <View style={[styles.hero, isMobile && styles.heroMobile]}>
                         <View style={styles.heroTitleRow}>
-                            <Text style={styles.heroIcon}>🗳️</Text>
                             <Text style={[styles.title, isMobile && styles.titleMobile]}>Welcome to</Text>
                         </View>
                         <Text style={[styles.title, styles.titleSecondLine, isMobile && styles.titleMobile]}>VoteKro</Text>
@@ -319,9 +318,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
-    },
-    heroIcon: {
-        fontSize: 48,
     },
     title: {
         color: '#0f2851',

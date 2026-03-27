@@ -38,7 +38,6 @@ export function Navbar({ actions = [], infoText, compact = false }: NavbarProps)
                     style={({ pressed }) => [styles.brandWrap, pressed && styles.brandWrapPressed]}
                     onPress={handleBrandPress}
                 >
-                    <Text style={[styles.brandIcon, compact && styles.brandIconCompact]}>🗳️</Text>
                     <Text style={[styles.brandName, compact && styles.brandNameCompact]}>VoteKro</Text>
                 </Pressable>
 
@@ -113,12 +112,6 @@ const styles = StyleSheet.create({
     },
     brandWrapPressed: {
         opacity: 0.82,
-    },
-    brandIcon: {
-        fontSize: 24,
-    },
-    brandIconCompact: {
-        fontSize: 14,
     },
     brandName: {
         color: '#2c63dd',
