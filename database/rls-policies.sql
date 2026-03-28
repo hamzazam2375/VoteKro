@@ -1,11 +1,4 @@
--- ============================================
--- VoteKro Row Level Security (RLS) Policies
--- ============================================
--- This file contains all RLS policies for the application
--- Last updated: March 10, 2026
--- NOTE: Profiles policies have been fixed to avoid infinite recursion
 
--- Enable Row Level Security on all tables
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.elections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.candidates ENABLE ROW LEVEL SECURITY;
@@ -13,11 +6,7 @@ ALTER TABLE public.voter_registry ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vote_blocks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
--- ============================================
--- PROFILES TABLE POLICIES
--- ============================================
 
--- Drop existing policies if they exist (for re-running this script)
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Admins can insert auditor profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Users can read their own profile" ON public.profiles;
