@@ -4,12 +4,13 @@ import type { CandidateRow, ElectionRow, ProfileRow, VoterRegistryRow } from '@/
 import { EmailService } from '@/class/email-service';
 import { ValidationError } from '@/class/errors';
 import type {
-    AddCandidateInput,
-    CreateElectionInput,
-    ICandidateRepository,
-    IElectionRepository,
-    IProfileRepository,
-    IVoterRegistryRepository,
+  AddCandidateInput,
+  CreateElectionInput,
+  ICandidateRepository,
+  IElectionRepository,
+  IProfileRepository,
+  UpdateElectionInput,
+  IVoterRegistryRepository,
 } from '@/class/service-contracts';
 
 type RegisterUserInput = {
@@ -78,8 +79,7 @@ export class AdminService extends BaseService {
       await this.emailService.sendAuditorCredentials(email, fullName, generatedPassword);
     } catch (emailError) {
       throw new ValidationError(
-        `Auditor account was created but credentials email could not be sent: ${
-          emailError instanceof Error ? emailError.message : 'Unknown email error'
+        `Auditor account was created but credentials email could not be sent: ${emailError instanceof Error ? emailError.message : 'Unknown email error'
         }`
       );
     }
@@ -111,8 +111,7 @@ export class AdminService extends BaseService {
     } catch (emailError) {
       // Registration should not fail if email delivery fails. The admin can still share credentials manually.
       console.warn(
-        `Voter account created but credentials email failed for ${email}: ${
-          emailError instanceof Error ? emailError.message : 'Unknown email error'
+        `Voter account created but credentials email failed for ${email}: ${emailError instanceof Error ? emailError.message : 'Unknown email error'
         }`
       );
     }
@@ -126,6 +125,22 @@ export class AdminService extends BaseService {
 
     const userId = await this.authService.requireCurrentUserId();
     return this.electionRepository.create(input, userId);
+  }
+
+  async updateElection(input: UpdateElectionInput): Promise<ElectionRow> {
+    await this.authService.getRequiredProfile('admin');
+
+    this.requireNonEmpty(input.electionId, 'Election id');
+    this.requireNonEmpty(input.title, 'Election title');
+    this.requireValidDateRange(input.startsAtIso, input.endsAtIso);
+
+    return this.electionRepository.update(input);
+  }
+
+  async deleteElection(electionId: string): Promise<void> {
+    await this.authService.getRequiredProfile('admin');
+    this.requireNonEmpty(electionId, 'Election id');
+    await this.electionRepository.delete(electionId);
   }
 
   async addCandidate(input: AddCandidateInput): Promise<CandidateRow> {
@@ -145,6 +160,17 @@ export class AdminService extends BaseService {
   async updateElectionStatus(electionId: string, status: ElectionRow['status']): Promise<ElectionRow> {
     this.requireNonEmpty(electionId, 'Election id');
     return this.electionRepository.updateStatus(electionId, status);
+  }
+
+  async listElections(): Promise<ElectionRow[]> {
+    await this.authService.getRequiredProfile('admin');
+    return this.electionRepository.listAll();
+  }
+
+  async getElectionCandidates(electionId: string): Promise<CandidateRow[]> {
+    await this.authService.getRequiredProfile('admin');
+    this.requireNonEmpty(electionId, 'Election id');
+    return this.candidateRepository.listByElection(electionId);
   }
 
   private requireValidEmail(email: string): void {

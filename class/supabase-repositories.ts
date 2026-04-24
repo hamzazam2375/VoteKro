@@ -16,6 +16,7 @@ import type {
     ICandidateRepository,
     IElectionRepository,
     IProfileRepository,
+    UpdateElectionInput,
     IVoteLedgerRepository,
     IVoterRegistryRepository,
 } from '@/class/service-contracts';
@@ -188,6 +189,35 @@ export class SupabaseElectionRepository extends RepositoryBase implements IElect
     }
 
     return data as ElectionRow;
+  }
+
+  async update(input: UpdateElectionInput): Promise<ElectionRow> {
+    const { data, error } = await supabase
+      .from('elections')
+      .update({
+        title: input.title,
+        description: input.description ?? null,
+        starts_at: input.startsAtIso,
+        ends_at: input.endsAtIso,
+        status: input.status,
+      })
+      .eq('id', input.electionId)
+      .select('*')
+      .single();
+
+    if (error) {
+      this.throwOnError('Failed to update election', error);
+    }
+
+    return data as ElectionRow;
+  }
+
+  async delete(electionId: string): Promise<void> {
+    const { error } = await supabase.from('elections').delete().eq('id', electionId);
+
+    if (error) {
+      this.throwOnError('Failed to delete election', error);
+    }
   }
 
   async findById(electionId: string): Promise<ElectionRow | null> {

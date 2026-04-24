@@ -1,9 +1,10 @@
-import type { ProfileRow } from '@/class/database-types';
+import type { ElectionRow, ProfileRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
 import { Navbar } from '@/components/navbar';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 export default function AdminDashboard() {
@@ -15,24 +16,41 @@ export default function AdminDashboard() {
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [auditorExists, setAuditorExists] = useState(false);
     const [registeredVotersCount, setRegisteredVotersCount] = useState(0);
+    const [elections, setElections] = useState<ElectionRow[]>([]);
+    const [candidateCounts, setCandidateCounts] = useState<Record<string, number>>({});
 
-    useEffect(() => {
-        const loadDashboardOverview = async () => {
-            try {
-                const overview = await serviceFactory.adminService.getDashboardOverview();
-                setProfile(overview.profile);
-                setAuditorExists(overview.auditorExists);
-                setRegisteredVotersCount(overview.registeredVotersCount);
-            } catch (error) {
-                Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to load profile'));
-                router.replace('/AdminLogin');
-            } finally {
-                setIsLoading(false);
-            }
-        };
+    const loadDashboardOverview = useCallback(async () => {
+        try {
+            const overview = await serviceFactory.adminService.getDashboardOverview();
+            setProfile(overview.profile);
+            setAuditorExists(overview.auditorExists);
+            setRegisteredVotersCount(overview.registeredVotersCount);
 
-        void loadDashboardOverview();
+            const electionRows = await serviceFactory.adminService.listElections();
+            setElections(electionRows);
+
+            const countEntries = await Promise.all(
+                electionRows.map(async (election) => {
+                    const candidates = await serviceFactory.adminService.getElectionCandidates(election.id);
+                    return [election.id, candidates.length] as const;
+                })
+            );
+
+            setCandidateCounts(Object.fromEntries(countEntries));
+        } catch (error) {
+            Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to load profile'));
+            router.replace('/AdminLogin');
+        } finally {
+            setIsLoading(false);
+        }
     }, [router]);
+
+    const reloadOnFocus = useCallback(() => {
+        void loadDashboardOverview();
+        return () => undefined;
+    }, [loadDashboardOverview]);
+
+    useFocusEffect(reloadOnFocus);
 
     const handleLogout = () => {
         if (Platform.OS === 'web') {
@@ -58,6 +76,14 @@ export default function AdminDashboard() {
             Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to logout'));
         }
     };
+
+    const now = Date.now();
+    const activeElections = elections.filter((election) => {
+        const startsAt = new Date(election.starts_at).getTime();
+        const endsAt = new Date(election.ends_at).getTime();
+        return now >= startsAt && now <= endsAt;
+    });
+    const upcomingElectionsCount = elections.filter((election) => new Date(election.starts_at).getTime() > now).length;
 
     if (isLoading) {
         return (
@@ -124,7 +150,10 @@ export default function AdminDashboard() {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>⚡ Quick Actions</Text>
                         <View style={[styles.actionsGrid, isMobile && styles.actionsGridMobile]}>
-                            <Pressable style={[styles.actionCard, isMobile ? styles.cardFullWidth : styles.cardThirdWidth] as any}>
+                            <Pressable
+                                style={[styles.actionCard, isMobile ? styles.cardFullWidth : styles.cardThirdWidth] as any}
+                                onPress={() => router.push('/AdminCreateElection')}
+                            >
                                 <View style={styles.cardInner}>
                                     <LinearGradient colors={['#1a73e8', '#7c3aed', '#e91e8c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cardStripe} />
                                     <View style={styles.cardBody}>
@@ -138,7 +167,10 @@ export default function AdminDashboard() {
                                 </View>
                             </Pressable>
 
-                            <Pressable style={[styles.actionCard, isMobile ? styles.cardFullWidth : styles.cardThirdWidth] as any}>
+                            <Pressable
+                                style={[styles.actionCard, isMobile ? styles.cardFullWidth : styles.cardThirdWidth] as any}
+                                onPress={() => router.push('/AdminManageElections')}
+                            >
                                 <View style={styles.cardInner}>
                                     <LinearGradient colors={['#1a73e8', '#7c3aed', '#e91e8c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cardStripe} />
                                     <View style={styles.cardBody}>
@@ -198,7 +230,7 @@ export default function AdminDashboard() {
                             </Pressable>
 
                             {profile?.role === 'admin' && !auditorExists && (
-                                <Pressable 
+                                <Pressable
                                     style={[styles.actionCard, isMobile ? styles.cardFullWidth : styles.cardThirdWidth] as any}
                                     onPress={() => router.push('/AuditorSignup')}
                                 >
@@ -238,10 +270,27 @@ export default function AdminDashboard() {
                                         <View style={styles.headerDivider} />
                                         <Text style={[styles.tableHeaderCell, { flex: 1, minWidth: 80 }]}>Results</Text>
                                     </View>
-                                    {/* Empty State */}
-                                    <View style={styles.emptyState}>
-                                        <Text style={styles.emptyText}>No active elections</Text>
-                                    </View>
+                                    {activeElections.length === 0 ? (
+                                        <View style={styles.emptyState}>
+                                            <Text style={styles.emptyText}>No active elections</Text>
+                                            {upcomingElectionsCount > 0 ? (
+                                                <Text style={styles.emptyHintText}>
+                                                    {upcomingElectionsCount} election(s) are scheduled and will appear here once the start date is reached.
+                                                </Text>
+                                            ) : null}
+                                        </View>
+                                    ) : (
+                                        activeElections.map((election) => (
+                                            <View key={election.id} style={styles.tableRow}>
+                                                <Text style={[styles.tableRowCell, { flex: 2, minWidth: 140 }]} numberOfLines={1}>{election.title}</Text>
+                                                <Text style={[styles.tableRowCell, { flex: 1, minWidth: 70 }]}>active</Text>
+                                                <Text style={[styles.tableRowCell, { flex: 1, minWidth: 90 }]}>{new Date(election.starts_at).toLocaleDateString()}</Text>
+                                                <Text style={[styles.tableRowCell, { flex: 1, minWidth: 90 }]}>{new Date(election.ends_at).toLocaleDateString()}</Text>
+                                                <Text style={[styles.tableRowCell, { flex: 1, minWidth: 80 }]}>{candidateCounts[election.id] ?? 0}</Text>
+                                                <Text style={[styles.tableRowCell, { flex: 1, minWidth: 80 }]}>No results</Text>
+                                            </View>
+                                        ))
+                                    )}
                                 </View>
                             </ScrollView>
                         ) : (
@@ -260,10 +309,27 @@ export default function AdminDashboard() {
                                     <View style={styles.headerDivider} />
                                     <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Results</Text>
                                 </View>
-                                {/* Empty State */}
-                                <View style={styles.emptyState}>
-                                    <Text style={styles.emptyText}>No active elections</Text>
-                                </View>
+                                {activeElections.length === 0 ? (
+                                    <View style={styles.emptyState}>
+                                        <Text style={styles.emptyText}>No active elections</Text>
+                                        {upcomingElectionsCount > 0 ? (
+                                            <Text style={styles.emptyHintText}>
+                                                {upcomingElectionsCount} election(s) are scheduled and will appear here once the start date is reached.
+                                            </Text>
+                                        ) : null}
+                                    </View>
+                                ) : (
+                                    activeElections.map((election) => (
+                                        <View key={election.id} style={styles.tableRow}>
+                                            <Text style={[styles.tableRowCell, { flex: 2 }]} numberOfLines={1}>{election.title}</Text>
+                                            <Text style={[styles.tableRowCell, { flex: 1 }]}>active</Text>
+                                            <Text style={[styles.tableRowCell, { flex: 1 }]}>{new Date(election.starts_at).toLocaleDateString()}</Text>
+                                            <Text style={[styles.tableRowCell, { flex: 1 }]}>{new Date(election.ends_at).toLocaleDateString()}</Text>
+                                            <Text style={[styles.tableRowCell, { flex: 1 }]}>{candidateCounts[election.id] ?? 0}</Text>
+                                            <Text style={[styles.tableRowCell, { flex: 1 }]}>No results</Text>
+                                        </View>
+                                    ))
+                                )}
                             </View>
                         )}
                     </View>
@@ -509,6 +575,19 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#0d47a1',
     },
+    tableRow: {
+        flexDirection: 'row',
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
+        backgroundColor: '#fff',
+    },
+    tableRowCell: {
+        fontSize: 12,
+        color: '#1f2937',
+        fontWeight: '500',
+    },
     headerDivider: {
         width: 1,
         backgroundColor: '#90caf9',
@@ -523,5 +602,13 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: '#999',
         fontWeight: '500',
+    },
+    emptyHintText: {
+        marginTop: 8,
+        fontSize: 13,
+        color: '#6b7280',
+        textAlign: 'center',
+        maxWidth: 460,
+        lineHeight: 18,
     },
 });

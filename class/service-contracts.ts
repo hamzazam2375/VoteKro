@@ -15,6 +15,15 @@ export interface CreateElectionInput {
   endsAtIso: string;
 }
 
+export interface UpdateElectionInput {
+  electionId: string;
+  title: string;
+  description?: string;
+  startsAtIso: string;
+  endsAtIso: string;
+  status: ElectionRow['status'];
+}
+
 export interface AddCandidateInput {
   electionId: string;
   displayName: string;
@@ -52,6 +61,8 @@ export interface IProfileRepository {
 
 export interface IElectionRepository {
   create(input: CreateElectionInput, createdBy: string): Promise<ElectionRow>;
+  update(input: UpdateElectionInput): Promise<ElectionRow>;
+  delete(electionId: string): Promise<void>;
   updateStatus(electionId: string, status: ElectionRow['status']): Promise<ElectionRow>;
   findById(electionId: string): Promise<ElectionRow | null>;
   listAll(): Promise<ElectionRow[]>;
