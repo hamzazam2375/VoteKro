@@ -60,7 +60,14 @@ database/supabase-schema.sql
 EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 EXPO_PUBLIC_CAST_VOTE_EDGE_URL=
+EXPO_PUBLIC_ROCKSDB_LEDGER_URL=
 ```
+
+Optional (free local RocksDB blockchain ledger):
+
+1. Start the RocksDB service in `rocksdb-ledger/`.
+2. Set `EXPO_PUBLIC_ROCKSDB_LEDGER_URL` (for example `http://localhost:8787`).
+3. App will route vote cast, ledger list, and chain verification through the RocksDB service.
 
 5. Start the app
 

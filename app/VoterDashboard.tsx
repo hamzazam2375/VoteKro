@@ -1,4 +1,4 @@
-import type { ProfileRow } from '@/class/database-types';
+import type { CandidateRow, ElectionRow, ProfileRow, VoteBlockRow, VoterRegistryRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
 import { Navbar } from '@/components/navbar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,7 +10,13 @@ export default function VoterDashboard() {
     const router = useRouter();
     const { width } = useWindowDimensions();
     const [profile, setProfile] = useState<ProfileRow | null>(null);
+    const [activeElection, setActiveElection] = useState<ElectionRow | null>(null);
+    const [candidates, setCandidates] = useState<CandidateRow[]>([]);
+    const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+    const [registryStatus, setRegistryStatus] = useState<VoterRegistryRow | null>(null);
+    const [latestVoteBlock, setLatestVoteBlock] = useState<VoteBlockRow | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isSubmittingVote, setIsSubmittingVote] = useState(false);
 
     const displayName = profile?.full_name?.trim() || 'Voter';
     const electionCardWidth = Math.min(330, Math.max(250, width - 48));
@@ -20,6 +26,23 @@ export default function VoterDashboard() {
             try {
                 const userProfile = await serviceFactory.authService.getRequiredProfile('voter');
                 setProfile(userProfile);
+
+                const elections = await serviceFactory.votingService.getActiveElections();
+                const election = elections[0] ?? null;
+                setActiveElection(election);
+
+                if (!election) {
+                    return;
+                }
+
+                const [candidateRows, voterRegistry] = await Promise.all([
+                    serviceFactory.votingService.getElectionCandidates(election.id),
+                    serviceFactory.votingService.getMyRegistryStatus(election.id),
+                ]);
+
+                setCandidates(candidateRows);
+                setRegistryStatus(voterRegistry);
+                setSelectedCandidateId(candidateRows[0]?.id ?? null);
             } catch (error) {
                 Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to load profile'));
                 router.replace('/VoterLogin');
@@ -38,6 +61,53 @@ export default function VoterDashboard() {
         } catch (error) {
             Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to logout'));
         }
+    };
+
+    const handleVote = async () => {
+        if (!activeElection) {
+            Alert.alert('No election', 'There is no active election available right now.');
+            return;
+        }
+
+        if (!selectedCandidateId) {
+            Alert.alert('Select candidate', 'Please select a candidate before voting.');
+            return;
+        }
+
+        if (!registryStatus?.is_eligible) {
+            Alert.alert('Not eligible', 'You are not registered as eligible for this election.');
+            return;
+        }
+
+        if (registryStatus.has_voted) {
+            Alert.alert('Already voted', 'Your vote has already been recorded for this election.');
+            return;
+        }
+
+        setIsSubmittingVote(true);
+
+        try {
+            const block = await serviceFactory.votingService.castVote({
+                electionId: activeElection.id,
+                candidateId: selectedCandidateId,
+            });
+
+            setLatestVoteBlock(block);
+            setRegistryStatus((prev) => (prev ? { ...prev, has_voted: true, voted_at: new Date().toISOString() } : prev));
+
+            Alert.alert(
+                'Vote Added To Blockchain',
+                `Vote stored in block #${block.block_index} with hash ${block.current_hash.slice(0, 12)}...`
+            );
+        } catch (error) {
+            Alert.alert('Vote failed', serviceFactory.authService.getErrorMessage(error, 'Failed to cast vote'));
+        } finally {
+            setIsSubmittingVote(false);
+        }
+    };
+
+    const formatDate = (iso: string): string => {
+        return new Date(iso).toLocaleDateString();
     };
 
     if (isLoading) {
@@ -67,38 +137,72 @@ export default function VoterDashboard() {
                         <Text style={styles.sectionTitle}>Available Elections</Text>
                     </View>
 
-                    <View style={[styles.electionCard, { width: electionCardWidth }]}>
-                        <LinearGradient
-                            colors={['#2f64e6', '#d154a7']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.cardTopAccent}
-                        />
-
-                        <Text style={styles.electionTitle}>Presidential Election 2024</Text>
-                        <Text style={styles.electionDescription}>Vote for the presidential candidate of your choice</Text>
-
-                        <View style={styles.dateBlock}>
-                            <Text style={styles.dateText}>📅 Start: 2026-02-28</Text>
-                            <Text style={styles.dateText}>📅 End: 2026-03-05</Text>
-                        </View>
-
-                        <Text style={styles.candidateCount}>Candidates: 3</Text>
-
-                        <Pressable
-                            style={({ pressed }) => [styles.voteAction, pressed && styles.voteActionPressed]}
-                            onPress={() => Alert.alert('Coming Soon', 'Ballot view will be available in the next update.')}
-                        >
+                    {activeElection ? (
+                        <View style={[styles.electionCard, { width: electionCardWidth }]}>
                             <LinearGradient
-                                colors={['#2f64e6', '#2a58d0']}
-                                start={{ x: 0, y: 0.5 }}
-                                end={{ x: 1, y: 0.5 }}
-                                style={styles.voteButtonGradient}
+                                colors={['#2f64e6', '#d154a7']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.cardTopAccent}
+                            />
+
+                            <Text style={styles.electionTitle}>{activeElection.title}</Text>
+                            <Text style={styles.electionDescription}>{activeElection.description ?? 'Vote for the candidate of your choice'}</Text>
+
+                            <View style={styles.dateBlock}>
+                                <Text style={styles.dateText}>📅 Start: {formatDate(activeElection.starts_at)}</Text>
+                                <Text style={styles.dateText}>📅 End: {formatDate(activeElection.ends_at)}</Text>
+                            </View>
+
+                            <Text style={styles.candidateCount}>Candidates: {candidates.length}</Text>
+
+                            <View style={styles.candidateList}>
+                                {candidates.map((candidate) => {
+                                    const isSelected = candidate.id === selectedCandidateId;
+                                    return (
+                                        <Pressable
+                                            key={candidate.id}
+                                            style={[styles.candidateItem, isSelected && styles.candidateItemSelected]}
+                                            onPress={() => setSelectedCandidateId(candidate.id)}
+                                        >
+                                            <Text style={styles.candidateLabel}>
+                                                {candidate.candidate_number}. {candidate.display_name}
+                                            </Text>
+                                            {candidate.party_name ? <Text style={styles.candidateParty}>{candidate.party_name}</Text> : null}
+                                        </Pressable>
+                                    );
+                                })}
+                            </View>
+
+                            <Pressable
+                                style={({ pressed }) => [styles.voteAction, pressed && styles.voteActionPressed]}
+                                onPress={handleVote}
+                                disabled={isSubmittingVote || !registryStatus?.is_eligible || !!registryStatus?.has_voted || !selectedCandidateId}
                             >
-                                <Text style={styles.voteActionText}>Vote Now</Text>
-                            </LinearGradient>
-                        </Pressable>
-                    </View>
+                                <LinearGradient
+                                    colors={['#2f64e6', '#2a58d0']}
+                                    start={{ x: 0, y: 0.5 }}
+                                    end={{ x: 1, y: 0.5 }}
+                                    style={styles.voteButtonGradient}
+                                >
+                                    <Text style={styles.voteActionText}>{isSubmittingVote ? 'Submitting Vote...' : 'Vote Now'}</Text>
+                                </LinearGradient>
+                            </Pressable>
+
+                            {!registryStatus?.is_eligible ? <Text style={styles.infoText}>You are not yet registered for this election.</Text> : null}
+                            {registryStatus?.has_voted ? <Text style={styles.infoText}>Your vote has already been recorded on-chain.</Text> : null}
+                            {latestVoteBlock ? (
+                                <Text style={styles.infoText}>
+                                    Last block: #{latestVoteBlock.block_index} ({latestVoteBlock.current_hash.slice(0, 12)}...)
+                                </Text>
+                            ) : null}
+                        </View>
+                    ) : (
+                        <View style={[styles.electionCard, { width: electionCardWidth }]}>
+                            <Text style={styles.electionTitle}>No Active Election</Text>
+                            <Text style={styles.electionDescription}>There is no open election at the moment. Please check back later.</Text>
+                        </View>
+                    )}
                 </View>
             </ScrollView>
         </View>
@@ -206,6 +310,32 @@ const styles = StyleSheet.create({
         color: '#3c4e69',
         marginBottom: 20,
     },
+    candidateList: {
+        gap: 10,
+        marginBottom: 18,
+    },
+    candidateItem: {
+        borderWidth: 1,
+        borderColor: '#d5dbe8',
+        borderRadius: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        backgroundColor: '#f8faff',
+    },
+    candidateItemSelected: {
+        borderColor: '#2f64e6',
+        backgroundColor: '#e8efff',
+    },
+    candidateLabel: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#233a67',
+    },
+    candidateParty: {
+        marginTop: 4,
+        fontSize: 13,
+        color: '#5f6f83',
+    },
     voteAction: {
         borderRadius: 12,
         overflow: 'hidden',
@@ -229,5 +359,11 @@ const styles = StyleSheet.create({
         color: '#ffffff',
         fontSize: 24,
         fontWeight: '700',
+    },
+    infoText: {
+        marginTop: 12,
+        fontSize: 14,
+        color: '#4f5d72',
+        lineHeight: 20,
     },
 });

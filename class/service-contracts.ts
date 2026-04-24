@@ -25,7 +25,6 @@ export interface AddCandidateInput {
 export interface CastVoteInput {
   electionId: string;
   candidateId: string;
-  encryptedVote: string;
   nonce?: string;
 }
 
@@ -69,7 +68,7 @@ export interface IVoterRegistryRepository {
 }
 
 export interface IVoteLedgerRepository {
-  castVoteSecure(electionId: string, encryptedVote: string, voteCommitment: string): Promise<VoteBlockRow>;
+  castVoteSecure(electionId: string, candidateId: string, nonce?: string, voterId?: string): Promise<VoteBlockRow>;
   verifyChain(electionId: string): Promise<VerifyChainResultRow>;
   listLedger(electionId: string): Promise<VoteBlockRow[]>;
 }

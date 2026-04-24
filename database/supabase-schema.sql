@@ -133,12 +133,15 @@ declare
   v_curr_hash text;
   v_block public.vote_blocks;
 begin
+  perform pg_advisory_xact_lock(hashtext(p_election_id::text));
+
   select vb.current_hash, vb.block_index + 1
   into v_prev_hash, v_next_index
   from public.vote_blocks vb
   where vb.election_id = p_election_id
   order by vb.block_index desc
-  limit 1;
+  limit 1
+  for update;
 
   v_curr_hash := public.compute_block_hash(
     v_next_index,
@@ -172,10 +175,12 @@ begin
 end;
 $$;
 
+drop function if exists public.cast_vote_secure(uuid, text, text);
+
 create or replace function public.cast_vote_secure(
   p_election_id uuid,
-  p_encrypted_vote text,
-  p_vote_commitment text
+  p_candidate_id uuid,
+  p_nonce text default null
 )
 returns public.vote_blocks
 language plpgsql
@@ -186,9 +191,19 @@ declare
   v_uid uuid := auth.uid();
   v_election public.elections;
   v_block public.vote_blocks;
+  v_secret text;
+  v_nonce text;
+  v_plain_vote text;
+  v_encrypted_vote text;
+  v_vote_commitment text;
 begin
   if v_uid is null then
     raise exception 'Not authenticated';
+  end if;
+
+  select current_setting('app.vote_encryption_key', true) into v_secret;
+  if v_secret is null or char_length(trim(v_secret)) = 0 then
+    raise exception 'Vote encryption key is not configured';
   end if;
 
   select *
@@ -218,10 +233,35 @@ begin
     raise exception 'Voter not eligible or already voted';
   end if;
 
-  v_block := public.append_vote_block(p_election_id, p_encrypted_vote, p_vote_commitment);
+  v_nonce := coalesce(nullif(trim(p_nonce), ''), encode(gen_random_bytes(16), 'hex'));
+  v_vote_commitment := encode(digest(concat_ws('|', p_election_id::text, p_candidate_id::text, v_nonce), 'sha256'), 'hex');
+
+  v_plain_vote := jsonb_build_object(
+    'election_id', p_election_id,
+    'candidate_id', p_candidate_id,
+    'voter_id', v_uid,
+    'submitted_at', timezone('utc', now())
+  )::text;
+
+  v_encrypted_vote := encode(
+    pgp_sym_encrypt(v_plain_vote, v_secret, 'cipher-algo=aes256,compress-algo=1'),
+    'base64'
+  );
+
+  v_block := public.append_vote_block(p_election_id, v_encrypted_vote, v_vote_commitment);
 
   insert into public.audit_logs (actor_id, action, target_table, target_id, metadata)
-  values (v_uid, 'CAST_VOTE', 'vote_blocks', v_block.id::text, jsonb_build_object('election_id', p_election_id));
+  values (
+    v_uid,
+    'CAST_VOTE',
+    'vote_blocks',
+    v_block.id::text,
+    jsonb_build_object(
+      'election_id', p_election_id,
+      'candidate_id', p_candidate_id,
+      'block_index', v_block.block_index
+    )
+  );
 
   return v_block;
 end;
@@ -372,5 +412,5 @@ using (
 grant usage on schema public to authenticated;
 grant select on public.elections, public.candidates, public.vote_blocks to authenticated;
 grant select on public.voter_registry, public.audit_logs to authenticated;
-grant execute on function public.cast_vote_secure(uuid, text, text) to authenticated;
+grant execute on function public.cast_vote_secure(uuid, uuid, text) to authenticated;
 grant execute on function public.verify_chain(uuid) to authenticated;
