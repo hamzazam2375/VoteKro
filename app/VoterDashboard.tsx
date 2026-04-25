@@ -66,7 +66,7 @@ export default function VoterDashboard() {
 
     useEffect(() => {
         const loadSelectedElection = async () => {
-            if (!selectedElection || selectedElection.status !== 'open') {
+            if (!selectedElection) {
                 setCandidates([]);
                 setRegistryStatus(null);
                 setSelectedCandidateId(null);
@@ -74,10 +74,10 @@ export default function VoterDashboard() {
             }
 
             try {
-                const [candidateRows, voterRegistry] = await Promise.all([
-                    serviceFactory.votingService.getElectionCandidates(selectedElection.id),
-                    serviceFactory.votingService.getMyRegistryStatus(selectedElection.id),
-                ]);
+                const candidateRows = await serviceFactory.votingService.getElectionCandidates(selectedElection.id);
+                const voterRegistry = selectedElection.status === 'open'
+                    ? await serviceFactory.votingService.getMyRegistryStatus(selectedElection.id)
+                    : null;
 
                 setCandidates(candidateRows);
                 setRegistryStatus(voterRegistry);
@@ -234,28 +234,32 @@ export default function VoterDashboard() {
                                 <Text style={styles.dateText}>📅 End: {formatDate(selectedElection.ends_at)}</Text>
                             </View>
 
+                            <Text style={styles.candidateCount}>Candidates: {candidates.length}</Text>
+
+                            <View style={styles.candidateList}>
+                                {candidates.length > 0 ? (
+                                    candidates.map((candidate) => {
+                                        const isSelected = candidate.id === selectedCandidateId;
+                                        return (
+                                            <Pressable
+                                                key={candidate.id}
+                                                style={[styles.candidateItem, isSelected && styles.candidateItemSelected]}
+                                                onPress={() => setSelectedCandidateId(candidate.id)}
+                                            >
+                                                <Text style={styles.candidateLabel}>
+                                                    {candidate.candidate_number}. {candidate.display_name}
+                                                </Text>
+                                                {candidate.party_name ? <Text style={styles.candidateParty}>{candidate.party_name}</Text> : null}
+                                            </Pressable>
+                                        );
+                                    })
+                                ) : (
+                                    <Text style={styles.infoText}>No candidates have been added for this election yet.</Text>
+                                )}
+                            </View>
+
                             {selectedElection.status === 'open' ? (
                                 <>
-                                    <Text style={styles.candidateCount}>Candidates: {candidates.length}</Text>
-
-                                    <View style={styles.candidateList}>
-                                        {candidates.map((candidate) => {
-                                            const isSelected = candidate.id === selectedCandidateId;
-                                            return (
-                                                <Pressable
-                                                    key={candidate.id}
-                                                    style={[styles.candidateItem, isSelected && styles.candidateItemSelected]}
-                                                    onPress={() => setSelectedCandidateId(candidate.id)}
-                                                >
-                                                    <Text style={styles.candidateLabel}>
-                                                        {candidate.candidate_number}. {candidate.display_name}
-                                                    </Text>
-                                                    {candidate.party_name ? <Text style={styles.candidateParty}>{candidate.party_name}</Text> : null}
-                                                </Pressable>
-                                            );
-                                        })}
-                                    </View>
-
                                     <Pressable
                                         style={({ pressed }) => [styles.voteAction, pressed && styles.voteActionPressed]}
                                         onPress={handleVote}
