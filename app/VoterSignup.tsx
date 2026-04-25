@@ -88,34 +88,28 @@ export default function VoterSignupScreen() {
     }
 
     try {
-      const createdProfile = await serviceFactory.adminService.registerVoter({
+      await serviceFactory.adminService.initiateVoterRegistrationAuthorization({
         fullName: normalizedFullName,
         email: normalizedEmail,
       });
-
-      if (createdProfile.role !== "voter") {
-        throw new Error(
-          "Account was created, but role is not voter. Please contact support.",
-        );
-      }
 
       setFullName("");
       setEmail("");
 
       const successMessage =
-        "Voter registered successfully. A random password was generated and sent by email.";
+        "Authorization email sent. Ask voter to click the button in email to complete registration.";
       if (Platform.OS === "web") {
         toast.success(successMessage, {
           position: "top-right",
           autoClose: 2200,
         });
       } else {
-        Alert.alert("Success", successMessage);
+        Alert.alert("Email Sent", successMessage);
       }
     } catch (registerError) {
       const errorMessage = serviceFactory.authService.getErrorMessage(
         registerError,
-        "Registration failed. Please try again.",
+        "Failed to send authorization email. Please try again.",
       );
       setError(errorMessage);
       if (Platform.OS === "web") {
@@ -163,7 +157,8 @@ export default function VoterSignupScreen() {
             </View>
 
             <Text style={styles.description}>
-              Create voter using Gmail. A random password is generated
+              Send voter authorization email. Voter must click the email button
+              to complete registration.
             </Text>
 
             {error ? (
@@ -210,7 +205,9 @@ export default function VoterSignupScreen() {
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.registerButtonText}>✓ Register Voter</Text>
+                <Text style={styles.registerButtonText}>
+                  ✉ Send Authorization Email
+                </Text>
               )}
             </Pressable>
           </View>

@@ -1,4 +1,4 @@
-import { supabase } from '@/class/supabase-client';
+import { supabase } from "@/class/supabase-client";
 
 export interface SendEmailInput {
   to: string;
@@ -10,7 +10,7 @@ export interface SendEmailInput {
 export class EmailService {
   async sendEmail(input: SendEmailInput): Promise<void> {
     // Using Supabase's edge function to send emails
-    const { error } = await supabase.functions.invoke('send-email', {
+    const { error } = await supabase.functions.invoke("send-email", {
       body: {
         to: input.to,
         subject: input.subject,
@@ -24,7 +24,11 @@ export class EmailService {
     }
   }
 
-  async sendVoterCredentials(email: string, fullName: string, password: string): Promise<void> {
+  async sendVoterCredentials(
+    email: string,
+    fullName: string,
+    password: string,
+  ): Promise<void> {
     const html = `
       <html>
         <body style="font-family: Arial, sans-serif; color: #333;">
@@ -72,13 +76,38 @@ If you did not request this account or have any questions, please contact suppor
 
     await this.sendEmail({
       to: email,
-      subject: 'VoteKro - Your Voter Account Credentials',
+      subject: "VoteKro - Your Voter Account Credentials",
       html,
       text,
     });
   }
 
-  async sendAuditorCredentials(email: string, fullName: string, password: string): Promise<void> {
+  async initiateVoterRegistrationAuthorization(
+    fullName: string,
+    email: string,
+  ): Promise<void> {
+    const { error } = await supabase.functions.invoke(
+      "start-voter-registration",
+      {
+        body: {
+          fullName,
+          email,
+        },
+      },
+    );
+
+    if (error) {
+      throw new Error(
+        `Failed to initiate voter registration authorization: ${error.message}`,
+      );
+    }
+  }
+
+  async sendAuditorCredentials(
+    email: string,
+    fullName: string,
+    password: string,
+  ): Promise<void> {
     const html = `
       <html>
         <body style="font-family: Arial, sans-serif; color: #333;">
@@ -126,7 +155,7 @@ If you did not request this account or have any questions, please contact suppor
 
     await this.sendEmail({
       to: email,
-      subject: 'VoteKro - Your Auditor Account Credentials',
+      subject: "VoteKro - Your Auditor Account Credentials",
       html,
       text,
     });
