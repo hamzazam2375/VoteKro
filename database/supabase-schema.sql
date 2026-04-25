@@ -225,6 +225,19 @@ begin
     raise exception 'Election is not accepting votes right now';
   end if;
 
+  if not exists (
+    select 1
+    from public.candidates c
+    where c.id = p_candidate_id
+      and c.election_id = p_election_id
+  ) then
+    raise exception 'Candidate is invalid for this election';
+  end if;
+
+  insert into public.voter_registry (election_id, voter_id, is_eligible, has_voted)
+  values (p_election_id, v_uid, true, false)
+  on conflict (election_id, voter_id) do nothing;
+
   update public.voter_registry vr
   set has_voted = true,
       voted_at = timezone('utc', now())

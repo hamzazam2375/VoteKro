@@ -4,7 +4,7 @@ import { Navbar } from '@/components/navbar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 export default function VoterDashboard() {
     const router = useRouter();
@@ -16,6 +16,9 @@ export default function VoterDashboard() {
     const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
     const [registryStatus, setRegistryStatus] = useState<VoterRegistryRow | null>(null);
     const [latestVoteBlock, setLatestVoteBlock] = useState<VoteBlockRow | null>(null);
+    const [voteSuccessMessage, setVoteSuccessMessage] = useState<string | null>(null);
+    const [showVoteSuccessModal, setShowVoteSuccessModal] = useState(false);
+    const [voteErrorMessage, setVoteErrorMessage] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmittingVote, setIsSubmittingVote] = useState(false);
 
@@ -70,6 +73,9 @@ export default function VoterDashboard() {
                 setCandidates([]);
                 setRegistryStatus(null);
                 setSelectedCandidateId(null);
+                setVoteSuccessMessage(null);
+                setShowVoteSuccessModal(false);
+                setVoteErrorMessage(null);
                 return;
             }
 
@@ -82,6 +88,9 @@ export default function VoterDashboard() {
                 setCandidates(candidateRows);
                 setRegistryStatus(voterRegistry);
                 setSelectedCandidateId(candidateRows[0]?.id ?? null);
+                setVoteSuccessMessage(null);
+                setShowVoteSuccessModal(false);
+                setVoteErrorMessage(null);
             } catch (error) {
                 Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to load election details'));
             }
@@ -115,17 +124,20 @@ export default function VoterDashboard() {
             return;
         }
 
-        if (!registryStatus?.is_eligible) {
+        if (registryStatus && !registryStatus.is_eligible) {
             Alert.alert('Not eligible', 'You are not registered as eligible for this election.');
             return;
         }
 
-        if (registryStatus.has_voted) {
+        if (registryStatus?.has_voted) {
             Alert.alert('Already voted', 'Your vote has already been recorded for this election.');
             return;
         }
 
         setIsSubmittingVote(true);
+        setVoteSuccessMessage(null);
+        setShowVoteSuccessModal(false);
+        setVoteErrorMessage(null);
 
         try {
             const block = await serviceFactory.votingService.castVote({
@@ -134,14 +146,23 @@ export default function VoterDashboard() {
             });
 
             setLatestVoteBlock(block);
-            setRegistryStatus((prev) => (prev ? { ...prev, has_voted: true, voted_at: new Date().toISOString() } : prev));
 
-            Alert.alert(
-                'Vote Added To Blockchain',
-                `Vote stored in block #${block.block_index} with hash ${block.current_hash.slice(0, 12)}...`
-            );
+            const successMessage = 'Your vote has been cast successfully.';
+
+            setVoteSuccessMessage(successMessage);
+            setShowVoteSuccessModal(true);
+
+            try {
+                const refreshedRegistry = await serviceFactory.votingService.getMyRegistryStatus(selectedElection.id);
+                setRegistryStatus(refreshedRegistry);
+            } catch (refreshError) {
+                console.warn('Vote succeeded but registry refresh failed:', refreshError);
+            }
         } catch (error) {
-            Alert.alert('Vote failed', serviceFactory.authService.getErrorMessage(error, 'Failed to cast vote'));
+            setVoteSuccessMessage(null);
+            const message = serviceFactory.authService.getErrorMessage(error, 'Failed to cast vote');
+            setVoteErrorMessage(message);
+            Alert.alert('Vote failed', message);
         } finally {
             setIsSubmittingVote(false);
         }
@@ -162,6 +183,23 @@ export default function VoterDashboard() {
 
     return (
         <View style={styles.container}>
+            <Modal
+                visible={showVoteSuccessModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowVoteSuccessModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalBox}>
+                        <Text style={styles.modalTitle}>Vote Cast Successfully</Text>
+                        <Text style={styles.modalMessage}>{voteSuccessMessage ?? 'Your vote has been cast successfully.'}</Text>
+                        <Pressable style={styles.modalButton} onPress={() => setShowVoteSuccessModal(false)}>
+                            <Text style={styles.modalButtonText}>OK</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </Modal>
+
             <Navbar
                 compact
                 infoText={`Welcome, ${displayName}!`}
@@ -263,7 +301,12 @@ export default function VoterDashboard() {
                                     <Pressable
                                         style={({ pressed }) => [styles.voteAction, pressed && styles.voteActionPressed]}
                                         onPress={handleVote}
-                                        disabled={isSubmittingVote || !registryStatus?.is_eligible || !!registryStatus?.has_voted || !selectedCandidateId}
+                                        disabled={
+                                            isSubmittingVote
+                                            || !selectedCandidateId
+                                            || !!registryStatus?.has_voted
+                                            || (registryStatus ? !registryStatus.is_eligible : false)
+                                        }
                                     >
                                         <LinearGradient
                                             colors={['#2f64e6', '#2a58d0']}
@@ -275,11 +318,13 @@ export default function VoterDashboard() {
                                         </LinearGradient>
                                     </Pressable>
 
-                                    {!registryStatus?.is_eligible ? <Text style={styles.infoText}>You are not yet registered for this election.</Text> : null}
+                                    {registryStatus && !registryStatus.is_eligible ? <Text style={styles.infoText}>You are not eligible for this election.</Text> : null}
+                                    {!registryStatus ? <Text style={styles.infoText}>You will be registered automatically when you cast your first vote.</Text> : null}
                                     {registryStatus?.has_voted ? <Text style={styles.infoText}>Your vote has already been recorded on-chain.</Text> : null}
+                                    {voteErrorMessage ? <Text style={styles.errorText}>{voteErrorMessage}</Text> : null}
                                     {latestVoteBlock ? (
                                         <Text style={styles.infoText}>
-                                            Last block: #{latestVoteBlock.block_index} ({latestVoteBlock.current_hash.slice(0, 12)}...)
+                                            Last block: #{latestVoteBlock.block_index}{typeof latestVoteBlock.current_hash === 'string' ? ` (${latestVoteBlock.current_hash.slice(0, 12)}...)` : ''}
                                         </Text>
                                     ) : null}
                                 </>
@@ -298,6 +343,46 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#eceff3',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.35)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+    },
+    modalBox: {
+        width: '100%',
+        maxWidth: 420,
+        backgroundColor: '#ffffff',
+        borderRadius: 14,
+        padding: 22,
+        borderWidth: 1,
+        borderColor: '#d9e0ec',
+    },
+    modalTitle: {
+        fontSize: 22,
+        fontWeight: '800',
+        color: '#1b2a47',
+        marginBottom: 10,
+    },
+    modalMessage: {
+        fontSize: 15,
+        lineHeight: 22,
+        color: '#4f5d72',
+        marginBottom: 16,
+    },
+    modalButton: {
+        alignSelf: 'flex-end',
+        backgroundColor: '#2f64e6',
+        borderRadius: 10,
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+    },
+    modalButtonText: {
+        color: '#ffffff',
+        fontSize: 14,
+        fontWeight: '700',
     },
     centerContainer: {
         flex: 1,
@@ -525,5 +610,12 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#4f5d72',
         lineHeight: 20,
+    },
+    errorText: {
+        marginTop: 12,
+        fontSize: 14,
+        color: '#b42318',
+        lineHeight: 20,
+        fontWeight: '600',
     },
 });

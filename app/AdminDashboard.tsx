@@ -4,7 +4,7 @@ import { Navbar } from "@/components/navbar";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -27,9 +27,11 @@ export default function AdminDashboard() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [registeredVotersCount, setRegisteredVotersCount] = useState(0);
   const [elections, setElections] = useState<ElectionRow[]>([]);
+  const [totalVotesCast, setTotalVotesCast] = useState(0);
   const [candidateCounts, setCandidateCounts] = useState<
     Record<string, number>
   >({});
+  const [voteCounts, setVoteCounts] = useState<Record<string, number>>({});
 
   const loadDashboardOverview = useCallback(async () => {
     try {
@@ -51,6 +53,25 @@ export default function AdminDashboard() {
       );
 
       setCandidateCounts(Object.fromEntries(countEntries));
+
+      const voteEntries = await Promise.all(
+        electionRows.map(async (election) => {
+          try {
+            const ledger = await serviceFactory.auditorService.getLedger(
+              election.id,
+            );
+            return [election.id, ledger.length] as const;
+          } catch {
+            return [election.id, 0] as const;
+          }
+        }),
+      );
+
+      const votesByElection = Object.fromEntries(voteEntries);
+      setVoteCounts(votesByElection);
+      setTotalVotesCast(
+        Object.values(votesByElection).reduce((sum, count) => sum + count, 0),
+      );
     } catch (error) {
       Alert.alert(
         "Error",
@@ -71,6 +92,14 @@ export default function AdminDashboard() {
   }, [loadDashboardOverview]);
 
   useFocusEffect(reloadOnFocus);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      void loadDashboardOverview();
+    }, 10000);
+
+    return () => clearInterval(intervalId);
+  }, [loadDashboardOverview]);
 
   const handleLogout = () => {
     if (Platform.OS === "web") {
@@ -180,7 +209,7 @@ export default function AdminDashboard() {
               ]}
             >
               <Text style={styles.statLabel}>Total Elections</Text>
-              <Text style={styles.statNumber}>1</Text>
+              <Text style={styles.statNumber}>{elections.length}</Text>
             </View>
             <View
               style={[
@@ -198,7 +227,7 @@ export default function AdminDashboard() {
               ]}
             >
               <Text style={styles.statLabel}>Total Votes Cast</Text>
-              <Text style={styles.statNumber}>2</Text>
+              <Text style={styles.statNumber}>{totalVotesCast}</Text>
             </View>
           </View>
 
@@ -510,7 +539,7 @@ export default function AdminDashboard() {
                             { flex: 1, minWidth: 80 },
                           ]}
                         >
-                          No results
+                          {voteCounts[election.id] ?? 0} votes
                         </Text>
                       </View>
                     ))
@@ -577,7 +606,7 @@ export default function AdminDashboard() {
                         {candidateCounts[election.id] ?? 0}
                       </Text>
                       <Text style={[styles.tableRowCell, { flex: 1 }]}>
-                        No results
+                        {voteCounts[election.id] ?? 0} votes
                       </Text>
                     </View>
                   ))
