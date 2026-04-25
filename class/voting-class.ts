@@ -2,12 +2,12 @@ import { BaseService } from '@/class/base-service';
 import type { CandidateRow, ElectionRow, VerifyChainResultRow, VoteBlockRow, VoterRegistryRow } from '@/class/database-types';
 import { AuthenticationError } from '@/class/errors';
 import type {
-  CastVoteInput,
-  IAuthRepository,
-  ICandidateRepository,
-  IElectionRepository,
-  IVoteLedgerRepository,
-  IVoterRegistryRepository,
+    CastVoteInput,
+    IAuthRepository,
+    ICandidateRepository,
+    IElectionRepository,
+    IVoteLedgerRepository,
+    IVoterRegistryRepository,
 } from '@/class/service-contracts';
 
 export class VotingService extends BaseService {
@@ -33,6 +33,10 @@ export class VotingService extends BaseService {
       const current = now.getTime();
       return current >= startsAt && current <= endsAt;
     });
+  }
+
+  async listAllElections(): Promise<ElectionRow[]> {
+    return this.electionRepository.listAll();
   }
 
   async getElectionCandidates(electionId: string): Promise<CandidateRow[]> {
