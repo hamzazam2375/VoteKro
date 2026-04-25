@@ -1,4 +1,4 @@
-import type { CandidateRow, ElectionRow, ProfileRow, VoteBlockRow, VoterRegistryRow } from '@/class/database-types';
+import type { CandidateRow, ElectionRow, ProfileRow, VoterRegistryRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
 import { Navbar } from '@/components/navbar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,9 +15,9 @@ export default function VoterDashboard() {
     const [candidates, setCandidates] = useState<CandidateRow[]>([]);
     const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
     const [registryStatus, setRegistryStatus] = useState<VoterRegistryRow | null>(null);
-    const [latestVoteBlock, setLatestVoteBlock] = useState<VoteBlockRow | null>(null);
-    const [voteSuccessMessage, setVoteSuccessMessage] = useState<string | null>(null);
-    const [showVoteSuccessModal, setShowVoteSuccessModal] = useState(false);
+    const [voteModalTitle, setVoteModalTitle] = useState<string>('');
+    const [voteModalMessage, setVoteModalMessage] = useState<string>('');
+    const [showVoteModal, setShowVoteModal] = useState(false);
     const [voteErrorMessage, setVoteErrorMessage] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmittingVote, setIsSubmittingVote] = useState(false);
@@ -73,8 +73,7 @@ export default function VoterDashboard() {
                 setCandidates([]);
                 setRegistryStatus(null);
                 setSelectedCandidateId(null);
-                setVoteSuccessMessage(null);
-                setShowVoteSuccessModal(false);
+                setShowVoteModal(false);
                 setVoteErrorMessage(null);
                 return;
             }
@@ -88,8 +87,7 @@ export default function VoterDashboard() {
                 setCandidates(candidateRows);
                 setRegistryStatus(voterRegistry);
                 setSelectedCandidateId(candidateRows[0]?.id ?? null);
-                setVoteSuccessMessage(null);
-                setShowVoteSuccessModal(false);
+                setShowVoteModal(false);
                 setVoteErrorMessage(null);
             } catch (error) {
                 Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to load election details'));
@@ -135,8 +133,7 @@ export default function VoterDashboard() {
         }
 
         setIsSubmittingVote(true);
-        setVoteSuccessMessage(null);
-        setShowVoteSuccessModal(false);
+        setShowVoteModal(false);
         setVoteErrorMessage(null);
 
         try {
@@ -145,12 +142,10 @@ export default function VoterDashboard() {
                 candidateId: selectedCandidateId,
             });
 
-            setLatestVoteBlock(block);
-
             const successMessage = 'Your vote has been cast successfully.';
-
-            setVoteSuccessMessage(successMessage);
-            setShowVoteSuccessModal(true);
+            setVoteModalTitle('Vote Cast Successfully');
+            setVoteModalMessage(successMessage);
+            setShowVoteModal(true);
 
             try {
                 const refreshedRegistry = await serviceFactory.votingService.getMyRegistryStatus(selectedElection.id);
@@ -159,10 +154,28 @@ export default function VoterDashboard() {
                 console.warn('Vote succeeded but registry refresh failed:', refreshError);
             }
         } catch (error) {
-            setVoteSuccessMessage(null);
             const message = serviceFactory.authService.getErrorMessage(error, 'Failed to cast vote');
-            setVoteErrorMessage(message);
-            Alert.alert('Vote failed', message);
+            const isAlreadyVoted = /already\s+has\s+a\s+recorded\s+vote|already\s+voted/i.test(message);
+
+            if (isAlreadyVoted) {
+                setVoteErrorMessage(null);
+                setRegistryStatus((prev) => {
+                    if (!prev) {
+                        return prev;
+                    }
+
+                    return {
+                        ...prev,
+                        has_voted: true,
+                    };
+                });
+                setVoteModalTitle('Already Voted');
+                setVoteModalMessage('Voter has already casted vote for this election.');
+                setShowVoteModal(true);
+            } else {
+                setVoteErrorMessage(message);
+                Alert.alert('Vote failed', message);
+            }
         } finally {
             setIsSubmittingVote(false);
         }
@@ -184,16 +197,16 @@ export default function VoterDashboard() {
     return (
         <View style={styles.container}>
             <Modal
-                visible={showVoteSuccessModal}
+                visible={showVoteModal}
                 transparent
                 animationType="fade"
-                onRequestClose={() => setShowVoteSuccessModal(false)}
+                onRequestClose={() => setShowVoteModal(false)}
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalBox}>
-                        <Text style={styles.modalTitle}>Vote Cast Successfully</Text>
-                        <Text style={styles.modalMessage}>{voteSuccessMessage ?? 'Your vote has been cast successfully.'}</Text>
-                        <Pressable style={styles.modalButton} onPress={() => setShowVoteSuccessModal(false)}>
+                        <Text style={styles.modalTitle}>{voteModalTitle}</Text>
+                        <Text style={styles.modalMessage}>{voteModalMessage}</Text>
+                        <Pressable style={styles.modalButton} onPress={() => setShowVoteModal(false)}>
                             <Text style={styles.modalButtonText}>OK</Text>
                         </Pressable>
                     </View>
@@ -322,11 +335,6 @@ export default function VoterDashboard() {
                                     {!registryStatus ? <Text style={styles.infoText}>You will be registered automatically when you cast your first vote.</Text> : null}
                                     {registryStatus?.has_voted ? <Text style={styles.infoText}>Your vote has already been recorded on-chain.</Text> : null}
                                     {voteErrorMessage ? <Text style={styles.errorText}>{voteErrorMessage}</Text> : null}
-                                    {latestVoteBlock ? (
-                                        <Text style={styles.infoText}>
-                                            Last block: #{latestVoteBlock.block_index}{typeof latestVoteBlock.current_hash === 'string' ? ` (${latestVoteBlock.current_hash.slice(0, 12)}...)` : ''}
-                                        </Text>
-                                    ) : null}
                                 </>
                             ) : (
                                 <Text style={styles.infoText}>This election is visible to voters, but only open elections accept votes.</Text>
