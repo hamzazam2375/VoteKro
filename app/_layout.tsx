@@ -24,6 +24,7 @@ export default function RootLayout() {
         <Stack.Screen name="VoterSignup" options={{ headerShown: false }} />
         <Stack.Screen name="AdminDashboard" options={{ headerShown: false }} />
         <Stack.Screen name="AuditorDashboard" options={{ headerShown: false }} />
+        <Stack.Screen name="AuditorBlockchainLedger" options={{ headerShown: false }} />
         <Stack.Screen name="VoterDashboard" options={{ headerShown: false }} />
       </Stack>
       {ToastContainer ? (

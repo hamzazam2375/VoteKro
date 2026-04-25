@@ -54,6 +54,7 @@ create table if not exists public.voter_registry (
 create table if not exists public.vote_blocks (
   id uuid primary key default gen_random_uuid(),
   election_id uuid not null references public.elections (id) on delete cascade,
+  voter_id uuid references public.profiles (user_id) on delete set null,
   block_index bigint not null,
   encrypted_vote text not null,
   vote_commitment text not null,
@@ -118,6 +119,7 @@ $$;
 
 create or replace function public.append_vote_block(
   p_election_id uuid,
+  p_voter_id uuid,
   p_encrypted_vote text,
   p_vote_commitment text
 )
@@ -153,6 +155,7 @@ begin
 
   insert into public.vote_blocks (
     election_id,
+    voter_id,
     block_index,
     encrypted_vote,
     vote_commitment,
@@ -162,6 +165,7 @@ begin
   )
   values (
     p_election_id,
+    p_voter_id,
     v_next_index,
     p_encrypted_vote,
     p_vote_commitment,
@@ -248,7 +252,7 @@ begin
     'base64'
   );
 
-  v_block := public.append_vote_block(p_election_id, v_encrypted_vote, v_vote_commitment);
+  v_block := public.append_vote_block(p_election_id, v_uid, v_encrypted_vote, v_vote_commitment);
 
   insert into public.audit_logs (actor_id, action, target_table, target_id, metadata)
   values (

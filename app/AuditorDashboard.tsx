@@ -126,8 +126,8 @@ export default function AuditorDashboard() {
                             <Text style={styles.verificationTitle}>Verify Blockchain Integrity</Text>
                             <Text style={styles.verificationDesc}>Check if the blockchain ledger has been tampered with. This will verify all smart contracts and transaction hashes.</Text>
                             <LinearGradient colors={['#1a73e8', '#5b9dd9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.verifyButton}>
-                                <Pressable>
-                                    <Text style={styles.verifyButtonText}>🔐 Block Verification</Text>
+                                <Pressable onPress={() => router.push('/AuditorBlockchainLedger')}>
+                                    <Text style={styles.verifyButtonText}>🔐 View Blockchain Ledger</Text>
                                 </Pressable>
                             </LinearGradient>
                         </View>

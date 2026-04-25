@@ -134,6 +134,7 @@ app.post('/cast-vote-secure', async (req, res) => {
     const block = {
       id: crypto.randomUUID(),
       election_id: electionId,
+      voter_id: voterId,
       block_index: blockIndex,
       encrypted_vote: encryptedVote,
       vote_commitment: voteCommitment,
@@ -194,6 +195,29 @@ app.get('/verify-chain/:electionId', async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error instanceof Error ? error.message : 'Unknown error' });
   }
+});
+
+// Mock blockchain data
+const blockchain = [
+  {
+    index: 1,
+    timestamp: "2026-04-25T10:00:00Z",
+    encryptedVote: "ENCRYPTED_VOTE_1",
+    previousHash: "0000000000000000",
+    currentHash: "HASH_1",
+  },
+  {
+    index: 2,
+    timestamp: "2026-04-25T10:05:00Z",
+    encryptedVote: "ENCRYPTED_VOTE_2",
+    previousHash: "HASH_1",
+    currentHash: "HASH_2",
+  },
+  // Add more blocks as needed
+];
+
+app.get("/api/blockchain", (req, res) => {
+  res.json(blockchain);
 });
 
 app.listen(port, () => {

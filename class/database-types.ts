@@ -45,6 +45,7 @@ export interface VoterRegistryRow {
 export interface VoteBlockRow {
   id: string;
   election_id: string;
+  voter_id: string | null;
   block_index: number;
   encrypted_vote: string;
   vote_commitment: string;
