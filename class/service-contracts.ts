@@ -1,11 +1,11 @@
 import type {
-    AuditLogRow,
-    CandidateRow,
-    ElectionRow,
-    ProfileRow,
-    VerifyChainResultRow,
-    VoteBlockRow,
-    VoterRegistryRow,
+  AuditLogRow,
+  CandidateRow,
+  ElectionRow,
+  ProfileRow,
+  VerifyChainResultRow,
+  VoteBlockRow,
+  VoterRegistryRow,
 } from '@/class/database-types';
 
 export interface CreateElectionInput {
@@ -29,6 +29,12 @@ export interface AddCandidateInput {
   displayName: string;
   partyName?: string;
   candidateNumber: number;
+}
+
+export interface UpdateCandidateInput {
+  candidateId: string;
+  displayName: string;
+  partyName?: string;
 }
 
 export interface CastVoteInput {
@@ -70,6 +76,8 @@ export interface IElectionRepository {
 
 export interface ICandidateRepository {
   create(input: AddCandidateInput): Promise<CandidateRow>;
+  update(input: UpdateCandidateInput): Promise<CandidateRow>;
+  delete(candidateId: string): Promise<void>;
   listByElection(electionId: string): Promise<CandidateRow[]>;
 }
 

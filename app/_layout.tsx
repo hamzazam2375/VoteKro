@@ -19,6 +19,7 @@ export default function RootLayout() {
         <Stack.Screen name="AdminSignup" options={{ headerShown: false }} />
         <Stack.Screen name="AdminCreateElection" options={{ headerShown: false }} />
         <Stack.Screen name="AdminManageElections" options={{ headerShown: false }} />
+        <Stack.Screen name="AdminManageCandidates" options={{ headerShown: false }} />
         <Stack.Screen name="AuditorSignup" options={{ headerShown: false }} />
         <Stack.Screen name="VoterSignup" options={{ headerShown: false }} />
         <Stack.Screen name="AdminDashboard" options={{ headerShown: false }} />

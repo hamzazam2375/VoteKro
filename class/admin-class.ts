@@ -9,8 +9,9 @@ import type {
   ICandidateRepository,
   IElectionRepository,
   IProfileRepository,
-  UpdateElectionInput,
   IVoterRegistryRepository,
+  UpdateCandidateInput,
+  UpdateElectionInput,
 } from '@/class/service-contracts';
 
 type RegisterUserInput = {
@@ -144,10 +145,25 @@ export class AdminService extends BaseService {
   }
 
   async addCandidate(input: AddCandidateInput): Promise<CandidateRow> {
+    await this.authService.getRequiredProfile('admin');
     this.requireNonEmpty(input.electionId, 'Election id');
     this.requireNonEmpty(input.displayName, 'Candidate name');
 
     return this.candidateRepository.create(input);
+  }
+
+  async updateCandidate(input: UpdateCandidateInput): Promise<CandidateRow> {
+    await this.authService.getRequiredProfile('admin');
+    this.requireNonEmpty(input.candidateId, 'Candidate id');
+    this.requireNonEmpty(input.displayName, 'Candidate name');
+
+    return this.candidateRepository.update(input);
+  }
+
+  async deleteCandidate(candidateId: string): Promise<void> {
+    await this.authService.getRequiredProfile('admin');
+    this.requireNonEmpty(candidateId, 'Candidate id');
+    await this.candidateRepository.delete(candidateId);
   }
 
   async registerVoterForElection(electionId: string, voterId: string): Promise<VoterRegistryRow> {

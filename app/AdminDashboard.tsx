@@ -184,7 +184,10 @@ export default function AdminDashboard() {
                                 </View>
                             </Pressable>
 
-                            <Pressable style={[styles.actionCard, isMobile ? styles.cardFullWidth : styles.cardThirdWidth] as any}>
+                            <Pressable
+                                style={[styles.actionCard, isMobile ? styles.cardFullWidth : styles.cardThirdWidth] as any}
+                                onPress={() => router.push('/AdminManageCandidates')}
+                            >
                                 <View style={styles.cardInner}>
                                     <LinearGradient colors={['#1a73e8', '#7c3aed', '#e91e8c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cardStripe} />
                                     <View style={styles.cardBody}>

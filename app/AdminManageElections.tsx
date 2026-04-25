@@ -11,11 +11,14 @@ export default function AdminManageElections() {
     const [profile, setProfile] = useState<ProfileRow | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [elections, setElections] = useState<ElectionRow[]>([]);
+    const [candidateCounts, setCandidateCounts] = useState<Record<string, number>>({});
     const [selectedElection, setSelectedElection] = useState<ElectionRow | null>(null);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [editTitle, setEditTitle] = useState('');
     const [editDescription, setEditDescription] = useState('');
+    const [editStartDate, setEditStartDate] = useState('');
+    const [editEndDate, setEditEndDate] = useState('');
     const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     const loadData = useCallback(async () => {
@@ -25,6 +28,14 @@ export default function AdminManageElections() {
 
             const electionRows = await serviceFactory.adminService.listElections();
             setElections(electionRows);
+
+            const counts = await Promise.all(
+                electionRows.map(async (election) => {
+                    const candidates = await serviceFactory.adminService.getElectionCandidates(election.id);
+                    return [election.id, candidates.length] as const;
+                })
+            );
+            setCandidateCounts(Object.fromEntries(counts));
         } catch (error) {
             const message = serviceFactory.authService.getErrorMessage(error, 'Failed to load data');
             toast.error(message);
@@ -70,6 +81,8 @@ export default function AdminManageElections() {
         setSelectedElection(election);
         setEditTitle(election.title);
         setEditDescription(election.description || '');
+        setEditStartDate(toDateInputValue(election.starts_at));
+        setEditEndDate(toDateInputValue(election.ends_at));
         setShowEditModal(true);
     };
 
@@ -87,8 +100,8 @@ export default function AdminManageElections() {
             return;
         }
 
-        const startsAtIso = toIsoDate(selectedElection.starts_at);
-        const endsAtIso = toIsoDate(selectedElection.ends_at);
+        const startsAtIso = toIsoDate(editStartDate, false);
+        const endsAtIso = toIsoDate(editEndDate, true);
 
         if (!startsAtIso || !endsAtIso) {
             Alert.alert('Error', 'Invalid date format. Use YYYY-MM-DD.');
@@ -100,15 +113,7 @@ export default function AdminManageElections() {
             return;
         }
 
-        const now = Date.now();
-        let status: ElectionRow['status'] = 'draft';
-        if (new Date(startsAtIso).getTime() > now) {
-            status = 'draft';
-        } else if (new Date(endsAtIso).getTime() < now) {
-            status = 'closed';
-        } else {
-            status = 'open';
-        }
+        const status = getStatusFromDates(startsAtIso, endsAtIso);
 
         try {
             await serviceFactory.adminService.updateElection({
@@ -148,6 +153,62 @@ export default function AdminManageElections() {
             day: 'numeric',
         });
     };
+
+    const toDateInputValue = (value: string) => {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+            return '';
+        }
+
+        return date.toISOString().slice(0, 10);
+    };
+
+    const toIsoDate = (value: string, endOfDay = false): string | null => {
+        const normalized = value.trim();
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+            return null;
+        }
+
+        const iso = endOfDay ? `${normalized}T23:59:59.000Z` : `${normalized}T00:00:00.000Z`;
+        const date = new Date(iso);
+
+        if (Number.isNaN(date.getTime())) {
+            return null;
+        }
+
+        return date.toISOString();
+    };
+
+    const getStatusFromDates = (startsAtIso: string, endsAtIso: string): ElectionRow['status'] => {
+        const now = Date.now();
+        const startsAt = new Date(startsAtIso).getTime();
+        const endsAt = new Date(endsAtIso).getTime();
+
+        if (startsAt > now) {
+            return 'draft';
+        }
+
+        if (endsAt < now) {
+            return 'closed';
+        }
+
+        return 'open';
+    };
+
+    const webDateInputStyle = {
+        height: 42,
+        borderWidth: 1,
+        borderColor: '#d9dee7',
+        borderRadius: 8,
+        paddingLeft: 12,
+        paddingRight: 12,
+        backgroundColor: '#f8fafc',
+        color: '#111827',
+        fontSize: 13,
+        width: '100%',
+        boxSizing: 'border-box',
+    } as const;
 
     const getElectionStatus = (election: ElectionRow) => {
         const now = Date.now();
@@ -195,14 +256,19 @@ export default function AdminManageElections() {
             {/* Edit Election Modal */}
             <Modal transparent visible={showEditModal} animationType="fade" onRequestClose={() => setShowEditModal(false)}>
                 <View style={styles.modalOverlay}>
-                    <View style={styles.modalBox}>
-                        <Text style={styles.modalTitle}>Edit Election</Text>
-                        <Text style={styles.inputLabel}>Title</Text>
+                    <View style={styles.editModalBox}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>✏️ Edit Election</Text>
+                            <Pressable style={styles.closeModalBtn} onPress={() => setShowEditModal(false)}>
+                                <Text style={styles.closeModalText}>×</Text>
+                            </Pressable>
+                        </View>
+                        <Text style={styles.inputLabel}>Election Name</Text>
                         <TextInput
                             style={styles.input}
                             value={editTitle}
                             onChangeText={setEditTitle}
-                            placeholder="Election title"
+                            placeholder="Election name"
                             placeholderTextColor="#9ca3af"
                         />
                         <Text style={styles.inputLabel}>Description</Text>
@@ -216,72 +282,43 @@ export default function AdminManageElections() {
                             numberOfLines={4}
                         />
                         <Text style={styles.inputLabel}>Start Date</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={selectedElection?.starts_at}
-                            onChangeText={(value) => setSelectedElection((prev) => prev ? { ...prev, starts_at: value } : prev)}
-                            placeholder="YYYY-MM-DD"
-                            placeholderTextColor="#9ca3af"
-                        />
+                        {Platform.OS === 'web' ? (
+                            <input
+                                type="date"
+                                value={editStartDate}
+                                onChange={(event) => setEditStartDate(event.currentTarget.value)}
+                                style={webDateInputStyle}
+                            />
+                        ) : (
+                            <TextInput
+                                style={styles.input}
+                                value={editStartDate}
+                                onChangeText={setEditStartDate}
+                                placeholder="YYYY-MM-DD"
+                                placeholderTextColor="#9ca3af"
+                            />
+                        )}
                         <Text style={styles.inputLabel}>End Date</Text>
-                        <TextInput
-                            style={styles.input}
-                            value={selectedElection?.ends_at}
-                            onChangeText={(value) => setSelectedElection((prev) => prev ? { ...prev, ends_at: value } : prev)}
-                            placeholder="YYYY-MM-DD"
-                            placeholderTextColor="#9ca3af"
-                        />
+                        {Platform.OS === 'web' ? (
+                            <input
+                                type="date"
+                                value={editEndDate}
+                                onChange={(event) => setEditEndDate(event.currentTarget.value)}
+                                style={webDateInputStyle}
+                            />
+                        ) : (
+                            <TextInput
+                                style={styles.input}
+                                value={editEndDate}
+                                onChangeText={setEditEndDate}
+                                placeholder="YYYY-MM-DD"
+                                placeholderTextColor="#9ca3af"
+                            />
+                        )}
 
-                        <View style={styles.modalButtons}>
-                            <Pressable style={styles.modalCancelBtn} onPress={() => setShowEditModal(false)}>
-                                <Text style={styles.modalCancelText}>Cancel</Text>
-                            </Pressable>
-                            <Pressable
-                                style={styles.modalSaveBtn}
-                                onPress={async () => {
-                                    if (!selectedElection) return;
-
-                                    const startsAtIso = toIsoDate(selectedElection.starts_at);
-                                    const endsAtIso = toIsoDate(selectedElection.ends_at);
-
-                                    if (!startsAtIso || !endsAtIso) {
-                                        Alert.alert('Error', 'Invalid date format. Use YYYY-MM-DD.');
-                                        return;
-                                    }
-
-                                    if (new Date(endsAtIso).getTime() <= new Date(startsAtIso).getTime()) {
-                                        Alert.alert('Error', 'End date must be after start date.');
-                                        return;
-                                    }
-
-                                    const now = Date.now();
-                                    let status: ElectionRow['status'] = 'draft';
-                                    if (new Date(startsAtIso).getTime() > now) {
-                                        status = 'draft';
-                                    } else if (new Date(endsAtIso).getTime() < now) {
-                                        status = 'closed';
-                                    } else {
-                                        status = 'open';
-                                    }
-
-                                    try {
-                                        await serviceFactory.adminService.updateElection({
-                                            electionId: selectedElection.id,
-                                            title: editTitle.trim(),
-                                            description: editDescription.trim() || undefined,
-                                            startsAtIso,
-                                            endsAtIso,
-                                            status,
-                                        });
-                                        toast.success('Election updated successfully');
-                                        setShowEditModal(false);
-                                        void loadData();
-                                    } catch (error) {
-                                        Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to update election'));
-                                    }
-                                }}
-                            >
-                                <Text style={styles.modalSaveText}>Save</Text>
+                        <View style={styles.updateButtonWrap}>
+                            <Pressable style={styles.modalSaveBtn} onPress={() => void handleUpdateElection()}>
+                                <Text style={styles.modalSaveText}>✓ Update Election</Text>
                             </Pressable>
                         </View>
                     </View>
@@ -311,15 +348,18 @@ export default function AdminManageElections() {
             <Navbar
                 infoText={`Welcome, ${profile?.full_name ?? 'Administrator'}!`}
                 actions={[
-                    { label: 'Back', onPress: () => router.replace('/AdminDashboard'), variant: 'outline' },
                     { label: 'Logout', onPress: handleLogout, variant: 'outline' },
                 ]}
             />
 
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+                <Pressable style={styles.backButton} onPress={() => router.replace('/AdminDashboard')}>
+                    <Text style={styles.backButtonText}>← Back</Text>
+                </Pressable>
+
                 <View style={styles.innerWrapper}>
                     <View style={styles.titleSection}>
-                        <Text style={styles.dashboardTitle}>Manage Elections</Text>
+                        <Text style={styles.dashboardTitle}>📋 Manage Elections</Text>
                         <Text style={styles.dashboardSubtitle}>Edit, delete, or manage election details</Text>
                     </View>
 
@@ -340,8 +380,13 @@ export default function AdminManageElections() {
                                     <View key={election.id} style={styles.electionCard}>
                                         <View style={styles.electionHeader}>
                                             <Text style={styles.electionTitle}>{election.title}</Text>
-                                            <View style={[styles.statusBadge, { backgroundColor: status.color + '20' }]}>
-                                                <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
+                                            <View style={styles.electionActions}>
+                                                <Pressable style={styles.editBtn} onPress={() => openEditModal(election)}>
+                                                    <Text style={styles.editBtnText}>Edit</Text>
+                                                </Pressable>
+                                                <Pressable style={styles.deleteBtn} onPress={() => openDeleteModal(election)}>
+                                                    <Text style={styles.deleteBtnText}>Delete</Text>
+                                                </Pressable>
                                             </View>
                                         </View>
                                         {election.description && (
@@ -349,15 +394,10 @@ export default function AdminManageElections() {
                                         )}
                                         <View style={styles.electionDates}>
                                             <Text style={styles.dateLabel}>Dates: {formatDate(election.starts_at)} to {formatDate(election.ends_at)}</Text>
-                                            <Text style={styles.dateLabel}>Candidates: 3</Text>
+                                            <Text style={styles.dateLabel}>Candidates: {candidateCounts[election.id] ?? 0}</Text>
                                         </View>
-                                        <View style={styles.electionActions}>
-                                            <Pressable style={styles.editBtn} onPress={() => openEditModal(election)}>
-                                                <Text style={styles.editBtnText}>Edit</Text>
-                                            </Pressable>
-                                            <Pressable style={styles.deleteBtn} onPress={() => openDeleteModal(election)}>
-                                                <Text style={styles.deleteBtnText}>Delete</Text>
-                                            </Pressable>
+                                        <View style={[styles.statusBadge, { backgroundColor: status.color + '1f' }]}>
+                                            <Text style={[styles.statusText, { color: status.color }]}>{status.label.toUpperCase()}</Text>
                                         </View>
                                     </View>
                                 );
@@ -390,19 +430,37 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     contentContainer: {
-        padding: 16,
+        paddingTop: 18,
+        paddingHorizontal: 16,
         paddingBottom: 32,
+        alignItems: 'stretch',
     },
     innerWrapper: {
-        maxWidth: 800,
-        marginHorizontal: 'auto',
         width: '100%',
+        maxWidth: 980,
+        alignSelf: 'center',
+    },
+    backButton: {
+        alignSelf: 'flex-start',
+        borderWidth: 1.5,
+        borderColor: '#2e63e3',
+        borderRadius: 8,
+        paddingVertical: 6,
+        paddingHorizontal: 14,
+        backgroundColor: '#ffffff',
+        marginBottom: 26,
+        marginLeft: 10,
+    },
+    backButtonText: {
+        color: '#2e63e3',
+        fontSize: 13,
+        fontWeight: '600',
     },
     titleSection: {
         marginBottom: 24,
     },
     dashboardTitle: {
-        fontSize: 28,
+        fontSize: 38,
         fontWeight: '700',
         color: '#111827',
         marginBottom: 4,
@@ -451,30 +509,39 @@ const styles = StyleSheet.create({
     electionCard: {
         backgroundColor: '#fff',
         borderRadius: 12,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: '#e5e7eb',
+        padding: 20,
+        borderWidth: 1.5,
+        borderColor: '#2e63e3',
+        shadowColor: '#2e63e3',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+        elevation: 4,
     },
     electionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         marginBottom: 8,
+        gap: 12,
     },
     electionTitle: {
-        fontSize: 18,
+        fontSize: 26,
         fontWeight: '600',
         color: '#111827',
         flex: 1,
     },
     statusBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 16,
+        marginTop: 4,
+        alignSelf: 'flex-start',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 6,
     },
     statusText: {
-        fontSize: 12,
-        fontWeight: '600',
+        fontSize: 10,
+        fontWeight: '700',
+        letterSpacing: 0.4,
     },
     electionDescription: {
         fontSize: 14,
@@ -482,39 +549,40 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     electionDates: {
-        flexDirection: 'row',
-        gap: 16,
-        marginBottom: 16,
+        gap: 6,
+        marginBottom: 10,
     },
     dateLabel: {
         fontSize: 13,
-        color: '#6b7280',
+        color: '#4b5563',
     },
     electionActions: {
         flexDirection: 'row',
-        gap: 12,
+        gap: 8,
     },
     editBtn: {
-        backgroundColor: '#1a73e8',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
+        backgroundColor: '#e11d8d',
+        paddingHorizontal: 14,
+        paddingVertical: 7,
         borderRadius: 6,
     },
     editBtnText: {
         color: '#fff',
-        fontSize: 14,
-        fontWeight: '500',
+        fontSize: 12,
+        fontWeight: '600',
     },
     deleteBtn: {
-        backgroundColor: '#fee2e2',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
+        backgroundColor: '#ffffff',
+        borderWidth: 1,
+        borderColor: '#ef4444',
+        paddingHorizontal: 14,
+        paddingVertical: 7,
         borderRadius: 6,
     },
     deleteBtnText: {
-        color: '#dc2626',
-        fontSize: 14,
-        fontWeight: '500',
+        color: '#ef4444',
+        fontSize: 12,
+        fontWeight: '600',
     },
     modalOverlay: {
         flex: 1,
@@ -529,11 +597,40 @@ const styles = StyleSheet.create({
         width: '90%',
         maxWidth: 400,
     },
-    modalTitle: {
+    editModalBox: {
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        padding: 20,
+        width: '92%',
+        maxWidth: 430,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 20,
+        elevation: 8,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    closeModalBtn: {
+        width: 28,
+        height: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 14,
+    },
+    closeModalText: {
         fontSize: 20,
+        lineHeight: 20,
+        color: '#4b5563',
+    },
+    modalTitle: {
+        fontSize: 24,
         fontWeight: '600',
         color: '#111827',
-        marginBottom: 16,
     },
     modalMessage: {
         fontSize: 14,
@@ -541,22 +638,27 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     inputLabel: {
-        fontSize: 14,
-        fontWeight: '500',
+        fontSize: 12,
+        fontWeight: '600',
         color: '#374151',
         marginBottom: 6,
+        marginTop: 8,
     },
     input: {
         borderWidth: 1,
-        borderColor: '#d1d5db',
+        borderColor: '#cfd7e3',
         borderRadius: 8,
-        padding: 12,
-        fontSize: 14,
+        backgroundColor: '#f8fafc',
+        height: 42,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        fontSize: 13,
         color: '#111827',
-        marginBottom: 16,
+        marginBottom: 4,
     },
     textArea: {
-        minHeight: 100,
+        minHeight: 68,
+        height: 68,
         textAlignVertical: 'top',
     },
     modalButtons: {
@@ -577,15 +679,19 @@ const styles = StyleSheet.create({
         color: '#374151',
     },
     modalSaveBtn: {
-        backgroundColor: '#1a73e8',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 6,
+        backgroundColor: '#2e63e3',
+        width: '100%',
+        paddingVertical: 12,
+        borderRadius: 7,
+        alignItems: 'center',
     },
     modalSaveText: {
         color: '#fff',
-        fontSize: 14,
-        fontWeight: '500',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    updateButtonWrap: {
+        marginTop: 14,
     },
     modalLogoutBtn: {
         backgroundColor: '#dc2626',
