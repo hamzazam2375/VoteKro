@@ -15,6 +15,8 @@ interface VoteBlock {
   previous_hash: string;
   current_hash: string;
   created_at: string;
+  isValid?: boolean;
+  validationError?: string;
 }
 
 interface BlockChainMetrics {
@@ -22,7 +24,40 @@ interface BlockChainMetrics {
   isValid: boolean;
   invalidAt: number | null;
   reason: string | null;
+  tamperedCount: number;
 }
+
+// 🔐 Blockchain Integrity Verification Function
+const verifyBlockchain = (blocks: VoteBlock[]): { isValid: boolean; blocks: VoteBlock[] } => {
+  const verifiedBlocks = blocks.map((block, index) => {
+    // First block is always valid (no previous to compare)
+    if (index === 0) {
+      return {
+        ...block,
+        isValid: true,
+        validationError: undefined,
+      };
+    }
+
+    // Check if current block's previousHash matches previous block's currentHash
+    const previousBlock = blocks[index - 1];
+    const isValid = block.previous_hash === previousBlock.current_hash;
+
+    return {
+      ...block,
+      isValid,
+      validationError: isValid ? undefined : `Hash mismatch detected - Previous hash doesn't match block ${index - 1}'s current hash`,
+    };
+  });
+
+  // Check if all blocks are valid
+  const allValid = verifiedBlocks.every((block) => block.isValid !== false);
+
+  return {
+    isValid: allValid,
+    blocks: verifiedBlocks,
+  };
+};
 
 const AuditorBlockchainLedger: React.FC = () => {
   const router = useRouter();
@@ -47,6 +82,7 @@ const AuditorBlockchainLedger: React.FC = () => {
     isValid: false,
     invalidAt: null,
     reason: null,
+    tamperedCount: 0,
   });
   const rocksDbUrl = process.env.EXPO_PUBLIC_ROCKSDB_LEDGER_URL || "http://localhost:8787";
 
@@ -130,30 +166,30 @@ const AuditorBlockchainLedger: React.FC = () => {
         
         const data = await response.json();
         console.log(`Received ${data?.length || 0} blocks`);
-        setBlocks(data || []);
+        
+        // 🔐 Verify blockchain integrity
+        const { isValid: blockchainValid, blocks: verifiedBlocks } = verifyBlockchain(data || []);
+        
+        // Count tampered blocks
+        const tamperedCount = verifiedBlocks.filter((b) => b.isValid === false).length;
+        
+        setBlocks(verifiedBlocks);
 
-        // Verify chain integrity
-        try {
-          const verifyResponse = await fetch(
-            `${rocksDbUrl}/verify-chain/${encodeURIComponent(selectedElection)}`
-          );
-          
-          if (verifyResponse.ok) {
-            const verifyData = await verifyResponse.json();
-            setChainValid(verifyData.is_valid);
-            setMetrics({
-              totalBlocks: data?.length || 0,
-              isValid: verifyData.is_valid,
-              invalidAt: verifyData.invalid_block_index,
-              reason: verifyData.reason,
-            });
-            
-            if (!verifyData.is_valid) {
-              setError(`⚠️ Blockchain compromised at block ${verifyData.invalid_block_index}: ${verifyData.reason}`);
-            }
+        // Update metrics
+        setMetrics({
+          totalBlocks: verifiedBlocks.length,
+          isValid: blockchainValid,
+          invalidAt: verifiedBlocks.findIndex((b) => b.isValid === false),
+          reason: blockchainValid ? null : "Hash chain integrity failed",
+          tamperedCount,
+        });
+
+        // Show error if blockchain is invalid
+        if (!blockchainValid) {
+          const tamperedBlock = verifiedBlocks.find((b) => b.isValid === false);
+          if (tamperedBlock) {
+            setError(`⚠️ Blockchain Tampered - Block #${tamperedBlock.block_index}: ${tamperedBlock.validationError}`);
           }
-        } catch (verifyError) {
-          console.error("Chain verification error:", verifyError);
         }
       } catch (err) {
         console.error("Failed to fetch blockchain:", err);
@@ -165,6 +201,13 @@ const AuditorBlockchainLedger: React.FC = () => {
         setError(errorMsg);
         setBlocks([]);
         setChainValid(false);
+        setMetrics({
+          totalBlocks: 0,
+          isValid: false,
+          invalidAt: null,
+          reason: null,
+          tamperedCount: 0,
+        });
       } finally {
         setLoading(false);
       }
@@ -206,6 +249,25 @@ const AuditorBlockchainLedger: React.FC = () => {
       key: "block_index",
       width: 80,
       render: (text: number) => <strong>#{text}</strong>,
+    },
+    {
+      title: "Status",
+      key: "validationStatus",
+      width: 120,
+      render: (_: any, record: VoteBlock) => {
+        if (record.isValid === false) {
+          return (
+            <Tag color="red">
+              <ExclamationCircleOutlined /> Tampered
+            </Tag>
+          );
+        }
+        return (
+          <Tag color="green">
+            <CheckCircleOutlined /> Valid
+          </Tag>
+        );
+      },
     },
     {
       title: "Voter",
@@ -308,18 +370,31 @@ const AuditorBlockchainLedger: React.FC = () => {
               style={{
                 minWidth: "150px",
                 cursor: "pointer",
-                borderColor: metrics.invalidAt === block.block_index ? "#ff4d4f" : 
-                           chainValid ? "#52c41a" : "#faad14",
-                borderWidth: "2px",
-                backgroundColor: metrics.invalidAt === block.block_index ? "#fff1f0" : "white",
+                borderColor: block.isValid === false ? "#ff4d4f" : "#52c41a",
+                borderWidth: "3px",
+                backgroundColor: block.isValid === false ? "#fff1f0" : "#f6ffed",
+                boxShadow: block.isValid === false ? "0 0 10px rgba(255, 77, 79, 0.3)" : "none",
               }}
               onClick={() => handleViewDetails(block)}
               hoverable
             >
               <div style={{ textAlign: "center" }}>
+                <div style={{ marginBottom: "8px", fontSize: "18px" }}>
+                  {block.isValid === false ? (
+                    <ExclamationCircleOutlined style={{ color: "#ff4d4f" }} />
+                  ) : (
+                    <CheckCircleOutlined style={{ color: "#52c41a" }} />
+                  )}
+                </div>
                 <p style={{ margin: "0 0 8px 0", fontWeight: "bold", fontSize: "14px" }}>Block #{block.block_index}</p>
                 <Divider style={{ margin: "8px 0" }} />
                 <p style={{ margin: "4px 0", fontSize: "12px" }}>
+                  <strong>Status:</strong>
+                </p>
+                <Tag color={block.isValid === false ? "red" : "green"} style={{ marginBottom: "8px" }}>
+                  {block.isValid === false ? "Tampered" : "Valid"}
+                </Tag>
+                <p style={{ margin: "8px 0 4px 0", fontSize: "12px" }}>
                   <strong>Voter:</strong>
                 </p>
                 <p style={{ margin: "0 0 8px 0", fontSize: "11px" }}>
@@ -332,10 +407,17 @@ const AuditorBlockchainLedger: React.FC = () => {
                 <p style={{ margin: "8px 0 0 0", fontSize: "10px", color: "#666" }}>
                   {new Date(block.created_at).toLocaleTimeString()}
                 </p>
+                {block.isValid === false && (
+                  <div style={{ marginTop: "8px", padding: "8px", backgroundColor: "#ffebee", borderRadius: "4px" }}>
+                    <p style={{ margin: "0", fontSize: "10px", color: "#ff4d4f" }}>
+                      ⚠️ Hash mismatch detected
+                    </p>
+                  </div>
+                )}
               </div>
             </Card>
             {index < filteredBlocks.length - 1 && (
-              <div style={{ fontSize: "20px", color: chainValid ? "#52c41a" : "#faad14" }}>→</div>
+              <div style={{ fontSize: "20px", color: filteredBlocks[index + 1].isValid === false ? "#ff4d4f" : "#52c41a" }}>→</div>
             )}
           </React.Fragment>
         ))}
@@ -344,10 +426,18 @@ const AuditorBlockchainLedger: React.FC = () => {
   );
 
   return (
-    <div style={{ padding: "20px", backgroundColor: "#f5f5f5", minHeight: "100vh" }}>
-      <h1 style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
-        <LinkOutlined /> Blockchain Ledger - Auditor View
-      </h1>
+    <div style={{ 
+      padding: "20px", 
+      backgroundColor: "#f5f5f5", 
+      minHeight: "100vh",
+      maxHeight: "100vh",
+      overflowY: "auto",
+      overflowX: "hidden",
+    }}>
+      <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
+        <h1 style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
+          <LinkOutlined /> Blockchain Ledger - Auditor View
+        </h1>
 
       {/* Election Selection */}
       <Card style={{ marginBottom: "20px" }}>
@@ -374,26 +464,38 @@ const AuditorBlockchainLedger: React.FC = () => {
 
       {/* Blockchain Status Metrics */}
       {selectedElection && blocks.length > 0 && (
-        <Card style={{ marginBottom: "20px", backgroundColor: chainValid ? "#f6ffed" : "#fff7e6" }}>
-          <div style={{ display: "flex", gap: "20px", flexWrap: "wrap" }}>
+        <Card style={{ marginBottom: "20px", backgroundColor: metrics.isValid ? "#f6ffed" : "#fff7e6", borderLeft: `6px solid ${metrics.isValid ? "#52c41a" : "#ff4d4f"}` }}>
+          <div style={{ display: "flex", gap: "30px", flexWrap: "wrap" }}>
             <div>
-              <p style={{ margin: "0 0 5px 0", color: "#666" }}>Total Blocks:</p>
-              <p style={{ margin: "0", fontSize: "18px", fontWeight: "bold" }}>{metrics.totalBlocks}</p>
+              <p style={{ margin: "0 0 5px 0", color: "#666", fontSize: "12px" }}>Total Blocks:</p>
+              <p style={{ margin: "0", fontSize: "24px", fontWeight: "bold" }}>{metrics.totalBlocks}</p>
             </div>
             <div>
-              <p style={{ margin: "0 0 5px 0", color: "#666" }}>Chain Status:</p>
+              <p style={{ margin: "0 0 5px 0", color: "#666", fontSize: "12px" }}>Blockchain Status:</p>
               <p style={{ margin: "0", fontSize: "18px", fontWeight: "bold" }}>
-                {chainValid ? (
+                {metrics.isValid ? (
                   <span style={{ color: "#52c41a" }}>
-                    <CheckCircleOutlined /> Valid
+                    <CheckCircleOutlined /> VALID ✓
                   </span>
                 ) : (
                   <span style={{ color: "#ff4d4f" }}>
-                    <ExclamationCircleOutlined /> Invalid
+                    <ExclamationCircleOutlined /> TAMPERED ✗
                   </span>
                 )}
               </p>
             </div>
+            {metrics.tamperedCount > 0 && (
+              <div>
+                <p style={{ margin: "0 0 5px 0", color: "#666", fontSize: "12px" }}>Tampered Blocks:</p>
+                <p style={{ margin: "0", fontSize: "24px", fontWeight: "bold", color: "#ff4d4f" }}>{metrics.tamperedCount}</p>
+              </div>
+            )}
+            {metrics.invalidAt !== null && metrics.invalidAt !== -1 && (
+              <div>
+                <p style={{ margin: "0 0 5px 0", color: "#666", fontSize: "12px" }}>First Tampered At:</p>
+                <p style={{ margin: "0", fontSize: "18px", fontWeight: "bold", color: "#ff4d4f" }}>Block #{metrics.invalidAt}</p>
+              </div>
+            )}
           </div>
         </Card>
       )}
@@ -411,13 +513,25 @@ const AuditorBlockchainLedger: React.FC = () => {
       )}
 
       {/* Chain Validity Alert */}
-      {selectedElection && chainValid === true && !error && (
+      {selectedElection && metrics.isValid === true && !error && (
         <Alert
           message="✓ Blockchain is Valid and Tamper-Proof"
-          description="All blocks are properly linked and hashes are valid."
+          description="All blocks are properly linked with correct hash validation. No tampering detected."
           type="success"
           style={{ marginBottom: "20px" }}
           icon={<CheckCircleOutlined />}
+          showIcon
+        />
+      )}
+
+      {selectedElection && metrics.isValid === false && (
+        <Alert
+          message="✗ Blockchain Integrity Check Failed"
+          description={`Detected ${metrics.tamperedCount} tampered block(s). First tampering at Block #${metrics.invalidAt}. Hash chain validation failed.`}
+          type="error"
+          style={{ marginBottom: "20px" }}
+          icon={<ExclamationCircleOutlined />}
+          showIcon
         />
       )}
 
@@ -445,7 +559,7 @@ const AuditorBlockchainLedger: React.FC = () => {
 
       {/* Ledger Display */}
       {selectedElection && (
-        <Card>
+        <Card style={{ marginBottom: "20px", maxHeight: "70vh", overflowY: "auto" }}>
           <Spin spinning={loading}>
             {blocks.length > 0 ? (
               <div>
@@ -454,14 +568,19 @@ const AuditorBlockchainLedger: React.FC = () => {
                 ) : viewMode === "chain" ? (
                   <ChainVisualization />
                 ) : (
-                  <Table
-                    dataSource={filteredBlocks}
-                    columns={tableColumns}
-                    rowKey="id"
-                    pagination={{ pageSize: 10 }}
-                    scroll={{ x: 1400 }}
-                    size="small"
-                  />
+                  <div style={{ overflowX: "auto" }}>
+                    <Table
+                      dataSource={filteredBlocks}
+                      columns={tableColumns}
+                      rowKey="id"
+                      pagination={{ pageSize: 10 }}
+                      scroll={{ x: 1600 }}
+                      size="small"
+                      rowClassName={(record) => 
+                        record.isValid === false ? "tampered-row" : ""
+                      }
+                    />
+                  </div>
                 )}
               </div>
             ) : !loading ? (
@@ -473,7 +592,7 @@ const AuditorBlockchainLedger: React.FC = () => {
 
       {/* Block Detail Modal */}
       <Modal
-        title={`Block #${selectedBlock?.block_index} - Complete Details`}
+        title={`Block #${selectedBlock?.block_index} - Complete Details ${selectedBlock?.isValid === false ? '⚠️ TAMPERED' : '✓ VALID'}`}
         open={isModalVisible}
         onCancel={handleModalClose}
         footer={null}
@@ -481,7 +600,17 @@ const AuditorBlockchainLedger: React.FC = () => {
         bodyStyle={{ maxHeight: "80vh", overflowY: "auto" }}
       >
         {selectedBlock && (
-          <Collapse
+          <div>
+            {selectedBlock.isValid === false && (
+              <Alert
+                message="⚠️ Blockchain Tampering Detected"
+                description={selectedBlock.validationError || "Hash mismatch detected in this block"}
+                type="error"
+                showIcon
+                style={{ marginBottom: "20px" }}
+              />
+            )}
+            <Collapse
             items={[
               {
                 key: "basic",
@@ -620,8 +749,10 @@ const AuditorBlockchainLedger: React.FC = () => {
               },
             ]}
           />
+          </div>
         )}
       </Modal>
+      </div>
     </div>
   );
 };
