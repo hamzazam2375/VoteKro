@@ -33,6 +33,103 @@ export class AuditorService extends BaseService {
   }
 
   /**
+   * Filter audit logs by type and/or search query
+   * Supports filtering by:
+   * - type: 'ADMIN_ACTION' | 'VOTE' | 'SYSTEM'
+   * - searchText: searches in action field
+   */
+  filterAuditLogs(
+    logs: AuditLogRow[],
+    type?: string | null,
+    searchText?: string | null,
+    startDate?: string | null,
+    endDate?: string | null
+  ): AuditLogRow[] {
+    let filtered = logs;
+
+    // Filter by type (searching in action field)
+    if (type) {
+      filtered = filtered.filter((log) => {
+        const action = log.action.toUpperCase();
+        return action.includes(type.toUpperCase());
+      });
+    }
+
+    // Filter by search text
+    if (searchText) {
+      const searchLower = searchText.toLowerCase();
+      filtered = filtered.filter((log) => {
+        const actionLower = log.action.toLowerCase();
+        const metadataStr = JSON.stringify(log.metadata).toLowerCase();
+        return actionLower.includes(searchLower) || metadataStr.includes(searchLower);
+      });
+    }
+
+    // Filter by date range
+    if (startDate) {
+      const startDateTime = new Date(startDate).getTime();
+      filtered = filtered.filter((log) => {
+        const logTime = new Date(log.created_at).getTime();
+        return logTime >= startDateTime;
+      });
+    }
+
+    if (endDate) {
+      const endDateTime = new Date(endDate).getTime() + 86400000; // Add 1 day to include the entire end date
+      filtered = filtered.filter((log) => {
+        const logTime = new Date(log.created_at).getTime();
+        return logTime <= endDateTime;
+      });
+    }
+
+    // Sort by timestamp descending (newest first)
+    return filtered.sort((a, b) => {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }
+
+  /**
+   * Get formatted logs with type classification
+   * Converts action strings to log types: ADMIN_ACTION, VOTE, SYSTEM
+   */
+  getFormattedAuditLogs(logs: AuditLogRow[]): Array<AuditLogRow & { displayType: string }> {
+    return logs.map((log) => ({
+      ...log,
+      displayType: this.classifyLogType(log.action),
+    }));
+  }
+
+  /**
+   * Classify log entry to determine its type
+   */
+  private classifyLogType(action: string): string {
+    const upperAction = action.toUpperCase();
+    if (
+      upperAction.includes('ADMIN') ||
+      upperAction.includes('CREATED') ||
+      upperAction.includes('ADDED') ||
+      upperAction.includes('UPDATED') ||
+      upperAction.includes('DELETED') ||
+      upperAction.includes('ELECTION') ||
+      upperAction.includes('CANDIDATE')
+    ) {
+      return 'ADMIN_ACTION';
+    }
+    if (upperAction.includes('VOTE') || upperAction.includes('CAST')) {
+      return 'VOTE';
+    }
+    if (
+      upperAction.includes('VERIFIED') ||
+      upperAction.includes('CHECK') ||
+      upperAction.includes('BLOCKCHAIN') ||
+      upperAction.includes('INTEGRITY')
+    ) {
+      return 'SYSTEM';
+    }
+    return 'SYSTEM';
+  }
+
+  /**
    * Get candidates for an election
    * Used for vote count verification mapping
    */

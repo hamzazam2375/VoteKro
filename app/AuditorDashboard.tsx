@@ -1,6 +1,7 @@
-import type { ProfileRow } from '@/class/database-types';
+import type { AuditLogRow, ProfileRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
 import { Navbar } from '@/components/navbar';
+import { AuditLogsViewer } from '@/components/audit-logs-viewer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -13,12 +14,17 @@ export default function AuditorDashboard() {
     const [profile, setProfile] = useState<ProfileRow | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const [auditLogs, setAuditLogs] = useState<(AuditLogRow & { displayType: string })[]>([]);
+    const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
     useEffect(() => {
         const loadProfile = async () => {
             try {
                 const userProfile = await serviceFactory.authService.getRequiredProfile('auditor');
                 setProfile(userProfile);
+                
+                // Load audit logs after profile is loaded
+                await loadAuditLogs();
             } catch (error) {
                 Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to load profile'));
                 router.replace('/AdminLogin');
@@ -29,6 +35,20 @@ export default function AuditorDashboard() {
 
         void loadProfile();
     }, [router]);
+
+    const loadAuditLogs = async () => {
+        setIsLoadingLogs(true);
+        try {
+            const logs = await serviceFactory.auditorService.getAuditLogs(100);
+            const formattedLogs = serviceFactory.auditorService.getFormattedAuditLogs(logs);
+            setAuditLogs(formattedLogs);
+        } catch (error) {
+            console.error('Failed to load audit logs:', error);
+            Alert.alert('Error', 'Failed to load audit logs');
+        } finally {
+            setIsLoadingLogs(false);
+        }
+    };
 
     const handleLogout = () => {
         if (Platform.OS === 'web') {
@@ -155,6 +175,18 @@ export default function AuditorDashboard() {
                                     </Text>
                                 </Pressable>
                             </LinearGradient>
+                        </View>
+                    </View>
+
+                    {/* Audit Logs Viewer Section */}
+                    <View style={styles.section}>
+                        <Text style={[styles.sectionTitle, styles.auditLogsTitle]}>System Audit Logs</Text>
+                        <View style={styles.auditLogsContainer}>
+                            <AuditLogsViewer
+                                logs={auditLogs}
+                                isLoading={isLoadingLogs}
+                                onRefresh={loadAuditLogs}
+                            />
                         </View>
                     </View>
 
@@ -468,6 +500,22 @@ const styles = StyleSheet.create({
     },
     blockchainLedgerTitle: {
         color: '#1a73e8',
+    },
+    auditLogsTitle: {
+        color: '#7c2d12',
+    },
+    auditLogsContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+        overflow: 'hidden',
+        maxHeight: 600,
     },
     verificationContainer: {
         backgroundColor: '#fff',
