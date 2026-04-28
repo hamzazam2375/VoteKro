@@ -43,7 +43,11 @@ export class ServiceFactory {
     this.voterRegistryRepository,
     this.voteLedgerRepository
   );
-  private readonly auditorServiceInstance = new AuditorService(this.voteLedgerRepository, this.auditLogRepository);
+  private readonly auditorServiceInstance = new AuditorService(
+    this.voteLedgerRepository,
+    this.auditLogRepository,
+    this.candidateRepository
+  );
 
   get authService(): AuthService {
     return this.authServiceInstance;

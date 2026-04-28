@@ -133,122 +133,31 @@ export default function AuditorDashboard() {
                         </View>
                     </View>
 
-                    {/* Election Results Section */}
+                    {/* Vote Count Verification Section */}
                     <View style={styles.section}>
-                        <Text style={[styles.sectionTitle, styles.blockchainLedgerTitle]}>Election Results</Text>
-                        <View style={styles.electionCard}>
-                            <Text style={styles.electionName}>Presidential Election 2024</Text>
-                            <View style={styles.candidatesContainer}>
-                                <View style={styles.candidateItem}>
-                                    <Text style={styles.candidateName}>Ali Khan</Text>
-                                    <Text style={styles.candidateParty}>Democratic Party</Text>
-                                    <View style={styles.voteBar}>
-                                        <LinearGradient colors={['#1a73e8', '#5b9dd9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.voteBarFill, { width: '60%' }]} />
-                                    </View>
-                                    <Text style={styles.voteCount}>198 (23.3%)</Text>
-                                </View>
-
-                                <View style={styles.candidateItem}>
-                                    <Text style={styles.candidateName}>Hassan Malik</Text>
-                                    <Text style={styles.candidateParty}>Republican Party</Text>
-                                    <View style={styles.voteBar}>
-                                        <LinearGradient colors={['#1a73e8', '#5b9dd9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.voteBarFill, { width: '50%' }]} />
-                                    </View>
-                                    <Text style={styles.voteCount}>199 (23.3%)</Text>
-                                </View>
-
-                                <View style={styles.candidateItem}>
-                                    <Text style={styles.candidateName}>Harnain Malik</Text>
-                                    <Text style={styles.candidateParty}>Independent</Text>
-                                    <View style={styles.voteBar}>
-                                        <LinearGradient colors={['#1a73e8', '#5b9dd9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.voteBarFill, { width: '70%' }]} />
-                                    </View>
-                                    <Text style={styles.voteCount}>200 (23.5%)</Text>
-                                </View>
-                            </View>
+                        <Text style={[styles.sectionTitle, styles.blockchainLedgerTitle]}>Vote Count Verification</Text>
+                        <View style={styles.verificationCard}>
+                            <Text style={styles.verificationTitle}>Compare Blockchain vs Results</Text>
+                            <Text style={styles.verificationDesc}>
+                                Verify that vote counts in the blockchain match the computed election results. Detects any mismatches or inconsistencies.
+                            </Text>
+                            <LinearGradient
+                                colors={['#4caf50', '#66bb6a']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.verifyButton}
+                            >
+                                <Pressable
+                                    onPress={() => router.push('/AuditorVerifyVotes')}
+                                >
+                                    <Text style={styles.verifyButtonText}>
+                                        ✓ Verify Vote Counts
+                                    </Text>
+                                </Pressable>
+                            </LinearGradient>
                         </View>
                     </View>
 
-                    {/* Blockchain Ledger Section */}
-                    <View style={styles.section}>
-                        <Text style={[styles.sectionTitle, styles.blockchainLedgerTitle]}>Blockchain Ledger</Text>
-                        <View style={styles.blocksList}>
-                            {/* Block #0 */}
-                            <Pressable style={styles.blockCard}>
-                                <LinearGradient colors={['#1a73e8', '#5b9dd9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.blockHeader}>
-                                    <Text style={styles.blockTitle}>Block #0</Text>
-                                </LinearGradient>
-                                <View style={styles.blockBody}>
-                                    <View style={styles.blockInfo}>
-                                        <Text style={styles.blockLabel}>Hash: </Text>
-                                        <Text style={styles.blockValue}>0f8e3a52...</Text>
-                                    </View>
-                                    <View style={styles.blockInfo}>
-                                        <Text style={styles.blockLabel}>Previous: </Text>
-                                        <Text style={styles.blockValue}>0 (Genesis)</Text>
-                                    </View>
-                                    <View style={styles.blockInfo}>
-                                        <Text style={styles.blockLabel}>Time: </Text>
-                                        <Text style={styles.blockValue}>2/28/2026, 12:33:53 PM</Text>
-                                    </View>
-                                    <View style={styles.blockInfo}>
-                                        <Text style={styles.blockLabel}>Vote #: </Text>
-                                        <Text style={styles.blockValue}>0001</Text>
-                                    </View>
-                                </View>
-                            </Pressable>
-
-                            {/* Block #1 */}
-                            <Pressable style={styles.blockCard}>
-                                <LinearGradient colors={['#1a73e8', '#5b9dd9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.blockHeader}>
-                                    <Text style={styles.blockTitle}>Block #1</Text>
-                                </LinearGradient>
-                                <View style={styles.blockBody}>
-                                    <View style={styles.blockInfo}>
-                                        <Text style={styles.blockLabel}>Hash: </Text>
-                                        <Text style={styles.blockValue}>52d97cd...</Text>
-                                    </View>
-                                    <View style={styles.blockInfo}>
-                                        <Text style={styles.blockLabel}>Previous: </Text>
-                                        <Text style={styles.blockValue}>0f8e3a52...</Text>
-                                    </View>
-                                    <View style={styles.blockInfo}>
-                                        <Text style={styles.blockLabel}>Time: </Text>
-                                        <Text style={styles.blockValue}>2/28/2026, 12:34:53 PM</Text>
-                                    </View>
-                                    <View style={styles.blockInfo}>
-                                        <Text style={styles.blockLabel}>Vote #: </Text>
-                                        <Text style={styles.blockValue}>0002</Text>
-                                    </View>
-                                </View>
-                            </Pressable>
-
-                            {/* Block #2 */}
-                            <Pressable style={styles.blockCard}>
-                                <LinearGradient colors={['#1a73e8', '#5b9dd9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.blockHeader}>
-                                    <Text style={styles.blockTitle}>Block #2</Text>
-                                </LinearGradient>
-                                <View style={styles.blockBody}>
-                                    <View style={styles.blockInfo}>
-                                        <Text style={styles.blockLabel}>Hash: </Text>
-                                        <Text style={styles.blockValue}>7d7bf5f...</Text>
-                                    </View>
-                                    <View style={styles.blockInfo}>
-                                        <Text style={styles.blockLabel}>Previous: </Text>
-                                        <Text style={styles.blockValue}>52d97cd...</Text>
-                                    </View>
-                                    <View style={styles.blockInfo}>
-                                        <Text style={styles.blockLabel}>Time: </Text>
-                                        <Text style={styles.blockValue}>2/28/2026, 12:35:53 PM</Text>
-                                    </View>
-                                    <View style={styles.blockInfo}>
-                                        <Text style={styles.blockLabel}>Vote #: </Text>
-                                        <Text style={styles.blockValue}>0003</Text>
-                                    </View>
-                                </View>
-                            </Pressable>
-                        </View>
-                    </View>
                 </View>
             </ScrollView>
         </View>
@@ -559,5 +468,17 @@ const styles = StyleSheet.create({
     },
     blockchainLedgerTitle: {
         color: '#1a73e8',
+    },
+    verificationContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+        overflow: 'hidden',
     },
 });
