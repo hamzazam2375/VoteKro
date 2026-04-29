@@ -2,7 +2,9 @@ import type { ProfileRow, CandidateRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
 import { Navbar } from '@/components/navbar';
 import { VoteCountVerificationComponent } from '@/components/vote-count-verification';
+import { BlockchainIntegrityViewer } from '@/components/blockchain-integrity-viewer';
 import type { VoteCountVerificationResult, VoteCounts } from '@/class/vote-count-verification';
+import type { FullBlockchainVerification } from '@/class/blockchain-verification';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -16,9 +18,12 @@ export default function AuditorVerifyVotes() {
     const [profile, setProfile] = useState<ProfileRow | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [verificationResult, setVerificationResult] = useState<VoteCountVerificationResult | null>(null);
+    const [blockchainVerification, setBlockchainVerification] = useState<FullBlockchainVerification | null>(null);
     const [isVerifying, setIsVerifying] = useState(false);
+    const [isBlockchainVerifying, setIsBlockchainVerifying] = useState(false);
     const [selectedElectionId, setSelectedElectionId] = useState<string | null>(null);
     const [electionName, setElectionName] = useState<string>('');
+    const [activeTab, setActiveTab] = useState<'votes' | 'blockchain'>('votes');
 
     useEffect(() => {
         const loadData = async () => {
@@ -37,9 +42,10 @@ export default function AuditorVerifyVotes() {
                     setSelectedElectionId(firstElection.id);
                     setElectionName(firstElection.title || 'Election');
                     
-                    // Auto-run verification on load
+                    // Auto-run both verifications on load
                     console.log('Starting verification for election:', firstElection.id);
                     await runVerification(firstElection.id);
+                    await runBlockchainVerification(firstElection.id);
                 } else {
                     console.warn('No elections found');
                     Alert.alert('No Elections', 'No elections available for verification.');
@@ -113,6 +119,47 @@ export default function AuditorVerifyVotes() {
             await runDemoVerification();
         } finally {
             setIsVerifying(false);
+        }
+    };
+
+    /**
+     * Run blockchain integrity verification
+     */
+    const runBlockchainVerification = async (electionId: string) => {
+        if (!electionId) {
+            console.warn('No election ID provided for blockchain verification');
+            return;
+        }
+
+        try {
+            setIsBlockchainVerifying(true);
+            console.log('Running blockchain verification for election:', electionId);
+
+            const result = await serviceFactory.auditorService.verifyFullBlockchainIntegrity(electionId);
+            console.log('Blockchain verification result:', result);
+            setBlockchainVerification(result);
+
+            // Log detailed report
+            try {
+                const { getVerificationReport } = await import('@/class/blockchain-verification');
+                const report = getVerificationReport(result);
+                console.log('Blockchain Verification Report:\n', report);
+            } catch (reportError) {
+                console.warn('Could not generate blockchain report:', reportError);
+            }
+
+            if (!result.isFullyValid) {
+                Alert.alert(
+                    'Blockchain Integrity Issue',
+                    `Detected ${result.invalidBlocks.length} block(s) with integrity issues.`,
+                    [{ text: 'OK', style: 'default' }]
+                );
+            }
+        } catch (error) {
+            console.error('Blockchain verification error:', error);
+            Alert.alert('Verification Error', 'Failed to verify blockchain integrity. Please try again.');
+        } finally {
+            setIsBlockchainVerifying(false);
         }
     };
 
@@ -193,6 +240,12 @@ export default function AuditorVerifyVotes() {
         }
     };
 
+    const handleBlockchainRecalculate = async () => {
+        if (selectedElectionId) {
+            await runBlockchainVerification(selectedElectionId);
+        }
+    };
+
     const handleGoBack = () => {
         router.back();
     };
@@ -211,7 +264,7 @@ export default function AuditorVerifyVotes() {
     return (
         <View style={styles.container}>
             <Navbar
-                infoText={`${profile?.full_name?.split(' ')[0] || 'Auditor'} - Vote Verification`}
+                infoText={`${profile?.full_name?.split(' ')[0] || 'Auditor'} - Election Verification`}
                 actions={[
                     { label: 'Back', onPress: handleGoBack, variant: 'outline' },
                 ]}
@@ -221,110 +274,221 @@ export default function AuditorVerifyVotes() {
                 <View style={styles.innerWrapper}>
                     {/* Page Header */}
                     <View style={styles.headerSection}>
-                        <Text style={styles.pageTitle}>Vote Count Verification</Text>
+                        <Text style={styles.pageTitle}>Election Verification</Text>
                         <Text style={styles.pageSubtitle}>{electionName}</Text>
                         <Text style={styles.pageDescription}>
-                            Compare vote counts from the blockchain with computed election results to detect any inconsistencies or fraud.
+                            Comprehensive election integrity verification including vote counts and blockchain integrity.
                         </Text>
                     </View>
 
-                    {/* Verification Status Card */}
-                    {verificationResult && (
-                        <View style={styles.statusCard}>
-                            <View style={[
-                                styles.statusIndicator,
-                                {
-                                    backgroundColor: verificationResult.isConsistent ? '#4caf50' : '#ff6b6b',
-                                }
-                            ]} />
-                            <View style={styles.statusInfo}>
-                                <Text style={styles.statusLabel}>
-                                    {verificationResult.isConsistent ? 'Verification Status' : 'Alert'}
-                                </Text>
-                                <Text style={[
-                                    styles.statusValue,
-                                    {
-                                        color: verificationResult.isConsistent ? '#4caf50' : '#ff6b6b',
-                                    }
-                                ]}>
-                                    {verificationResult.isConsistent 
-                                        ? '✓ All votes are consistent' 
-                                        : `✗ ${verificationResult.mismatches.length} mismatch(es) detected`}
-                                </Text>
+                    {/* Tab Navigation */}
+                    <View style={styles.tabContainer}>
+                        <Pressable
+                            onPress={() => setActiveTab('votes')}
+                            style={[
+                                styles.tab,
+                                activeTab === 'votes' && styles.activeTab,
+                            ]}
+                        >
+                            <Text style={[
+                                styles.tabText,
+                                activeTab === 'votes' && styles.activeTabText,
+                            ]}>
+                                📊 Vote Count Verification
+                            </Text>
+                        </Pressable>
+
+                        <Pressable
+                            onPress={() => setActiveTab('blockchain')}
+                            style={[
+                                styles.tab,
+                                activeTab === 'blockchain' && styles.activeTab,
+                            ]}
+                        >
+                            <Text style={[
+                                styles.tabText,
+                                activeTab === 'blockchain' && styles.activeTabText,
+                            ]}>
+                                🔗 Blockchain Integrity
+                            </Text>
+                        </Pressable>
+                    </View>
+
+                    {/* Vote Count Verification Tab */}
+                    {activeTab === 'votes' && (
+                        <View>
+                            {/* Verification Status Card */}
+                            {verificationResult && (
+                                <View style={styles.statusCard}>
+                                    <View style={[
+                                        styles.statusIndicator,
+                                        {
+                                            backgroundColor: verificationResult.isConsistent ? '#4caf50' : '#ff6b6b',
+                                        }
+                                    ]} />
+                                    <View style={styles.statusInfo}>
+                                        <Text style={styles.statusLabel}>
+                                            {verificationResult.isConsistent ? 'Verification Status' : 'Alert'}
+                                        </Text>
+                                        <Text style={[
+                                            styles.statusValue,
+                                            {
+                                                color: verificationResult.isConsistent ? '#4caf50' : '#ff6b6b',
+                                            }
+                                        ]}>
+                                            {verificationResult.isConsistent 
+                                                ? '✓ All votes are consistent' 
+                                                : `✗ ${verificationResult.mismatches.length} mismatch(es) detected`}
+                                        </Text>
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* Main Verification Component */}
+                            {verificationResult ? (
+                                <View style={styles.verificationContainer}>
+                                    <VoteCountVerificationComponent
+                                        verificationResult={verificationResult}
+                                        isLoading={isVerifying}
+                                        onRecalculate={handleRecalculate}
+                                        electionTitle={electionName}
+                                    />
+                                </View>
+                            ) : (
+                                <View style={styles.emptyState}>
+                                    <Text style={styles.emptyIcon}>⏳</Text>
+                                    <Text style={styles.emptyTitle}>Running Verification...</Text>
+                                    <Text style={styles.emptyDesc}>
+                                        Please wait while we verify vote counts from the blockchain.
+                                    </Text>
+                                    <ActivityIndicator size="large" color="#1a73e8" style={styles.spinner} />
+                                </View>
+                            )}
+
+                            {/* Action Buttons */}
+                            {verificationResult && (
+                                <View style={styles.actionsSection}>
+                                    <LinearGradient
+                                        colors={['#1a73e8', '#5b9dd9']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={styles.actionButton}
+                                    >
+                                        <Pressable
+                                            onPress={handleRecalculate}
+                                            disabled={isVerifying}
+                                            style={styles.buttonContent}
+                                        >
+                                            <Text style={styles.buttonText}>
+                                                {isVerifying ? '⏳ Re-verifying...' : '🔄 Re-verify Votes'}
+                                            </Text>
+                                        </Pressable>
+                                    </LinearGradient>
+
+                                    <Pressable
+                                        onPress={handleGoBack}
+                                        style={styles.secondaryButton}
+                                    >
+                                        <Text style={styles.secondaryButtonText}>← Back to Dashboard</Text>
+                                    </Pressable>
+                                </View>
+                            )}
+
+                            {/* Info Section */}
+                            <View style={styles.infoSection}>
+                                <Text style={styles.infoTitle}>How Vote Verification Works</Text>
+                                <View style={styles.infoItem}>
+                                    <Text style={styles.infoNumber}>1</Text>
+                                    <Text style={styles.infoText}>Extract votes from all blockchain blocks</Text>
+                                </View>
+                                <View style={styles.infoItem}>
+                                    <Text style={styles.infoNumber}>2</Text>
+                                    <Text style={styles.infoText}>Count votes per candidate from blockchain</Text>
+                                </View>
+                                <View style={styles.infoItem}>
+                                    <Text style={styles.infoNumber}>3</Text>
+                                    <Text style={styles.infoText}>Compare with official election results</Text>
+                                </View>
+                                <View style={styles.infoItem}>
+                                    <Text style={styles.infoNumber}>4</Text>
+                                    <Text style={styles.infoText}>Report any mismatches found</Text>
+                                </View>
                             </View>
                         </View>
                     )}
 
-                    {/* Main Verification Component */}
-                    {verificationResult ? (
-                        <View style={styles.verificationContainer}>
-                            <VoteCountVerificationComponent
-                                verificationResult={verificationResult}
-                                isLoading={isVerifying}
-                                onRecalculate={handleRecalculate}
-                                electionTitle={electionName}
-                            />
-                        </View>
-                    ) : (
-                        <View style={styles.emptyState}>
-                            <Text style={styles.emptyIcon}>⏳</Text>
-                            <Text style={styles.emptyTitle}>Running Verification...</Text>
-                            <Text style={styles.emptyDesc}>
-                                Please wait while we verify vote counts from the blockchain.
-                            </Text>
-                            <ActivityIndicator size="large" color="#1a73e8" style={styles.spinner} />
-                        </View>
-                    )}
-
-                    {/* Action Buttons */}
-                    {verificationResult && (
-                        <View style={styles.actionsSection}>
-                            <LinearGradient
-                                colors={['#1a73e8', '#5b9dd9']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.actionButton}
-                            >
-                                <Pressable
-                                    onPress={handleRecalculate}
-                                    disabled={isVerifying}
-                                    style={styles.buttonContent}
-                                >
-                                    <Text style={styles.buttonText}>
-                                        {isVerifying ? '⏳ Re-verifying...' : '🔄 Re-verify Votes'}
+                    {/* Blockchain Integrity Tab */}
+                    {activeTab === 'blockchain' && (
+                        <View>
+                            {blockchainVerification ? (
+                                <View style={styles.verificationContainer}>
+                                    <BlockchainIntegrityViewer
+                                        verification={blockchainVerification}
+                                        isLoading={isBlockchainVerifying}
+                                    />
+                                </View>
+                            ) : (
+                                <View style={styles.emptyState}>
+                                    <Text style={styles.emptyIcon}>⏳</Text>
+                                    <Text style={styles.emptyTitle}>Verifying Blockchain...</Text>
+                                    <Text style={styles.emptyDesc}>
+                                        Please wait while we verify blockchain integrity including hash linkage and correctness.
                                     </Text>
-                                </Pressable>
-                            </LinearGradient>
+                                    <ActivityIndicator size="large" color="#1a73e8" style={styles.spinner} />
+                                </View>
+                            )}
 
-                            <Pressable
-                                onPress={handleGoBack}
-                                style={styles.secondaryButton}
-                            >
-                                <Text style={styles.secondaryButtonText}>← Back to Dashboard</Text>
-                            </Pressable>
+                            {/* Action Buttons */}
+                            {blockchainVerification && (
+                                <View style={styles.actionsSection}>
+                                    <LinearGradient
+                                        colors={['#1a73e8', '#5b9dd9']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={styles.actionButton}
+                                    >
+                                        <Pressable
+                                            onPress={handleBlockchainRecalculate}
+                                            disabled={isBlockchainVerifying}
+                                            style={styles.buttonContent}
+                                        >
+                                            <Text style={styles.buttonText}>
+                                                {isBlockchainVerifying ? '⏳ Verifying...' : '🔄 Re-verify Blockchain'}
+                                            </Text>
+                                        </Pressable>
+                                    </LinearGradient>
+
+                                    <Pressable
+                                        onPress={handleGoBack}
+                                        style={styles.secondaryButton}
+                                    >
+                                        <Text style={styles.secondaryButtonText}>← Back to Dashboard</Text>
+                                    </Pressable>
+                                </View>
+                            )}
+
+                            {/* Info Section */}
+                            <View style={styles.infoSection}>
+                                <Text style={styles.infoTitle}>How Blockchain Integrity Verification Works</Text>
+                                <View style={styles.infoItem}>
+                                    <Text style={styles.infoNumber}>1</Text>
+                                    <Text style={styles.infoText}>Calculate SHA-256 hash for each block</Text>
+                                </View>
+                                <View style={styles.infoItem}>
+                                    <Text style={styles.infoNumber}>2</Text>
+                                    <Text style={styles.infoText}>Verify hash linkage between consecutive blocks</Text>
+                                </View>
+                                <View style={styles.infoItem}>
+                                    <Text style={styles.infoNumber}>3</Text>
+                                    <Text style={styles.infoText}>Compare recalculated hash with stored hash</Text>
+                                </View>
+                                <View style={styles.infoItem}>
+                                    <Text style={styles.infoNumber}>4</Text>
+                                    <Text style={styles.infoText}>Identify any tampering or corruption</Text>
+                                </View>
+                            </View>
                         </View>
                     )}
-
-                    {/* Info Section */}
-                    <View style={styles.infoSection}>
-                        <Text style={styles.infoTitle}>How It Works</Text>
-                        <View style={styles.infoItem}>
-                            <Text style={styles.infoNumber}>1</Text>
-                            <Text style={styles.infoText}>Extract votes from all blockchain blocks</Text>
-                        </View>
-                        <View style={styles.infoItem}>
-                            <Text style={styles.infoNumber}>2</Text>
-                            <Text style={styles.infoText}>Count votes per candidate from blockchain</Text>
-                        </View>
-                        <View style={styles.infoItem}>
-                            <Text style={styles.infoNumber}>3</Text>
-                            <Text style={styles.infoText}>Compare with official election results</Text>
-                        </View>
-                        <View style={styles.infoItem}>
-                            <Text style={styles.infoNumber}>4</Text>
-                            <Text style={styles.infoText}>Report any mismatches found</Text>
-                        </View>
-                    </View>
                 </View>
             </ScrollView>
         </View>
@@ -376,6 +540,38 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: '#666',
         lineHeight: 22,
+    },
+    tabContainer: {
+        flexDirection: 'row',
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        marginBottom: 24,
+        padding: 4,
+        gap: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    tab: {
+        flex: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+        backgroundColor: 'transparent',
+    },
+    activeTab: {
+        backgroundColor: '#1a73e8',
+    },
+    tabText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#666',
+    },
+    activeTabText: {
+        color: 'white',
     },
     statusCard: {
         flexDirection: 'row',

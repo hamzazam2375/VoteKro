@@ -8,6 +8,11 @@ import {
   type VoteCountVerificationResult,
   type VoteCounts,
 } from '@/class/vote-count-verification';
+import {
+  verifyFullBlockchain,
+  getVerificationReport,
+  type FullBlockchainVerification,
+} from '@/class/blockchain-verification';
 
 export class AuditorService extends BaseService {
   constructor(
@@ -177,5 +182,89 @@ export class AuditorService extends BaseService {
   ): Promise<string> {
     const verificationResult = await this.verifyVoteCountConsistency(electionId, resultCounts);
     return generateVerificationReport(verificationResult);
+  }
+
+  /**
+   * Verify full blockchain integrity
+   * Performs comprehensive checks including:
+   * ✅ Hash correctness (SHA-256 recalculation)
+   * ✅ Hash linkage between blocks
+   * Detects any tampering at block level
+   * 
+   * Has timeout protection to prevent hanging
+   * IMPORTANT: Returns error status in summary instead of throwing, so auditors can see what went wrong
+   */
+  async verifyFullBlockchainIntegrity(electionId: string): Promise<FullBlockchainVerification> {
+    this.requireNonEmpty(electionId, 'Election id');
+    
+    try {
+      // Create a timeout promise (10 seconds)
+      const timeoutPromise = new Promise<FullBlockchainVerification>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('TIMEOUT: Blockchain verification took longer than 10 seconds'));
+        }, 10000);
+      });
+
+      // Create the actual verification promise
+      const verificationPromise = (async () => {
+        const blocks = await this.getLedger(electionId);
+        
+        // Validate blocks before verification
+        if (!Array.isArray(blocks)) {
+          throw new Error('ERROR: Blocks data is not an array. Received: ' + typeof blocks);
+        }
+        
+        if (blocks.length === 0) {
+          console.warn('No blocks found for election:', electionId);
+          // Return valid result for empty blockchain (no votes cast yet)
+          return {
+            isFullyValid: true,
+            totalBlocks: 0,
+            invalidBlocks: [],
+            allBlocksStatus: [],
+            timestamp: new Date().toISOString(),
+            summary: 'Empty blockchain (no votes cast yet)',
+          };
+        }
+        
+        // Validate that blocks have required fields
+        for (let i = 0; i < blocks.length; i++) {
+          const block = blocks[i];
+          if (!block.id || block.block_index === undefined || !block.current_hash || !block.previous_hash) {
+            throw new Error(
+              `ERROR: Block ${i} is missing required fields. Block: ${JSON.stringify(block)}`
+            );
+          }
+        }
+        
+        return verifyFullBlockchain(blocks);
+      })();
+
+      // Race between verification and timeout
+      return await Promise.race([verificationPromise, timeoutPromise]);
+    } catch (error) {
+      // ✅ NEW: Return error status instead of success result
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Blockchain verification error:', error);
+      
+      // Return error status that auditors can see
+      return {
+        isFullyValid: false,
+        totalBlocks: 0,
+        invalidBlocks: [],
+        allBlocksStatus: [],
+        timestamp: new Date().toISOString(),
+        summary: `⚠️ VERIFICATION FAILED: ${errorMessage}`,
+      };
+    }
+  }
+
+  /**
+   * Generate detailed blockchain integrity report
+   * Returns human-readable report for auditing
+   */
+  async generateBlockchainIntegrityReport(electionId: string): Promise<string> {
+    const verification = await this.verifyFullBlockchainIntegrity(electionId);
+    return getVerificationReport(verification);
   }
 }
