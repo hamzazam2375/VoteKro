@@ -137,6 +137,7 @@ app.post('/cast-vote-secure', async (req, res) => {
       block_index: blockIndex,
       encrypted_vote: encryptedVote,
       vote_commitment: voteCommitment,
+      nonce: safeNonce,
       previous_hash: previousHash,
       current_hash: currentHash,
       created_at: createdAt,

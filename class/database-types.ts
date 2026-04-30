@@ -48,6 +48,7 @@ export interface VoteBlockRow {
   block_index: number;
   encrypted_vote: string;
   vote_commitment: string;
+  nonce: string;
   previous_hash: string;
   current_hash: string;
   created_at: string;

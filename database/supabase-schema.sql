@@ -57,13 +57,15 @@ create table if not exists public.vote_blocks (
   block_index bigint not null,
   encrypted_vote text not null,
   vote_commitment text not null,
+  nonce text not null,
   previous_hash text not null,
   current_hash text not null,
   created_at timestamptz not null default timezone('utc', now()),
   unique (election_id, block_index),
   unique (current_hash),
   constraint hash_length_check check (char_length(previous_hash) = 64 and char_length(current_hash) = 64),
-  constraint commitment_length_check check (char_length(vote_commitment) = 64)
+  constraint commitment_length_check check (char_length(vote_commitment) = 64),
+  constraint nonce_length_check check (char_length(nonce) > 0)
 );
 
 create index if not exists idx_vote_blocks_election_idx on public.vote_blocks (election_id, block_index);
@@ -109,7 +111,13 @@ immutable
 as $$
   select encode(
     digest(
-      concat_ws('|', p_block_index::text, p_encrypted_vote, p_vote_commitment, p_previous_hash, p_created_at::text),
+      concat_ws('|', 
+        p_block_index::text, 
+        p_encrypted_vote, 
+        p_vote_commitment, 
+        p_previous_hash, 
+        to_char(p_created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+      ),
       'sha256'
     ),
     'hex'
@@ -119,7 +127,8 @@ $$;
 create or replace function public.append_vote_block(
   p_election_id uuid,
   p_encrypted_vote text,
-  p_vote_commitment text
+  p_vote_commitment text,
+  p_nonce text
 )
 returns public.vote_blocks
 language plpgsql
@@ -156,6 +165,7 @@ begin
     block_index,
     encrypted_vote,
     vote_commitment,
+    nonce,
     previous_hash,
     current_hash,
     created_at
@@ -165,6 +175,7 @@ begin
     v_next_index,
     p_encrypted_vote,
     p_vote_commitment,
+    p_nonce,
     coalesce(v_prev_hash, repeat('0', 64)),
     v_curr_hash,
     v_now
@@ -176,11 +187,13 @@ end;
 $$;
 
 drop function if exists public.cast_vote_secure(uuid, text, text);
+drop function if exists public.cast_vote_secure(uuid, text, text, text);
 
 create or replace function public.cast_vote_secure(
   p_election_id uuid,
   p_candidate_id uuid,
-  p_nonce text default null
+  p_nonce text default null,
+  p_encryption_key text default null
 )
 returns public.vote_blocks
 language plpgsql
@@ -201,9 +214,14 @@ begin
     raise exception 'Not authenticated';
   end if;
 
-  select current_setting('app.vote_encryption_key', true) into v_secret;
+  -- Try to get encryption key from parameter, then from app setting, then fail
+  v_secret := coalesce(
+    nullif(trim(coalesce(p_encryption_key, '')), ''),
+    current_setting('app.vote_encryption_key', true)
+  );
+  
   if v_secret is null or char_length(trim(v_secret)) = 0 then
-    raise exception 'Vote encryption key is not configured';
+    raise exception 'Vote encryption key is not configured. Set app.vote_encryption_key or pass encryption key as parameter.';
   end if;
 
   select *
@@ -248,7 +266,7 @@ begin
     'base64'
   );
 
-  v_block := public.append_vote_block(p_election_id, v_encrypted_vote, v_vote_commitment);
+  v_block := public.append_vote_block(p_election_id, v_encrypted_vote, v_vote_commitment, v_nonce);
 
   insert into public.audit_logs (actor_id, action, target_table, target_id, metadata)
   values (

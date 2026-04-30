@@ -286,10 +286,14 @@ export class SupabaseVoterRegistryRepository extends RepositoryBase implements I
 
 export class SupabaseVoteLedgerRepository extends RepositoryBase implements IVoteLedgerRepository {
   async castVoteSecure(electionId: string, candidateId: string, nonce?: string, _voterId?: string): Promise<VoteBlockRow> {
+    // Import encryption key from environment
+    const { env } = await import('@/class/env');
+    
     const { data, error } = await supabase.rpc('cast_vote_secure', {
       p_election_id: electionId,
       p_candidate_id: candidateId,
       p_nonce: nonce ?? null,
+      p_encryption_key: env.voteEncryptionKey || null,
     });
 
     if (error) {

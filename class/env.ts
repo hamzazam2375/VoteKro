@@ -16,4 +16,5 @@ export const env = {
   supabaseAnonKey: readPublicVar('EXPO_PUBLIC_SUPABASE_ANON_KEY'),
   castVoteEdgeFunctionUrl: process.env.EXPO_PUBLIC_CAST_VOTE_EDGE_URL ?? '',
   rocksDbLedgerUrl: process.env.EXPO_PUBLIC_ROCKSDB_LEDGER_URL ?? '',
+  voteEncryptionKey: process.env.EXPO_PUBLIC_VOTE_ENCRYPTION_KEY ?? process.env.ROCKSDB_LEDGER_SECRET ?? '',
 };
