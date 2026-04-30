@@ -1,6 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { Table, Button, Modal, Select, Card, Spin, Alert, Collapse, Input, Tag, Space, Tooltip, Divider, Empty } from "antd";
-import { CopyOutlined, ExpandOutlined, LinkOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  Alert,
+  FlatList,
+  TextInput,
+  ActivityIndicator,
+  RefreshControl,
+  Pressable,
+} from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { serviceFactory } from "@/class/service-factory";
 import type { ElectionRow } from "@/class/database-types";
@@ -77,6 +89,8 @@ const AuditorBlockchainLedger: React.FC = () => {
   const [searchBlockId, setSearchBlockId] = useState<string>("");
   const [viewMode, setViewMode] = useState<"table" | "chain">("chain");
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
+  const [showElectionPicker, setShowElectionPicker] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [metrics, setMetrics] = useState<BlockChainMetrics>({
     totalBlocks: 0,
     isValid: false,
@@ -210,6 +224,7 @@ const AuditorBlockchainLedger: React.FC = () => {
         });
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
     };
 
@@ -226,9 +241,16 @@ const AuditorBlockchainLedger: React.FC = () => {
     setSelectedBlock(null);
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    alert("Copied to clipboard!");
+  const copyToClipboard = async (text: string) => {
+    Alert.alert("Hash Value", text);
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    if (selectedElection) {
+      // Re-trigger the fetch
+      setSelectedElection(selectedElection);
+    }
   };
 
   // Filter blocks based on search
@@ -241,520 +263,966 @@ const AuditorBlockchainLedger: React.FC = () => {
     );
   });
 
-  // Table columns
-  const tableColumns = [
-    {
-      title: "Block #",
-      dataIndex: "block_index",
-      key: "block_index",
-      width: 80,
-      render: (text: number) => <strong>#{text}</strong>,
-    },
-    {
-      title: "Status",
-      key: "validationStatus",
-      width: 120,
-      render: (_: any, record: VoteBlock) => {
-        if (record.isValid === false) {
-          return (
-            <Tag color="red">
-              <ExclamationCircleOutlined /> Tampered
-            </Tag>
-          );
-        }
-        return (
-          <Tag color="green">
-            <CheckCircleOutlined /> Valid
-          </Tag>
-        );
-      },
-    },
-    {
-      title: "Voter",
-      dataIndex: "voter_id",
-      key: "voter_id",
-      width: 150,
-      render: (voterId: string | null) => {
-        if (!voterId) return <Tag>Unknown</Tag>;
-        return <Tag color="blue">{voterNameMap[voterId] || voterId.substring(0, 12)}</Tag>;
-      },
-    },
-    {
-      title: "Timestamp",
-      dataIndex: "created_at",
-      key: "created_at",
-      render: (text: string) => new Date(text).toLocaleString(),
-      width: 180,
-    },
-    {
-      title: "Chain Link",
-      key: "chainLink",
-      width: 80,
-      render: (_: any, record: VoteBlock, index: number) => {
-        if (index < blocks.length - 1) {
-          const nextBlock = blocks[index + 1];
-          const isLinked = nextBlock.previous_hash === record.current_hash;
-          return (
-            <Tooltip title={isLinked ? "Linked correctly" : "⚠️ Chain broken!"}>
-              {isLinked ? (
-                <LinkOutlined style={{ color: "#52c41a", fontSize: "16px" }} />
-              ) : (
-                <ExclamationCircleOutlined style={{ color: "#ff4d4f", fontSize: "16px" }} />
-              )}
-            </Tooltip>
-          );
-        }
-        return <Tag>End</Tag>;
-      },
-    },
-    {
-      title: "Vote Hash",
-      dataIndex: "vote_commitment",
-      key: "vote_commitment",
-      render: (text: string) => (
-        <Tooltip title={text}>
-          <Space>
-            <code style={{ fontSize: "11px" }}>{text.substring(0, 12)}...</code>
-            <Button
-              type="text"
-              size="small"
-              icon={<CopyOutlined />}
-              onClick={() => copyToClipboard(text)}
-            />
-          </Space>
-        </Tooltip>
-      ),
-    },
-    {
-      title: "Current Hash",
-      dataIndex: "current_hash",
-      key: "current_hash",
-      render: (text: string) => (
-        <Tooltip title={text}>
-          <Space>
-            <code style={{ fontSize: "11px" }}>{text.substring(0, 12)}...</code>
-            <Button
-              type="text"
-              size="small"
-              icon={<CopyOutlined />}
-              onClick={() => copyToClipboard(text)}
-            />
-          </Space>
-        </Tooltip>
-      ),
-    },
-    {
-      title: "Actions",
-      key: "actions",
-      width: 100,
-      render: (_: any, record: VoteBlock) => (
-        <Button
-          type="primary"
-          size="small"
-          icon={<ExpandOutlined />}
-          onClick={() => handleViewDetails(record)}
-        >
-          Details
-        </Button>
-      ),
-    },
-  ];
+  // Render election dropdown item
+  const renderElectionItem = (election: ElectionRow) => (
+    <TouchableOpacity
+      key={election.id}
+      style={styles.electionItem}
+      onPress={() => {
+        setSelectedElection(election.id);
+        setShowElectionPicker(false);
+      }}
+    >
+      <Text style={styles.electionItemText}>
+        {election.title} ({election.status})
+      </Text>
+    </TouchableOpacity>
+  );
 
-  // Chain view component
+  // Render block item for table view
+  const renderBlockItem = ({ item, index }: { item: VoteBlock; index: number }) => {
+    const isLinked =
+      index < filteredBlocks.length - 1
+        ? filteredBlocks[index + 1].previous_hash === item.current_hash
+        : true;
+
+    return (
+      <View style={styles.tableRow}>
+        <Text style={styles.tableCell}># {item.block_index}</Text>
+        <View style={styles.tableCell}>
+          <View style={[styles.tag, item.isValid === false ? styles.tagRed : styles.tagGreen]}>
+            <Text style={styles.tagText}>
+              {item.isValid === false ? "⚠️ Tampered" : "✓ Valid"}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.tableCell}>
+          <Text style={styles.tagText} numberOfLines={1}>
+            {voterNameMap[item.voter_id || ""] || item.voter_id?.substring(0, 12) || "Unknown"}
+          </Text>
+        </View>
+        <Text style={[styles.tableCell, styles.smallText]}>
+          {new Date(item.created_at).toLocaleTimeString()}
+        </Text>
+        <View style={styles.tableCell}>
+          <Text style={[styles.detailsBtn, isLinked ? { color: "#52c41a" } : { color: "#ff4d4f" }]}>
+            {isLinked ? "↓" : "✗"}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.detailsButton}
+          onPress={() => handleViewDetails(item)}
+        >
+          <Text style={styles.detailsButtonText}>Details</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  // Chain visualization component
   const ChainVisualization = () => (
-    <div style={{ overflowX: "auto", padding: "20px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", minWidth: "100%" }}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={true}
+      style={styles.chainContainer}
+    >
+      <View style={styles.chainContent}>
         {filteredBlocks.map((block, index) => (
           <React.Fragment key={block.id}>
-            <Card
-              style={{
-                minWidth: "150px",
-                cursor: "pointer",
-                borderColor: block.isValid === false ? "#ff4d4f" : "#52c41a",
-                borderWidth: "3px",
-                backgroundColor: block.isValid === false ? "#fff1f0" : "#f6ffed",
-                boxShadow: block.isValid === false ? "0 0 10px rgba(255, 77, 79, 0.3)" : "none",
-              }}
-              onClick={() => handleViewDetails(block)}
-              hoverable
+            <TouchableOpacity
+              style={[
+                styles.chainCard,
+                block.isValid === false
+                  ? styles.chainCardInvalid
+                  : styles.chainCardValid,
+              ]}
+              onPress={() => handleViewDetails(block)}
             >
-              <div style={{ textAlign: "center" }}>
-                <div style={{ marginBottom: "8px", fontSize: "18px" }}>
-                  {block.isValid === false ? (
-                    <ExclamationCircleOutlined style={{ color: "#ff4d4f" }} />
-                  ) : (
-                    <CheckCircleOutlined style={{ color: "#52c41a" }} />
-                  )}
-                </div>
-                <p style={{ margin: "0 0 8px 0", fontWeight: "bold", fontSize: "14px" }}>Block #{block.block_index}</p>
-                <Divider style={{ margin: "8px 0" }} />
-                <p style={{ margin: "4px 0", fontSize: "12px" }}>
-                  <strong>Status:</strong>
-                </p>
-                <Tag color={block.isValid === false ? "red" : "green"} style={{ marginBottom: "8px" }}>
+              <Text style={styles.chainCardTitle}>
+                {block.isValid === false ? "⚠️" : "✓"} Block #{block.block_index}
+              </Text>
+              <View style={styles.divider} />
+              <Text style={styles.chainCardStatus}>Status:</Text>
+              <View
+                style={[
+                  styles.chainCardTag,
+                  block.isValid === false ? styles.tagRed : styles.tagGreen,
+                ]}
+              >
+                <Text style={styles.tagText}>
                   {block.isValid === false ? "Tampered" : "Valid"}
-                </Tag>
-                <p style={{ margin: "8px 0 4px 0", fontSize: "12px" }}>
-                  <strong>Voter:</strong>
-                </p>
-                <p style={{ margin: "0 0 8px 0", fontSize: "11px" }}>
-                  {voterNameMap[block.voter_id || ""] || block.voter_id?.substring(0, 8) || "Unknown"}
-                </p>
-                <p style={{ margin: "4px 0", fontSize: "12px" }}>
-                  <strong>Hash:</strong>
-                </p>
-                <code style={{ fontSize: "10px" }}>{block.current_hash.substring(0, 8)}...</code>
-                <p style={{ margin: "8px 0 0 0", fontSize: "10px", color: "#666" }}>
-                  {new Date(block.created_at).toLocaleTimeString()}
-                </p>
-                {block.isValid === false && (
-                  <div style={{ marginTop: "8px", padding: "8px", backgroundColor: "#ffebee", borderRadius: "4px" }}>
-                    <p style={{ margin: "0", fontSize: "10px", color: "#ff4d4f" }}>
-                      ⚠️ Hash mismatch detected
-                    </p>
-                  </div>
-                )}
-              </div>
-            </Card>
+                </Text>
+              </View>
+              <Text style={styles.chainCardMeta}>Voter:</Text>
+              <Text style={styles.chainCardSmallText} numberOfLines={1}>
+                {voterNameMap[block.voter_id || ""] ||
+                  block.voter_id?.substring(0, 8) ||
+                  "Unknown"}
+              </Text>
+              <Text style={styles.chainCardMeta}>Hash:</Text>
+              <Text style={styles.chainCardHash}>
+                {block.current_hash.substring(0, 8)}...
+              </Text>
+              <Text style={styles.chainCardTime}>
+                {new Date(block.created_at).toLocaleTimeString()}
+              </Text>
+              {block.isValid === false && (
+                <View style={styles.chainCardError}>
+                  <Text style={styles.chainCardErrorText}>
+                    ⚠️ Hash mismatch
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
             {index < filteredBlocks.length - 1 && (
-              <div style={{ fontSize: "20px", color: filteredBlocks[index + 1].isValid === false ? "#ff4d4f" : "#52c41a" }}>→</div>
+              <View
+                style={[
+                  styles.chainArrow,
+                  filteredBlocks[index + 1].isValid === false
+                    ? { borderColor: "#ff4d4f" }
+                    : { borderColor: "#52c41a" },
+                ]}
+              >
+                <Text style={styles.arrowText}>→</Text>
+              </View>
             )}
           </React.Fragment>
         ))}
-      </div>
-    </div>
+      </View>
+    </ScrollView>
   );
 
   return (
-    <div style={{ 
-      padding: "20px", 
-      backgroundColor: "#f5f5f5", 
-      minHeight: "100vh",
-      maxHeight: "100vh",
-      overflowY: "auto",
-      overflowX: "hidden",
-    }}>
-      <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
-        <h1 style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
-          <LinkOutlined /> Blockchain Ledger - Auditor View
-        </h1>
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>🔗 Blockchain Ledger</Text>
+          <Text style={styles.headerSubtitle}>Auditor View</Text>
+        </View>
 
-      {/* Election Selection */}
-      <Card style={{ marginBottom: "20px" }}>
-        <div style={{ marginBottom: "15px" }}>
-          <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}>
-            Select Election:
-          </label>
-          <Spin spinning={electionsLoading}>
-            <Select
-              placeholder="Loading elections..."
-              value={selectedElection}
-              onChange={setSelectedElection}
-              style={{ width: "100%", maxWidth: "400px" }}
-            >
-              {elections.map((election) => (
-                <Select.Option key={election.id} value={election.id}>
-                  {election.title} ({election.status})
-                </Select.Option>
-              ))}
-            </Select>
-          </Spin>
-        </div>
-      </Card>
+        {/* Election Selection */}
+        <View style={styles.card}>
+          <Text style={styles.cardLabel}>Select Election:</Text>
+          {electionsLoading ? (
+            <ActivityIndicator size="large" color="#1890ff" />
+          ) : (
+            <View>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={() => setShowElectionPicker(!showElectionPicker)}
+              >
+                <Text style={styles.pickerButtonText}>
+                  {elections.find((e) => e.id === selectedElection)?.title ||
+                    "Select election..."}
+                </Text>
+              </TouchableOpacity>
+              {showElectionPicker && (
+                <View style={styles.pickerDropdown}>
+                  {elections.map((election) => renderElectionItem(election))}
+                </View>
+              )}
+            </View>
+          )}
+        </View>
 
-      {/* Blockchain Status Metrics */}
-      {selectedElection && blocks.length > 0 && (
-        <Card style={{ marginBottom: "20px", backgroundColor: metrics.isValid ? "#f6ffed" : "#fff7e6", borderLeft: `6px solid ${metrics.isValid ? "#52c41a" : "#ff4d4f"}` }}>
-          <div style={{ display: "flex", gap: "30px", flexWrap: "wrap" }}>
-            <div>
-              <p style={{ margin: "0 0 5px 0", color: "#666", fontSize: "12px" }}>Total Blocks:</p>
-              <p style={{ margin: "0", fontSize: "24px", fontWeight: "bold" }}>{metrics.totalBlocks}</p>
-            </div>
-            <div>
-              <p style={{ margin: "0 0 5px 0", color: "#666", fontSize: "12px" }}>Blockchain Status:</p>
-              <p style={{ margin: "0", fontSize: "18px", fontWeight: "bold" }}>
-                {metrics.isValid ? (
-                  <span style={{ color: "#52c41a" }}>
-                    <CheckCircleOutlined /> VALID ✓
-                  </span>
-                ) : (
-                  <span style={{ color: "#ff4d4f" }}>
-                    <ExclamationCircleOutlined /> TAMPERED ✗
-                  </span>
-                )}
-              </p>
-            </div>
-            {metrics.tamperedCount > 0 && (
-              <div>
-                <p style={{ margin: "0 0 5px 0", color: "#666", fontSize: "12px" }}>Tampered Blocks:</p>
-                <p style={{ margin: "0", fontSize: "24px", fontWeight: "bold", color: "#ff4d4f" }}>{metrics.tamperedCount}</p>
-              </div>
-            )}
-            {metrics.invalidAt !== null && metrics.invalidAt !== -1 && (
-              <div>
-                <p style={{ margin: "0 0 5px 0", color: "#666", fontSize: "12px" }}>First Tampered At:</p>
-                <p style={{ margin: "0", fontSize: "18px", fontWeight: "bold", color: "#ff4d4f" }}>Block #{metrics.invalidAt}</p>
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
+        {/* Blockchain Status Metrics */}
+        {selectedElection && blocks.length > 0 && (
+          <View
+            style={[
+              styles.card,
+              metrics.isValid ? styles.cardSuccess : styles.cardError,
+            ]}
+          >
+            <View style={styles.metricsGrid}>
+              <View style={styles.metricItem}>
+                <Text style={styles.metricLabel}>Total Blocks</Text>
+                <Text style={styles.metricValue}>{metrics.totalBlocks}</Text>
+              </View>
+              <View style={styles.metricItem}>
+                <Text style={styles.metricLabel}>Blockchain Status</Text>
+                <Text
+                  style={[
+                    styles.metricValue,
+                    metrics.isValid ? { color: "#52c41a" } : { color: "#ff4d4f" },
+                  ]}
+                >
+                  {metrics.isValid ? "✓ VALID" : "✗ TAMPERED"}
+                </Text>
+              </View>
+              {metrics.tamperedCount > 0 && (
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricLabel}>Tampered Blocks</Text>
+                  <Text style={[styles.metricValue, { color: "#ff4d4f" }]}>
+                    {metrics.tamperedCount}
+                  </Text>
+                </View>
+              )}
+              {metrics.invalidAt !== null && metrics.invalidAt !== -1 && (
+                <View style={styles.metricItem}>
+                  <Text style={styles.metricLabel}>First Tampered At</Text>
+                  <Text style={[styles.metricValue, { color: "#ff4d4f" }]}>
+                    Block #{metrics.invalidAt}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
 
-      {/* Error Alert */}
-      {error && (
-        <Alert
-          message="⚠️ Alert"
-          description={error}
-          type={error.includes("compromised") ? "error" : "warning"}
-          closable
-          style={{ marginBottom: "20px" }}
-          onClose={() => setError(null)}
-        />
-      )}
+        {/* Error Alert */}
+        {error && (
+          <View
+            style={[
+              styles.alert,
+              error.includes("Tampered")
+                ? styles.alertError
+                : styles.alertWarning,
+            ]}
+          >
+            <Text style={styles.alertText}>{error}</Text>
+            <TouchableOpacity onPress={() => setError(null)}>
+              <Text style={styles.alertClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-      {/* Chain Validity Alert */}
-      {selectedElection && metrics.isValid === true && !error && (
-        <Alert
-          message="✓ Blockchain is Valid and Tamper-Proof"
-          description="All blocks are properly linked with correct hash validation. No tampering detected."
-          type="success"
-          style={{ marginBottom: "20px" }}
-          icon={<CheckCircleOutlined />}
-          showIcon
-        />
-      )}
+        {/* Chain Validity Alert */}
+        {selectedElection && metrics.isValid === true && !error && (
+          <View style={[styles.alert, styles.alertSuccess]}>
+            <Text style={styles.alertText}>
+              ✓ Blockchain is Valid and Tamper-Proof
+            </Text>
+            <Text style={styles.alertSmallText}>
+              All blocks are properly linked with correct hash validation. No tampering detected.
+            </Text>
+          </View>
+        )}
 
-      {selectedElection && metrics.isValid === false && (
-        <Alert
-          message="✗ Blockchain Integrity Check Failed"
-          description={`Detected ${metrics.tamperedCount} tampered block(s). First tampering at Block #${metrics.invalidAt}. Hash chain validation failed.`}
-          type="error"
-          style={{ marginBottom: "20px" }}
-          icon={<ExclamationCircleOutlined />}
-          showIcon
-        />
-      )}
+        {selectedElection && metrics.isValid === false && (
+          <View style={[styles.alert, styles.alertError]}>
+            <Text style={styles.alertText}>✗ Blockchain Integrity Check Failed</Text>
+            <Text style={styles.alertSmallText}>
+              Detected {metrics.tamperedCount} tampered block(s). First tampering at Block #
+              {metrics.invalidAt}. Hash chain validation failed.
+            </Text>
+          </View>
+        )}
 
-      {/* Search and View Mode */}
-      {selectedElection && blocks.length > 0 && (
-        <Card style={{ marginBottom: "20px" }}>
-          <Space>
-            <Input
+        {/* Search and View Mode */}
+        {selectedElection && blocks.length > 0 && (
+          <View style={styles.card}>
+            <TextInput
+              style={styles.searchInput}
               placeholder="Search by block #, hash..."
               value={searchBlockId}
-              onChange={(e) => setSearchBlockId(e.target.value)}
-              style={{ width: "300px" }}
+              onChangeText={setSearchBlockId}
             />
-            <Select
-              value={viewMode}
-              onChange={setViewMode}
-              style={{ width: "150px" }}
-            >
-              <Select.Option value="chain">Chain View</Select.Option>
-              <Select.Option value="table">Table View</Select.Option>
-            </Select>
-          </Space>
-        </Card>
-      )}
+            <View style={styles.viewModeContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.viewModeButton,
+                  viewMode === "chain" && styles.viewModeActive,
+                ]}
+                onPress={() => setViewMode("chain")}
+              >
+                <Text
+                  style={[
+                    styles.viewModeText,
+                    viewMode === "chain" && styles.viewModeActiveText,
+                  ]}
+                >
+                  Chain View
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.viewModeButton,
+                  viewMode === "table" && styles.viewModeActive,
+                ]}
+                onPress={() => setViewMode("table")}
+              >
+                <Text
+                  style={[
+                    styles.viewModeText,
+                    viewMode === "table" && styles.viewModeActiveText,
+                  ]}
+                >
+                  Table View
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
-      {/* Ledger Display */}
-      {selectedElection && (
-        <Card style={{ marginBottom: "20px", maxHeight: "70vh", overflowY: "auto" }}>
-          <Spin spinning={loading}>
-            {blocks.length > 0 ? (
-              <div>
-                {filteredBlocks.length === 0 ? (
-                  <Empty description="No blocks match your search" />
-                ) : viewMode === "chain" ? (
-                  <ChainVisualization />
-                ) : (
-                  <div style={{ overflowX: "auto" }}>
-                    <Table
-                      dataSource={filteredBlocks}
-                      columns={tableColumns}
-                      rowKey="id"
-                      pagination={{ pageSize: 10 }}
-                      scroll={{ x: 1600 }}
-                      size="small"
-                      rowClassName={(record) => 
-                        record.isValid === false ? "tampered-row" : ""
-                      }
-                    />
-                  </div>
-                )}
-              </div>
+        {/* Ledger Display */}
+        {selectedElection && (
+          <View style={styles.card}>
+            {loading ? (
+              <ActivityIndicator size="large" color="#1890ff" />
+            ) : blocks.length > 0 ? (
+              filteredBlocks.length === 0 ? (
+                <Text style={styles.emptyText}>
+                  No blocks match your search
+                </Text>
+              ) : viewMode === "chain" ? (
+                <ChainVisualization />
+              ) : (
+                <FlatList
+                  data={filteredBlocks}
+                  renderItem={renderBlockItem}
+                  keyExtractor={(item) => item.id}
+                  scrollEnabled={false}
+                />
+              )
             ) : !loading ? (
-              <Empty description="No votes recorded for this election yet." />
+              <Text style={styles.emptyText}>
+                No votes recorded for this election yet.
+              </Text>
             ) : null}
-          </Spin>
-        </Card>
-      )}
+          </View>
+        )}
+
+        {/* Spacer */}
+        <View style={{ height: 20 }} />
+      </ScrollView>
 
       {/* Block Detail Modal */}
       <Modal
-        title={`Block #${selectedBlock?.block_index} - Complete Details ${selectedBlock?.isValid === false ? '⚠️ TAMPERED' : '✓ VALID'}`}
-        open={isModalVisible}
-        onCancel={handleModalClose}
-        footer={null}
-        width={900}
-        bodyStyle={{ maxHeight: "80vh", overflowY: "auto" }}
+        visible={isModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleModalClose}
       >
-        {selectedBlock && (
-          <div>
-            {selectedBlock.isValid === false && (
-              <Alert
-                message="⚠️ Blockchain Tampering Detected"
-                description={selectedBlock.validationError || "Hash mismatch detected in this block"}
-                type="error"
-                showIcon
-                style={{ marginBottom: "20px" }}
-              />
-            )}
-            <Collapse
-            items={[
-              {
-                key: "basic",
-                label: "Basic Information",
-                children: (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
-                    <div>
-                      <p style={{ margin: "0 0 5px 0", color: "#666" }}>Block Index:</p>
-                      <p style={{ margin: "0 0 15px 0", fontSize: "16px", fontWeight: "bold" }}>#{selectedBlock.block_index}</p>
-                    </div>
-                    <div>
-                      <p style={{ margin: "0 0 5px 0", color: "#666" }}>Timestamp:</p>
-                      <p style={{ margin: "0 0 15px 0", fontSize: "14px" }}>
-                        {new Date(selectedBlock.created_at).toLocaleString()}
-                      </p>
-                    </div>
-                    <div style={{ gridColumn: "1 / -1" }}>
-                      <p style={{ margin: "0 0 5px 0", color: "#666" }}>Voter:</p>
-                      <p style={{ margin: "0 0 15px 0", fontSize: "14px" }}>
-                        {selectedBlock.voter_id ? (voterNameMap[selectedBlock.voter_id] || selectedBlock.voter_id) : "Unknown"}
-                      </p>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                key: "hashes",
-                label: "Blockchain Hashes",
-                children: (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-                    <div>
-                      <p style={{ margin: "0 0 5px 0", color: "#666", fontWeight: "bold" }}>Vote Commitment (SHA256):</p>
-                      <div style={{
-                        backgroundColor: "#f0f7ff",
-                        padding: "10px",
-                        borderRadius: "4px",
-                        wordBreak: "break-all",
-                        fontFamily: "monospace",
-                        fontSize: "12px",
-                      }}>
-                        {selectedBlock.vote_commitment}
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<CopyOutlined />}
-                          onClick={() => copyToClipboard(selectedBlock.vote_commitment)}
-                          style={{ marginLeft: "10px" }}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <p style={{ margin: "0 0 5px 0", color: "#666", fontWeight: "bold" }}>Previous Block Hash:</p>
-                      <div style={{
-                        backgroundColor: "#f0f7ff",
-                        padding: "10px",
-                        borderRadius: "4px",
-                        wordBreak: "break-all",
-                        fontFamily: "monospace",
-                        fontSize: "12px",
-                      }}>
-                        {selectedBlock.previous_hash}
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<CopyOutlined />}
-                          onClick={() => copyToClipboard(selectedBlock.previous_hash)}
-                          style={{ marginLeft: "10px" }}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <p style={{ margin: "0 0 5px 0", color: "#666", fontWeight: "bold" }}>Current Block Hash:</p>
-                      <div style={{
-                        backgroundColor: "#f0f7ff",
-                        padding: "10px",
-                        borderRadius: "4px",
-                        wordBreak: "break-all",
-                        fontFamily: "monospace",
-                        fontSize: "12px",
-                        borderLeft: "4px solid #1890ff",
-                      }}>
-                        {selectedBlock.current_hash}
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<CopyOutlined />}
-                          onClick={() => copyToClipboard(selectedBlock.current_hash)}
-                          style={{ marginLeft: "10px" }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                key: "encrypted",
-                label: "Encrypted Vote Data",
-                children: (
-                  <div style={{
-                    backgroundColor: "#faf8f3",
-                    padding: "12px",
-                    borderRadius: "4px",
-                    wordBreak: "break-all",
-                    fontFamily: "monospace",
-                    fontSize: "11px",
-                    maxHeight: "300px",
-                    overflowY: "auto",
-                    color: "#999",
-                  }}>
-                    {selectedBlock.encrypted_vote}
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<CopyOutlined />}
-                      onClick={() => copyToClipboard(selectedBlock.encrypted_vote)}
-                      style={{ marginLeft: "10px" }}
-                    />
-                  </div>
-                ),
-              },
-              {
-                key: "metadata",
-                label: "Metadata",
-                children: (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
-                    <div>
-                      <p style={{ margin: "0 0 5px 0", color: "#666" }}>Block ID:</p>
-                      <code style={{ fontSize: "12px" }}>{selectedBlock.id}</code>
-                    </div>
-                    <div>
-                      <p style={{ margin: "0 0 5px 0", color: "#666" }}>Election ID:</p>
-                      <code style={{ fontSize: "12px" }}>{selectedBlock.election_id}</code>
-                    </div>
-                  </div>
-                ),
-              },
-            ]}
-          />
-          </div>
-        )}
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                Block #{selectedBlock?.block_index}{" "}
+                {selectedBlock?.isValid === false ? "⚠️ TAMPERED" : "✓ VALID"}
+              </Text>
+              <TouchableOpacity onPress={handleModalClose}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody}>
+              {selectedBlock && (
+                <View>
+                  {selectedBlock.isValid === false && (
+                    <View style={[styles.alert, styles.alertError]}>
+                      <Text style={styles.alertText}>
+                        ⚠️ Blockchain Tampering Detected
+                      </Text>
+                      <Text style={styles.alertSmallText}>
+                        {selectedBlock.validationError ||
+                          "Hash mismatch detected in this block"}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Basic Information */}
+                  <View style={styles.expandableSection}>
+                    <Text style={styles.expandableTitle}>Basic Information</Text>
+                    <View style={styles.expandableContent}>
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Block Index:</Text>
+                        <Text style={styles.infoValue}>
+                          #{selectedBlock.block_index}
+                        </Text>
+                      </View>
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Timestamp:</Text>
+                        <Text style={styles.infoValue}>
+                          {new Date(selectedBlock.created_at).toLocaleString()}
+                        </Text>
+                      </View>
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Voter:</Text>
+                        <Text style={styles.infoValue}>
+                          {selectedBlock.voter_id
+                            ? voterNameMap[selectedBlock.voter_id] ||
+                              selectedBlock.voter_id
+                            : "Unknown"}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Blockchain Hashes */}
+                  <View style={styles.expandableSection}>
+                    <Text style={styles.expandableTitle}>Blockchain Hashes</Text>
+                    <View style={styles.expandableContent}>
+                      <View style={styles.hashContainer}>
+                        <Text style={styles.hashLabel}>
+                          Vote Commitment (SHA256):
+                        </Text>
+                        <View style={styles.hashBox}>
+                          <Text style={styles.hashText} selectable>
+                            {selectedBlock.vote_commitment}
+                          </Text>
+                          <TouchableOpacity
+                            style={styles.copyButton}
+                            onPress={() =>
+                              copyToClipboard(selectedBlock.vote_commitment)
+                            }
+                          >
+                            <Text style={styles.copyButtonText}>Copy</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      <View style={styles.hashContainer}>
+                        <Text style={styles.hashLabel}>Previous Block Hash:</Text>
+                        <View style={styles.hashBox}>
+                          <Text style={styles.hashText} selectable>
+                            {selectedBlock.previous_hash}
+                          </Text>
+                          <TouchableOpacity
+                            style={styles.copyButton}
+                            onPress={() =>
+                              copyToClipboard(selectedBlock.previous_hash)
+                            }
+                          >
+                            <Text style={styles.copyButtonText}>Copy</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      <View style={styles.hashContainer}>
+                        <Text style={styles.hashLabel}>Current Block Hash:</Text>
+                        <View style={[styles.hashBox, styles.hashBoxHighlight]}>
+                          <Text style={styles.hashText} selectable>
+                            {selectedBlock.current_hash}
+                          </Text>
+                          <TouchableOpacity
+                            style={styles.copyButton}
+                            onPress={() =>
+                              copyToClipboard(selectedBlock.current_hash)
+                            }
+                          >
+                            <Text style={styles.copyButtonText}>Copy</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Encrypted Vote Data */}
+                  <View style={styles.expandableSection}>
+                    <Text style={styles.expandableTitle}>Encrypted Vote Data</Text>
+                    <View style={styles.expandableContent}>
+                      <View style={styles.encryptedBox}>
+                        <Text style={styles.encryptedText} selectable>
+                          {selectedBlock.encrypted_vote}
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.copyButton}
+                          onPress={() =>
+                            copyToClipboard(selectedBlock.encrypted_vote)
+                          }
+                        >
+                          <Text style={styles.copyButtonText}>Copy</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Metadata */}
+                  <View style={styles.expandableSection}>
+                    <Text style={styles.expandableTitle}>Metadata</Text>
+                    <View style={styles.expandableContent}>
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Block ID:</Text>
+                        <Text style={styles.infoValue} numberOfLines={1}>
+                          {selectedBlock.id}
+                        </Text>
+                      </View>
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Election ID:</Text>
+                        <Text style={styles.infoValue} numberOfLines={1}>
+                          {selectedBlock.election_id}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.modalCloseButton}
+                    onPress={handleModalClose}
+                  >
+                    <Text style={styles.modalCloseButtonText}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
-      </div>
-    </div>
+    </View>
   );
 };
 
 export default AuditorBlockchainLedger;
+
+// StyleSheet for all styles
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  header: {
+    marginBottom: 20,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#000",
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: "#666",
+  },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  cardLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 12,
+    color: "#000",
+  },
+  cardSuccess: {
+    backgroundColor: "#f6ffed",
+    borderLeftWidth: 6,
+    borderLeftColor: "#52c41a",
+  },
+  cardError: {
+    backgroundColor: "#fff7e6",
+    borderLeftWidth: 6,
+    borderLeftColor: "#ff4d4f",
+  },
+  pickerButton: {
+    borderWidth: 1,
+    borderColor: "#d9d9d9",
+    borderRadius: 6,
+    padding: 12,
+    backgroundColor: "#fff",
+  },
+  pickerButtonText: {
+    fontSize: 14,
+    color: "#000",
+  },
+  pickerDropdown: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "#d9d9d9",
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  electionItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  electionItemText: {
+    fontSize: 14,
+    color: "#000",
+  },
+  metricsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  metricItem: {
+    flex: 1,
+    minWidth: 120,
+  },
+  metricLabel: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 4,
+  },
+  metricValue: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#000",
+  },
+  alert: {
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  alertSuccess: {
+    backgroundColor: "#f6ffed",
+    borderLeftWidth: 4,
+    borderLeftColor: "#52c41a",
+  },
+  alertWarning: {
+    backgroundColor: "#fffbe6",
+    borderLeftWidth: 4,
+    borderLeftColor: "#faad14",
+  },
+  alertError: {
+    backgroundColor: "#fff1f0",
+    borderLeftWidth: 4,
+    borderLeftColor: "#ff4d4f",
+  },
+  alertText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#000",
+    flex: 1,
+  },
+  alertSmallText: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 4,
+  },
+  alertClose: {
+    fontSize: 18,
+    color: "#666",
+    marginLeft: 8,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: "#d9d9d9",
+    borderRadius: 6,
+    padding: 10,
+    fontSize: 14,
+    marginBottom: 12,
+    color: "#000",
+  },
+  viewModeContainer: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  viewModeButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#d9d9d9",
+    alignItems: "center",
+  },
+  viewModeActive: {
+    backgroundColor: "#1890ff",
+    borderColor: "#1890ff",
+  },
+  viewModeText: {
+    fontSize: 14,
+    color: "#666",
+  },
+  viewModeActiveText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  tableRow: {
+    flexDirection: "row",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    alignItems: "center",
+    gap: 8,
+  },
+  tableCell: {
+    flex: 1,
+    fontSize: 12,
+  },
+  smallText: {
+    fontSize: 11,
+    color: "#999",
+  },
+  tag: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    alignSelf: "flex-start",
+  },
+  tagGreen: {
+    backgroundColor: "#f6ffed",
+    borderColor: "#52c41a",
+  },
+  tagRed: {
+    backgroundColor: "#fff1f0",
+    borderColor: "#ff4d4f",
+  },
+  tagText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#000",
+  },
+  detailsButton: {
+    backgroundColor: "#1890ff",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+  },
+  detailsButtonText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  detailsBtn: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  chainContainer: {
+    paddingVertical: 12,
+    marginBottom: 8,
+  },
+  chainContent: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 4,
+  },
+  chainCard: {
+    minWidth: 150,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 3,
+    backgroundColor: "#fff",
+  },
+  chainCardValid: {
+    borderColor: "#52c41a",
+    backgroundColor: "#f6ffed",
+  },
+  chainCardInvalid: {
+    borderColor: "#ff4d4f",
+    backgroundColor: "#fff1f0",
+    shadowColor: "#ff4d4f",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  chainCardTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 8,
+    color: "#000",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#d9d9d9",
+    marginVertical: 8,
+  },
+  chainCardStatus: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 4,
+    color: "#666",
+  },
+  chainCardTag: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    marginBottom: 8,
+    alignSelf: "flex-start",
+  },
+  chainCardMeta: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 8,
+    marginBottom: 2,
+    color: "#666",
+  },
+  chainCardSmallText: {
+    fontSize: 11,
+    marginBottom: 8,
+    color: "#000",
+  },
+  chainCardHash: {
+    fontSize: 10,
+    fontFamily: "monospace",
+    marginBottom: 4,
+    color: "#666",
+  },
+  chainCardTime: {
+    fontSize: 10,
+    color: "#999",
+    marginBottom: 8,
+  },
+  chainCardError: {
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    backgroundColor: "#ffebee",
+    borderRadius: 4,
+  },
+  chainCardErrorText: {
+    fontSize: 10,
+    color: "#ff4d4f",
+  },
+  chainArrow: {
+    justifyContent: "center",
+    alignItems: "center",
+    minWidth: 30,
+    borderWidth: 2,
+  },
+  arrowText: {
+    fontSize: 20,
+    color: "#52c41a",
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#999",
+    textAlign: "center",
+    paddingVertical: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    maxHeight: "90%",
+    flexDirection: "column",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#000",
+    flex: 1,
+  },
+  modalClose: {
+    fontSize: 24,
+    color: "#666",
+    fontWeight: "300",
+  },
+  modalBody: {
+    flex: 1,
+    padding: 16,
+  },
+  expandableSection: {
+    marginBottom: 16,
+  },
+  expandableTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#d9d9d9",
+    marginBottom: 12,
+    color: "#000",
+  },
+  expandableContent: {
+    paddingLeft: 0,
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  infoLabel: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "500",
+  },
+  infoValue: {
+    fontSize: 13,
+    color: "#000",
+    fontWeight: "600",
+    maxWidth: "50%",
+  },
+  hashContainer: {
+    marginBottom: 16,
+  },
+  hashLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 8,
+    color: "#000",
+  },
+  hashBox: {
+    backgroundColor: "#f0f7ff",
+    padding: 10,
+    borderRadius: 6,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  hashBoxHighlight: {
+    borderLeftWidth: 4,
+    borderLeftColor: "#1890ff",
+  },
+  hashText: {
+    fontSize: 11,
+    fontFamily: "monospace",
+    color: "#000",
+    flex: 1,
+  },
+  copyButton: {
+    marginLeft: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: "#1890ff",
+    borderRadius: 4,
+  },
+  copyButtonText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  encryptedBox: {
+    backgroundColor: "#faf8f3",
+    padding: 12,
+    borderRadius: 6,
+    maxHeight: 300,
+  },
+  encryptedText: {
+    fontSize: 10,
+    fontFamily: "monospace",
+    color: "#999",
+    marginBottom: 8,
+  },
+  modalCloseButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: "#1890ff",
+    borderRadius: 6,
+    alignItems: "center",
+  },
+  modalCloseButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+});

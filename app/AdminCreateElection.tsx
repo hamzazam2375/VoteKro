@@ -8,7 +8,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    Platform,
+    Alert,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -16,7 +16,6 @@ import {
     TextInput,
     View,
 } from "react-native";
-import { toast } from "react-toastify";
 
 export default function AdminCreateElectionScreen() {
   const router = useRouter();
@@ -43,7 +42,7 @@ export default function AdminCreateElectionScreen() {
           loadError,
           "Failed to load profile",
         );
-        toast.error(message);
+        Alert.alert("Error", message);
         router.replace("/AdminLogin");
       } finally {
         setIsLoadingProfile(false);
@@ -56,14 +55,14 @@ export default function AdminCreateElectionScreen() {
   const handleLogout = async () => {
     try {
       await serviceFactory.authService.signOut();
-      toast.success("Logged out successfully");
+      Alert.alert("Success", "Logged out successfully");
       router.replace("/");
     } catch (logoutError) {
       const message = serviceFactory.authService.getErrorMessage(
         logoutError,
         "Failed to logout",
       );
-      toast.error(message);
+      Alert.alert("Error", message);
     }
   };
 
@@ -156,7 +155,7 @@ export default function AdminCreateElectionScreen() {
         endsAtIso,
       });
 
-      toast.success("Election created successfully");
+      Alert.alert("Success", "Election created successfully");
       router.replace("/AdminDashboard");
     } catch (submitError) {
       const message = serviceFactory.authService.getErrorMessage(
@@ -164,25 +163,11 @@ export default function AdminCreateElectionScreen() {
         "Failed to create election",
       );
       setError(message);
-      toast.error(message);
+      Alert.alert("Error", message);
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const webDateInputStyle = {
-    height: 42,
-    borderWidth: 1,
-    borderColor: "#d9dee7",
-    borderRadius: 8,
-    paddingLeft: 12,
-    paddingRight: 12,
-    backgroundColor: "#f8fafc",
-    color: "#111827",
-    fontSize: 13,
-    width: "100%",
-    boxSizing: "border-box",
-  } as const;
 
   if (isLoadingProfile) {
     return (
@@ -207,20 +192,8 @@ export default function AdminCreateElectionScreen() {
       />
 
       <ScrollView
-        contentContainerStyle={[
-          styles.contentContainer,
-          Platform.OS !== "web" && styles.mobileCenteredContent,
-        ]}
+        contentContainerStyle={styles.contentContainer}
       >
-        {Platform.OS === "web" ? (
-          <Pressable
-            style={styles.backButton}
-            onPress={() => router.replace("/AdminDashboard")}
-          >
-            <Text style={styles.backButtonText}>← Back</Text>
-          </Pressable>
-        ) : null}
-
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>📋 Create New Election</Text>
 
@@ -250,78 +223,54 @@ export default function AdminCreateElectionScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Start Date</Text>
-            {Platform.OS === "web" ? (
-              <input
-                type="date"
-                value={startDate}
-                onChange={(event) => setStartDate(event.currentTarget.value)}
-                disabled={isSubmitting}
-                style={webDateInputStyle}
+            <Pressable
+              style={styles.datePickerButton}
+              onPress={() => setShowStartDatePicker(true)}
+              disabled={isSubmitting}
+            >
+              <Text
+                style={[
+                  styles.datePickerButtonText,
+                  !startDate && styles.datePickerPlaceholder,
+                ]}
+              >
+                {startDate || "Select start date"}
+              </Text>
+            </Pressable>
+            {showStartDatePicker ? (
+              <DateTimePicker
+                value={toDateFromInput(startDate)}
+                mode="date"
+                display="default"
+                onChange={onStartDateChange}
               />
-            ) : (
-              <>
-                <Pressable
-                  style={styles.datePickerButton}
-                  onPress={() => setShowStartDatePicker(true)}
-                  disabled={isSubmitting}
-                >
-                  <Text
-                    style={[
-                      styles.datePickerButtonText,
-                      !startDate && styles.datePickerPlaceholder,
-                    ]}
-                  >
-                    {startDate || "Select start date"}
-                  </Text>
-                </Pressable>
-                {showStartDatePicker ? (
-                  <DateTimePicker
-                    value={toDateFromInput(startDate)}
-                    mode="date"
-                    display="default"
-                    onChange={onStartDateChange}
-                  />
-                ) : null}
-              </>
-            )}
+            ) : null}
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>End Date</Text>
-            {Platform.OS === "web" ? (
-              <input
-                type="date"
-                value={endDate}
-                onChange={(event) => setEndDate(event.currentTarget.value)}
-                disabled={isSubmitting}
-                style={webDateInputStyle}
+            <Pressable
+              style={styles.datePickerButton}
+              onPress={() => setShowEndDatePicker(true)}
+              disabled={isSubmitting}
+            >
+              <Text
+                style={[
+                  styles.datePickerButtonText,
+                  !endDate && styles.datePickerPlaceholder,
+                ]}
+              >
+                {endDate || "Select end date"}
+              </Text>
+            </Pressable>
+            {showEndDatePicker ? (
+              <DateTimePicker
+                value={toDateFromInput(endDate)}
+                mode="date"
+                display="default"
+                onChange={onEndDateChange}
               />
-            ) : (
-              <>
-                <Pressable
-                  style={styles.datePickerButton}
-                  onPress={() => setShowEndDatePicker(true)}
-                  disabled={isSubmitting}
-                >
-                  <Text
-                    style={[
-                      styles.datePickerButtonText,
-                      !endDate && styles.datePickerPlaceholder,
-                    ]}
-                  >
-                    {endDate || "Select end date"}
-                  </Text>
-                </Pressable>
-                {showEndDatePicker ? (
-                  <DateTimePicker
-                    value={toDateFromInput(endDate)}
-                    mode="date"
-                    display="default"
-                    onChange={onEndDateChange}
-                  />
-                ) : null}
-              </>
-            )}
+            ) : null}
           </View>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -368,25 +317,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 30,
     alignItems: "center",
-  },
-  mobileCenteredContent: {
     justifyContent: "center",
-  },
-  backButton: {
-    alignSelf: "flex-start",
-    borderWidth: 1.5,
-    borderColor: "#2e63e3",
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    backgroundColor: "#ffffff",
-    marginBottom: 26,
-    marginLeft: 10,
-  },
-  backButtonText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#2e63e3",
   },
   formCard: {
     width: "100%",

@@ -10,7 +10,6 @@ import {
     ActivityIndicator,
     Alert,
     Modal,
-    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -18,7 +17,6 @@ import {
     TextInput,
     View,
 } from "react-native";
-import { toast } from "react-toastify";
 
 export default function AdminManageElections() {
   const router = useRouter();
@@ -39,7 +37,6 @@ export default function AdminManageElections() {
   const [editEndDate, setEditEndDate] = useState("");
   const [showEditStartDatePicker, setShowEditStartDatePicker] = useState(false);
   const [showEditEndDatePicker, setShowEditEndDatePicker] = useState(false);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -65,7 +62,7 @@ export default function AdminManageElections() {
         error,
         "Failed to load data",
       );
-      toast.error(message);
+      Alert.alert("Error", message);
       router.replace("/AdminLogin");
     } finally {
       setIsLoading(false);
@@ -80,14 +77,10 @@ export default function AdminManageElections() {
   );
 
   const handleLogout = () => {
-    if (Platform.OS === "web") {
-      setShowLogoutModal(true);
-    } else {
-      Alert.alert("Logout", "Are you sure you want to logout?", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Logout", style: "destructive", onPress: doLogout },
-      ]);
-    }
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Logout", style: "destructive", onPress: doLogout },
+    ]);
   };
 
   const doLogout = async () => {
@@ -150,7 +143,7 @@ export default function AdminManageElections() {
         endsAtIso,
         status,
       });
-      toast.success("Election updated successfully");
+      Alert.alert("Success", "Election updated successfully");
       setShowEditModal(false);
       void loadData();
     } catch (error) {
@@ -169,7 +162,7 @@ export default function AdminManageElections() {
 
     try {
       await serviceFactory.adminService.deleteElection(selectedElection.id);
-      toast.success("Election deleted successfully");
+      Alert.alert("Success", "Election deleted successfully");
       setShowDeleteModal(false);
       void loadData();
     } catch (error) {
@@ -269,22 +262,9 @@ export default function AdminManageElections() {
       return "closed";
     }
 
+
     return "open";
   };
-
-  const webDateInputStyle = {
-    height: 42,
-    borderWidth: 1,
-    borderColor: "#d9dee7",
-    borderRadius: 8,
-    paddingLeft: 12,
-    paddingRight: 12,
-    backgroundColor: "#f8fafc",
-    color: "#111827",
-    fontSize: 13,
-    width: "100%",
-    boxSizing: "border-box",
-  } as const;
 
   const getElectionStatus = (election: ElectionRow) => {
     const now = Date.now();
@@ -311,34 +291,6 @@ export default function AdminManageElections() {
 
   return (
     <View style={styles.container}>
-      {/* Logout confirmation modal (web) */}
-      <Modal
-        transparent
-        visible={showLogoutModal}
-        animationType="fade"
-        onRequestClose={() => setShowLogoutModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Logout</Text>
-            <Text style={styles.modalMessage}>
-              Are you sure you want to logout?
-            </Text>
-            <View style={styles.modalButtons}>
-              <Pressable
-                style={styles.modalCancelBtn}
-                onPress={() => setShowLogoutModal(false)}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </Pressable>
-              <Pressable style={styles.modalLogoutBtn} onPress={doLogout}>
-                <Text style={styles.modalLogoutText}>Logout</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       {/* Edit Election Modal */}
       <Modal
         transparent
@@ -376,73 +328,49 @@ export default function AdminManageElections() {
               numberOfLines={4}
             />
             <Text style={styles.inputLabel}>Start Date</Text>
-            {Platform.OS === "web" ? (
-              <input
-                type="date"
-                value={editStartDate}
-                onChange={(event) =>
-                  setEditStartDate(event.currentTarget.value)
-                }
-                style={webDateInputStyle}
+            <Pressable
+              style={styles.datePickerButton}
+              onPress={() => setShowEditStartDatePicker(true)}
+            >
+              <Text
+                style={[
+                  styles.datePickerButtonText,
+                  !editStartDate && styles.datePickerPlaceholder,
+                ]}
+              >
+                {editStartDate || "Select start date"}
+              </Text>
+            </Pressable>
+            {showEditStartDatePicker ? (
+              <DateTimePicker
+                value={toDateFromInput(editStartDate)}
+                mode="date"
+                display="default"
+                onChange={onEditStartDateChange}
               />
-            ) : (
-              <>
-                <Pressable
-                  style={styles.datePickerButton}
-                  onPress={() => setShowEditStartDatePicker(true)}
-                >
-                  <Text
-                    style={[
-                      styles.datePickerButtonText,
-                      !editStartDate && styles.datePickerPlaceholder,
-                    ]}
-                  >
-                    {editStartDate || "Select start date"}
-                  </Text>
-                </Pressable>
-                {showEditStartDatePicker ? (
-                  <DateTimePicker
-                    value={toDateFromInput(editStartDate)}
-                    mode="date"
-                    display="default"
-                    onChange={onEditStartDateChange}
-                  />
-                ) : null}
-              </>
-            )}
+            ) : null}
             <Text style={styles.inputLabel}>End Date</Text>
-            {Platform.OS === "web" ? (
-              <input
-                type="date"
-                value={editEndDate}
-                onChange={(event) => setEditEndDate(event.currentTarget.value)}
-                style={webDateInputStyle}
+            <Pressable
+              style={styles.datePickerButton}
+              onPress={() => setShowEditEndDatePicker(true)}
+            >
+              <Text
+                style={[
+                  styles.datePickerButtonText,
+                  !editEndDate && styles.datePickerPlaceholder,
+                ]}
+              >
+                {editEndDate || "Select end date"}
+              </Text>
+            </Pressable>
+            {showEditEndDatePicker ? (
+              <DateTimePicker
+                value={toDateFromInput(editEndDate)}
+                mode="date"
+                display="default"
+                onChange={onEditEndDateChange}
               />
-            ) : (
-              <>
-                <Pressable
-                  style={styles.datePickerButton}
-                  onPress={() => setShowEditEndDatePicker(true)}
-                >
-                  <Text
-                    style={[
-                      styles.datePickerButtonText,
-                      !editEndDate && styles.datePickerPlaceholder,
-                    ]}
-                  >
-                    {editEndDate || "Select end date"}
-                  </Text>
-                </Pressable>
-                {showEditEndDatePicker ? (
-                  <DateTimePicker
-                    value={toDateFromInput(editEndDate)}
-                    mode="date"
-                    display="default"
-                    onChange={onEditEndDateChange}
-                  />
-                ) : null}
-              </>
-            )}
+            ) : null}
 
             <View style={styles.updateButtonWrap}>
               <Pressable
@@ -499,15 +427,6 @@ export default function AdminManageElections() {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
       >
-        {Platform.OS === "web" ? (
-          <Pressable
-            style={styles.backButton}
-            onPress={() => router.replace("/AdminDashboard")}
-          >
-            <Text style={styles.backButtonText}>← Back</Text>
-          </Pressable>
-        ) : null}
-
         <View style={styles.innerWrapper}>
           <View style={styles.titleSection}>
             <Text style={styles.dashboardTitle}>📋 Manage Elections</Text>
@@ -619,22 +538,6 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 980,
     alignSelf: "center",
-  },
-  backButton: {
-    alignSelf: "flex-start",
-    borderWidth: 1.5,
-    borderColor: "#2e63e3",
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    backgroundColor: "#ffffff",
-    marginBottom: 26,
-    marginLeft: 10,
-  },
-  backButtonText: {
-    color: "#2e63e3",
-    fontSize: 13,
-    fontWeight: "600",
   },
   titleSection: {
     marginBottom: 24,

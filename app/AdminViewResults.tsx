@@ -11,7 +11,6 @@ import {
     ActivityIndicator,
     Alert,
     Modal,
-    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -132,11 +131,6 @@ export default function AdminViewResults() {
   }, [candidatesByElection, visibleElections]);
 
   const handleLogout = () => {
-    if (Platform.OS === "web") {
-      setShowLogoutModal(true);
-      return;
-    }
-
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
       { text: "Logout", style: "destructive", onPress: () => void doLogout() },
@@ -156,20 +150,6 @@ export default function AdminViewResults() {
     }
   };
 
-  const webSelectStyle = {
-    height: 42,
-    borderWidth: 1,
-    borderColor: "#d9dee7",
-    borderRadius: 8,
-    paddingLeft: 12,
-    paddingRight: 12,
-    backgroundColor: "#f8fafc",
-    color: "#111827",
-    fontSize: 13,
-    width: "100%",
-    boxSizing: "border-box",
-  } as const;
-
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -181,36 +161,6 @@ export default function AdminViewResults() {
 
   return (
     <View style={styles.container}>
-      <Modal
-        transparent
-        visible={showLogoutModal}
-        animationType="fade"
-        onRequestClose={() => setShowLogoutModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Logout</Text>
-            <Text style={styles.modalMessage}>
-              Are you sure you want to logout?
-            </Text>
-            <View style={styles.modalButtons}>
-              <Pressable
-                style={styles.modalCancelBtn}
-                onPress={() => setShowLogoutModal(false)}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={styles.modalLogoutBtn}
-                onPress={() => void doLogout()}
-              >
-                <Text style={styles.modalLogoutText}>Logout</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       <Navbar
         infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
         actions={[
@@ -222,15 +172,6 @@ export default function AdminViewResults() {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
       >
-        {Platform.OS === "web" ? (
-          <Pressable
-            style={styles.backButton}
-            onPress={() => router.replace("/AdminDashboard")}
-          >
-            <Text style={styles.backButtonText}>← Back</Text>
-          </Pressable>
-        ) : null}
-
         <View style={styles.innerWrapper}>
           <View style={styles.titleSection}>
             <Text style={styles.pageTitle}>📊 Election Results</Text>
@@ -241,65 +182,48 @@ export default function AdminViewResults() {
 
           <View style={styles.filterCard}>
             <Text style={styles.filterLabel}>Filter by Election:</Text>
-            {Platform.OS === "web" ? (
-              <select
-                value={selectedElectionId}
-                onChange={(event) =>
-                  setSelectedElectionId(event.currentTarget.value)
-                }
-                style={webSelectStyle}
+            <View style={styles.mobileFilterWrap}>
+              <Pressable
+                style={[
+                  styles.mobileFilterChip,
+                  selectedElectionId === "all" &&
+                    styles.mobileFilterChipActive,
+                ]}
+                onPress={() => setSelectedElectionId("all")}
               >
-                <option value="all">All Elections</option>
-                {elections.map((election) => (
-                  <option key={election.id} value={election.id}>
-                    {election.title}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <View style={styles.mobileFilterWrap}>
-                <Pressable
+                <Text
                   style={[
-                    styles.mobileFilterChip,
+                    styles.mobileFilterText,
                     selectedElectionId === "all" &&
-                      styles.mobileFilterChipActive,
+                      styles.mobileFilterTextActive,
                   ]}
-                  onPress={() => setSelectedElectionId("all")}
                 >
-                  <Text
+                  All Elections
+                </Text>
+              </Pressable>
+              {elections.map((election) => {
+                const selected = selectedElectionId === election.id;
+                return (
+                  <Pressable
+                    key={election.id}
                     style={[
-                      styles.mobileFilterText,
-                      selectedElectionId === "all" &&
-                        styles.mobileFilterTextActive,
+                      styles.mobileFilterChip,
+                      selected && styles.mobileFilterChipActive,
                     ]}
+                    onPress={() => setSelectedElectionId(election.id)}
                   >
-                    All Elections
-                  </Text>
-                </Pressable>
-                {elections.map((election) => {
-                  const selected = selectedElectionId === election.id;
-                  return (
-                    <Pressable
-                      key={election.id}
+                    <Text
                       style={[
-                        styles.mobileFilterChip,
-                        selected && styles.mobileFilterChipActive,
+                        styles.mobileFilterText,
+                        selected && styles.mobileFilterTextActive,
                       ]}
-                      onPress={() => setSelectedElectionId(election.id)}
                     >
-                      <Text
-                        style={[
-                          styles.mobileFilterText,
-                          selected && styles.mobileFilterTextActive,
-                        ]}
-                      >
-                        {election.title}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
+                      {election.title}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
 
           {electionResults.map(({ election, results }) => (

@@ -24,7 +24,6 @@ export default function AdminDashboard() {
   const isMobile = width < 600;
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [registeredVotersCount, setRegisteredVotersCount] = useState(0);
   const [elections, setElections] = useState<ElectionRow[]>([]);
   const [totalVotesCast, setTotalVotesCast] = useState(0);
@@ -102,18 +101,13 @@ export default function AdminDashboard() {
   }, [loadDashboardOverview]);
 
   const handleLogout = () => {
-    if (Platform.OS === "web") {
-      setShowLogoutModal(true);
-    } else {
-      Alert.alert("Logout", "Are you sure you want to logout?", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Logout", style: "destructive", onPress: doLogout },
-      ]);
-    }
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Logout", style: "destructive", onPress: doLogout },
+    ]);
   };
 
   const doLogout = async () => {
-    setShowLogoutModal(false);
     try {
       await serviceFactory.authService.signOut();
       router.replace("/");
@@ -146,34 +140,6 @@ export default function AdminDashboard() {
 
   return (
     <View style={styles.container}>
-      {/* Logout confirmation modal (web) */}
-      <Modal
-        transparent
-        visible={showLogoutModal}
-        animationType="fade"
-        onRequestClose={() => setShowLogoutModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Logout</Text>
-            <Text style={styles.modalMessage}>
-              Are you sure you want to logout?
-            </Text>
-            <View style={styles.modalButtons}>
-              <Pressable
-                style={styles.modalCancelBtn}
-                onPress={() => setShowLogoutModal(false)}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </Pressable>
-              <Pressable style={styles.modalLogoutBtn} onPress={doLogout}>
-                <Text style={styles.modalLogoutText}>Logout</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       <Navbar
         infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
         actions={[

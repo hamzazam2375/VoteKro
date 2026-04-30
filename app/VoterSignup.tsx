@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
-    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -14,7 +13,6 @@ import {
     TextInput,
     View,
 } from "react-native";
-import { toast } from "react-toastify";
 
 export default function VoterSignupScreen() {
   const router = useRouter();
@@ -35,11 +33,7 @@ export default function VoterSignupScreen() {
           loadError,
           "Failed to load profile",
         );
-        if (Platform.OS === "web") {
-          toast.error(errorMsg);
-        } else {
-          Alert.alert("Error", errorMsg);
-        }
+        Alert.alert("Error", errorMsg);
         router.replace("/AdminLogin");
       }
     };
@@ -48,29 +42,19 @@ export default function VoterSignupScreen() {
   }, [router]);
 
   const handleLogout = () => {
-    if (Platform.OS === "web") {
-      toast.info("Logging out...");
-    }
     void doLogout();
   };
 
   const doLogout = async () => {
     try {
       await serviceFactory.authService.signOut();
-      if (Platform.OS === "web") {
-        toast.success("Logged out successfully");
-      }
       router.replace("/");
     } catch (logoutError) {
       const errorMsg = serviceFactory.authService.getErrorMessage(
         logoutError,
         "Failed to logout",
       );
-      if (Platform.OS === "web") {
-        toast.error(errorMsg);
-      } else {
-        Alert.alert("Error", errorMsg);
-      }
+      Alert.alert("Error", errorMsg);
     }
   };
 
@@ -98,28 +82,14 @@ export default function VoterSignupScreen() {
 
       const successMessage =
         "Authorization email sent. Ask voter to click the button in email to complete registration.";
-      if (Platform.OS === "web") {
-        toast.success(successMessage, {
-          position: "top-right",
-          autoClose: 2200,
-        });
-      } else {
-        Alert.alert("Email Sent", successMessage);
-      }
+      Alert.alert("Email Sent", successMessage);
     } catch (registerError) {
       const errorMessage = serviceFactory.authService.getErrorMessage(
         registerError,
         "Failed to send authorization email. Please try again.",
       );
       setError(errorMessage);
-      if (Platform.OS === "web") {
-        toast.error(errorMessage, {
-          position: "top-right",
-          autoClose: 3000,
-        });
-      } else {
-        Alert.alert("Error", errorMessage);
-      }
+      Alert.alert("Error", errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -137,18 +107,16 @@ export default function VoterSignupScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          Platform.OS !== "web" && styles.mobileCenteredContent,
+          styles.mobileCenteredContent,
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {Platform.OS === "web" ? (
-          <Pressable
-            style={styles.backButton}
-            onPress={() => router.replace("/AdminDashboard")}
-          >
-            <Text style={styles.backButtonText}>← Back</Text>
-          </Pressable>
-        ) : null}
+        <Pressable
+          style={styles.backButton}
+          onPress={() => router.replace("/AdminDashboard")}
+        >
+          <Text style={styles.backButtonText}>← Back</Text>
+        </Pressable>
 
         <View style={styles.centerContainer}>
           <View style={styles.card}>

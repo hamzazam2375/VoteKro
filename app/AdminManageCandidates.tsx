@@ -11,7 +11,6 @@ import {
     ActivityIndicator,
     Alert,
     Modal,
-    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -20,13 +19,9 @@ import {
     View,
     useWindowDimensions,
 } from "react-native";
-import { toast } from "react-toastify";
 
 function blurActiveElementOnWeb() {
-  if (Platform.OS !== "web") {
-    return;
-  }
-
+  // No-op on React Native - only relevant for web focus management
   const activeElement = (
     globalThis as { document?: { activeElement?: { blur?: () => void } } }
   ).document?.activeElement;
@@ -47,8 +42,6 @@ export default function AdminManageCandidates() {
   const [manualPartiesByElection, setManualPartiesByElection] = useState<
     Record<string, string[]>
   >({});
-
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const [showAddPartyModal, setShowAddPartyModal] = useState(false);
   const [addPartyElectionId, setAddPartyElectionId] = useState("");
@@ -93,7 +86,7 @@ export default function AdminManageCandidates() {
         error,
         "Failed to load candidates",
       );
-      toast.error(message);
+      Alert.alert("Error", message);
       router.replace("/AdminLogin");
     } finally {
       setIsLoading(false);
@@ -229,7 +222,7 @@ export default function AdminManageCandidates() {
       setAddCandidateParty(partyLabel);
     }
 
-    toast.success("Party added to election list");
+    Alert.alert("Success", "Party added to election list");
     closeAddPartyModal();
   };
 
@@ -254,7 +247,7 @@ export default function AdminManageCandidates() {
         candidateNumber: getNextCandidateNumber(electionId),
       });
 
-      toast.success("Candidate added successfully");
+      Alert.alert("Success", "Candidate added successfully");
       closeAddCandidateModal();
       void loadData();
     } catch (error) {
@@ -288,7 +281,7 @@ export default function AdminManageCandidates() {
         partyName: partyName || undefined,
       });
 
-      toast.success("Candidate updated successfully");
+      Alert.alert("Success", "Candidate updated successfully");
       closeEditCandidateModal();
       void loadData();
     } catch (error) {
@@ -309,7 +302,7 @@ export default function AdminManageCandidates() {
 
     try {
       await serviceFactory.adminService.deleteCandidate(selectedCandidate.id);
-      toast.success("Candidate deleted successfully");
+      Alert.alert("Success", "Candidate deleted successfully");
       closeDeleteCandidateModal();
       void loadData();
     } catch (error) {
@@ -324,11 +317,6 @@ export default function AdminManageCandidates() {
   };
 
   const handleLogout = () => {
-    if (Platform.OS === "web") {
-      setShowLogoutModal(true);
-      return;
-    }
-
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
       { text: "Logout", style: "destructive", onPress: () => void doLogout() },
@@ -336,7 +324,6 @@ export default function AdminManageCandidates() {
   };
 
   const doLogout = async () => {
-    setShowLogoutModal(false);
     try {
       await serviceFactory.authService.signOut();
       router.replace("/");
@@ -359,36 +346,6 @@ export default function AdminManageCandidates() {
 
   return (
     <View style={styles.container}>
-      <Modal
-        transparent
-        visible={showLogoutModal}
-        animationType="fade"
-        onRequestClose={() => setShowLogoutModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Logout</Text>
-            <Text style={styles.modalMessage}>
-              Are you sure you want to logout?
-            </Text>
-            <View style={styles.modalButtons}>
-              <Pressable
-                style={styles.modalCancelBtn}
-                onPress={() => setShowLogoutModal(false)}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={styles.modalDeleteBtn}
-                onPress={() => void doLogout()}
-              >
-                <Text style={styles.modalDeleteText}>Logout</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       <Modal
         transparent
         visible={showAddPartyModal}
@@ -643,14 +600,12 @@ export default function AdminManageCandidates() {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
       >
-        {Platform.OS === "web" ? (
-          <Pressable
-            style={styles.backButton}
-            onPress={() => router.replace("/AdminDashboard")}
-          >
-            <Text style={styles.backButtonText}>← Back</Text>
-          </Pressable>
-        ) : null}
+        <Pressable
+          style={styles.backButton}
+          onPress={() => router.replace("/AdminDashboard")}
+        >
+          <Text style={styles.backButtonText}>← Back</Text>
+        </Pressable>
 
         <View style={styles.innerWrapper}>
           <View style={styles.titleSection}>
