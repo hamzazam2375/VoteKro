@@ -1,16 +1,23 @@
-import { AuthService } from '@/class/auth-class';
-import { BaseService } from '@/class/base-service';
-import type { CandidateRow, ElectionRow, ProfileRow, VoterRegistryRow } from '@/class/database-types';
-import { EmailService } from '@/class/email-service';
-import { ValidationError } from '@/class/errors';
+import { AuthService } from "@/class/auth-class";
+import { BaseService } from "@/class/base-service";
 import type {
-    AddCandidateInput,
-    CreateElectionInput,
-    ICandidateRepository,
-    IElectionRepository,
-    IProfileRepository,
-    IVoterRegistryRepository,
-} from '@/class/service-contracts';
+  CandidateRow,
+  ElectionRow,
+  ProfileRow,
+  VoterRegistryRow,
+} from "@/class/database-types";
+import { EmailService } from "@/class/email-service";
+import { ValidationError } from "@/class/errors";
+import type {
+  AddCandidateInput,
+  CreateElectionInput,
+  ICandidateRepository,
+  IElectionRepository,
+  IProfileRepository,
+  IVoterRegistryRepository,
+  UpdateCandidateInput,
+  UpdateElectionInput,
+} from "@/class/service-contracts";
 
 type RegisterUserInput = {
   fullName: string;
@@ -25,27 +32,31 @@ export class AdminService extends BaseService {
     private readonly electionRepository: IElectionRepository,
     private readonly candidateRepository: ICandidateRepository,
     private readonly voterRegistryRepository: IVoterRegistryRepository,
-    private readonly emailService: EmailService
+    private readonly emailService: EmailService,
   ) {
     super();
   }
 
-  async getDashboardOverview(): Promise<{ profile: ProfileRow; auditorExists: boolean; registeredVotersCount: number }> {
-    const profile = await this.authService.getRequiredProfile('admin');
+  async getDashboardOverview(): Promise<{
+    profile: ProfileRow;
+    auditorExists: boolean;
+    registeredVotersCount: number;
+  }> {
+    const profile = await this.authService.getRequiredProfile("admin");
     let auditorProfile: ProfileRow | null = null;
     let registeredVotersCount = 0;
     try {
-      auditorProfile = await this.profileRepository.getByRole('auditor');
+      auditorProfile = await this.profileRepository.getByRole("auditor");
     } catch (error) {
       // This lookup is only used for UI hints; failing it should not block admin access.
-      console.warn('Unable to determine whether an auditor exists:', error);
+      console.warn("Unable to determine whether an auditor exists:", error);
     }
 
     try {
-      registeredVotersCount = await this.profileRepository.countByRole('voter');
+      registeredVotersCount = await this.profileRepository.countByRole("voter");
     } catch (error) {
       // Keep dashboard available even if count lookup fails.
-      console.warn('Unable to count registered voters:', error);
+      console.warn("Unable to count registered voters:", error);
     }
 
     return {
@@ -59,61 +70,93 @@ export class AdminService extends BaseService {
     const fullName = input.fullName.trim();
     const email = input.email.trim();
 
-    await this.authService.getRequiredProfile('admin');
+    await this.authService.getRequiredProfile("admin");
 
-    this.requireNonEmpty(fullName, 'Full name');
-    this.requireNonEmpty(email, 'Email');
+    this.requireNonEmpty(fullName, "Full name");
+    this.requireNonEmpty(email, "Email");
     this.requireValidEmail(email);
 
-    const generatedPassword = input.password?.trim() || this.generateRandomPassword();
+    const generatedPassword =
+      input.password?.trim() || this.generateRandomPassword();
 
     const profile = await this.authService.signUp({
       email,
       password: generatedPassword,
       fullName,
-      role: 'auditor',
+      role: "auditor",
     });
 
     try {
-      await this.emailService.sendAuditorCredentials(email, fullName, generatedPassword);
+      await this.emailService.sendAuditorCredentials(
+        email,
+        fullName,
+        generatedPassword,
+      );
     } catch (emailError) {
       throw new ValidationError(
         `Auditor account was created but credentials email could not be sent: ${
-          emailError instanceof Error ? emailError.message : 'Unknown email error'
-        }`
+          emailError instanceof Error
+            ? emailError.message
+            : "Unknown email error"
+        }`,
       );
     }
 
     return profile;
   }
 
+  async initiateVoterRegistrationAuthorization(
+    input: RegisterUserInput,
+  ): Promise<void> {
+    const fullName = input.fullName.trim();
+    const email = input.email.trim();
+
+    await this.authService.getRequiredProfile("admin");
+
+    this.requireNonEmpty(fullName, "Full name");
+    this.requireNonEmpty(email, "Email");
+    this.requireValidEmail(email);
+
+    await this.emailService.initiateVoterRegistrationAuthorization(
+      fullName,
+      email,
+    );
+  }
+
   async registerVoter(input: RegisterUserInput): Promise<ProfileRow> {
     const fullName = input.fullName.trim();
     const email = input.email.trim();
 
-    await this.authService.getRequiredProfile('admin');
+    await this.authService.getRequiredProfile("admin");
 
-    this.requireNonEmpty(fullName, 'Full name');
-    this.requireNonEmpty(email, 'Email');
+    this.requireNonEmpty(fullName, "Full name");
+    this.requireNonEmpty(email, "Email");
     this.requireValidEmail(email);
 
-    const generatedPassword = input.password?.trim() || this.generateRandomPassword();
+    const generatedPassword =
+      input.password?.trim() || this.generateRandomPassword();
 
     const profile = await this.authService.signUp({
       email,
       password: generatedPassword,
       fullName,
-      role: 'voter',
+      role: "voter",
     });
 
     try {
-      await this.emailService.sendVoterCredentials(email, fullName, generatedPassword);
+      await this.emailService.sendVoterCredentials(
+        email,
+        fullName,
+        generatedPassword,
+      );
     } catch (emailError) {
       // Registration should not fail if email delivery fails. The admin can still share credentials manually.
       console.warn(
         `Voter account created but credentials email failed for ${email}: ${
-          emailError instanceof Error ? emailError.message : 'Unknown email error'
-        }`
+          emailError instanceof Error
+            ? emailError.message
+            : "Unknown email error"
+        }`,
       );
     }
 
@@ -121,42 +164,91 @@ export class AdminService extends BaseService {
   }
 
   async createElection(input: CreateElectionInput): Promise<ElectionRow> {
-    this.requireNonEmpty(input.title, 'Election title');
+    this.requireNonEmpty(input.title, "Election title");
     this.requireValidDateRange(input.startsAtIso, input.endsAtIso);
 
     const userId = await this.authService.requireCurrentUserId();
     return this.electionRepository.create(input, userId);
   }
 
+  async updateElection(input: UpdateElectionInput): Promise<ElectionRow> {
+    await this.authService.getRequiredProfile("admin");
+
+    this.requireNonEmpty(input.electionId, "Election id");
+    this.requireNonEmpty(input.title, "Election title");
+    this.requireValidDateRange(input.startsAtIso, input.endsAtIso);
+
+    return this.electionRepository.update(input);
+  }
+
+  async deleteElection(electionId: string): Promise<void> {
+    await this.authService.getRequiredProfile("admin");
+    this.requireNonEmpty(electionId, "Election id");
+    await this.electionRepository.delete(electionId);
+  }
+
   async addCandidate(input: AddCandidateInput): Promise<CandidateRow> {
-    this.requireNonEmpty(input.electionId, 'Election id');
-    this.requireNonEmpty(input.displayName, 'Candidate name');
+    await this.authService.getRequiredProfile("admin");
+    this.requireNonEmpty(input.electionId, "Election id");
+    this.requireNonEmpty(input.displayName, "Candidate name");
 
     return this.candidateRepository.create(input);
   }
 
-  async registerVoterForElection(electionId: string, voterId: string): Promise<VoterRegistryRow> {
-    this.requireNonEmpty(electionId, 'Election id');
-    this.requireNonEmpty(voterId, 'Voter id');
+  async updateCandidate(input: UpdateCandidateInput): Promise<CandidateRow> {
+    await this.authService.getRequiredProfile("admin");
+    this.requireNonEmpty(input.candidateId, "Candidate id");
+    this.requireNonEmpty(input.displayName, "Candidate name");
+
+    return this.candidateRepository.update(input);
+  }
+
+  async deleteCandidate(candidateId: string): Promise<void> {
+    await this.authService.getRequiredProfile("admin");
+    this.requireNonEmpty(candidateId, "Candidate id");
+    await this.candidateRepository.delete(candidateId);
+  }
+
+  async registerVoterForElection(
+    electionId: string,
+    voterId: string,
+  ): Promise<VoterRegistryRow> {
+    this.requireNonEmpty(electionId, "Election id");
+    this.requireNonEmpty(voterId, "Voter id");
 
     return this.voterRegistryRepository.registerEligible(electionId, voterId);
   }
 
-  async updateElectionStatus(electionId: string, status: ElectionRow['status']): Promise<ElectionRow> {
-    this.requireNonEmpty(electionId, 'Election id');
+  async updateElectionStatus(
+    electionId: string,
+    status: ElectionRow["status"],
+  ): Promise<ElectionRow> {
+    this.requireNonEmpty(electionId, "Election id");
     return this.electionRepository.updateStatus(electionId, status);
+  }
+
+  async listElections(): Promise<ElectionRow[]> {
+    await this.authService.getRequiredProfile("admin");
+    return this.electionRepository.listAll();
+  }
+
+  async getElectionCandidates(electionId: string): Promise<CandidateRow[]> {
+    await this.authService.getRequiredProfile("admin");
+    this.requireNonEmpty(electionId, "Election id");
+    return this.candidateRepository.listByElection(electionId);
   }
 
   private requireValidEmail(email: string): void {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      throw new ValidationError('Please provide a valid email address');
+      throw new ValidationError("Please provide a valid email address");
     }
   }
 
   private generateRandomPassword(length: number = 10): string {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
-    let password = '';
+    const chars =
+      "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+    let password = "";
     for (let i = 0; i < length; i++) {
       const randomIndex = Math.floor(Math.random() * chars.length);
       password += chars[randomIndex];
@@ -164,9 +256,15 @@ export class AdminService extends BaseService {
     return password;
   }
 
-  private requireMinimumLength(value: string, minLength: number, fieldName: string): void {
+  private requireMinimumLength(
+    value: string,
+    minLength: number,
+    fieldName: string,
+  ): void {
     if (value.length < minLength) {
-      throw new ValidationError(`${fieldName} must be at least ${minLength} characters`);
+      throw new ValidationError(
+        `${fieldName} must be at least ${minLength} characters`,
+      );
     }
   }
 }

@@ -1,11 +1,11 @@
 import type {
-    AuditLogRow,
-    CandidateRow,
-    ElectionRow,
-    ProfileRow,
-    VerifyChainResultRow,
-    VoteBlockRow,
-    VoterRegistryRow,
+  AuditLogRow,
+  CandidateRow,
+  ElectionRow,
+  ProfileRow,
+  VerifyChainResultRow,
+  VoteBlockRow,
+  VoterRegistryRow,
 } from '@/class/database-types';
 
 export interface CreateElectionInput {
@@ -15,11 +15,26 @@ export interface CreateElectionInput {
   endsAtIso: string;
 }
 
+export interface UpdateElectionInput {
+  electionId: string;
+  title: string;
+  description?: string;
+  startsAtIso: string;
+  endsAtIso: string;
+  status: ElectionRow['status'];
+}
+
 export interface AddCandidateInput {
   electionId: string;
   displayName: string;
   partyName?: string;
   candidateNumber: number;
+}
+
+export interface UpdateCandidateInput {
+  candidateId: string;
+  displayName: string;
+  partyName?: string;
 }
 
 export interface CastVoteInput {
@@ -52,6 +67,8 @@ export interface IProfileRepository {
 
 export interface IElectionRepository {
   create(input: CreateElectionInput, createdBy: string): Promise<ElectionRow>;
+  update(input: UpdateElectionInput): Promise<ElectionRow>;
+  delete(electionId: string): Promise<void>;
   updateStatus(electionId: string, status: ElectionRow['status']): Promise<ElectionRow>;
   findById(electionId: string): Promise<ElectionRow | null>;
   listAll(): Promise<ElectionRow[]>;
@@ -59,6 +76,8 @@ export interface IElectionRepository {
 
 export interface ICandidateRepository {
   create(input: AddCandidateInput): Promise<CandidateRow>;
+  update(input: UpdateCandidateInput): Promise<CandidateRow>;
+  delete(candidateId: string): Promise<void>;
   listByElection(electionId: string): Promise<CandidateRow[]>;
 }
 

@@ -16,11 +16,19 @@ export class RocksDbVoteLedgerRepository implements IVoteLedgerRepository {
       throw new DataAccessError('RocksDB ledger requires authenticated voter id');
     }
 
-    const response = await fetch(`${this.baseUrl}/cast-vote-secure`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ electionId, candidateId, nonce, voterId }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/cast-vote-secure`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ electionId, candidateId, nonce, voterId }),
+      });
+    } catch (error) {
+      throw new DataAccessError(
+        `Unable to reach RocksDB ledger at ${this.baseUrl}. Start the ledger service with "npm run rocksdb:start".`,
+        error
+      );
+    }
 
     if (!response.ok) {
       const errorBody = await response.text();
@@ -31,7 +39,15 @@ export class RocksDbVoteLedgerRepository implements IVoteLedgerRepository {
   }
 
   async verifyChain(electionId: string): Promise<VerifyChainResultRow> {
-    const response = await fetch(`${this.baseUrl}/verify-chain/${encodeURIComponent(electionId)}`);
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/verify-chain/${encodeURIComponent(electionId)}`);
+    } catch (error) {
+      throw new DataAccessError(
+        `Unable to reach RocksDB ledger at ${this.baseUrl}. Start the ledger service with "npm run rocksdb:start".`,
+        error
+      );
+    }
 
     if (!response.ok) {
       const errorBody = await response.text();
@@ -42,7 +58,15 @@ export class RocksDbVoteLedgerRepository implements IVoteLedgerRepository {
   }
 
   async listLedger(electionId: string): Promise<VoteBlockRow[]> {
-    const response = await fetch(`${this.baseUrl}/ledger/${encodeURIComponent(electionId)}`);
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/ledger/${encodeURIComponent(electionId)}`);
+    } catch (error) {
+      throw new DataAccessError(
+        `Unable to reach RocksDB ledger at ${this.baseUrl}. Start the ledger service with "npm run rocksdb:start".`,
+        error
+      );
+    }
 
     if (!response.ok) {
       const errorBody = await response.text();

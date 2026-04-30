@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     },
     infoText: {
         fontSize: 14,
-        color: '#233449',
+        color: '#2f64e6',
         fontWeight: '500',
         marginRight: 8,
     },
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     },
     infoTextMobile: {
         fontSize: 13,
-        color: '#233449',
+        color: '#2f64e6',
         fontWeight: '500',
         marginTop: 4,
         paddingHorizontal: 2,

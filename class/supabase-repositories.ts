@@ -1,30 +1,37 @@
 import type {
-    AuditLogRow,
-    CandidateRow,
-    ElectionRow,
-    ProfileRow,
-    VerifyChainResultRow,
-    VoteBlockRow,
-    VoterRegistryRow,
+  AuditLogRow,
+  CandidateRow,
+  ElectionRow,
+  ProfileRow,
+  VerifyChainResultRow,
+  VoteBlockRow,
+  VoterRegistryRow,
 } from '@/class/database-types';
 import { DataAccessError } from '@/class/errors';
 import type {
-    AddCandidateInput,
-    CreateElectionInput,
-    IAuditLogRepository,
-    IAuthRepository,
-    ICandidateRepository,
-    IElectionRepository,
-    IProfileRepository,
-    IVoteLedgerRepository,
-    IVoterRegistryRepository,
+  AddCandidateInput,
+  CreateElectionInput,
+  IAuditLogRepository,
+  IAuthRepository,
+  ICandidateRepository,
+  IElectionRepository,
+  IProfileRepository,
+  IVoteLedgerRepository,
+  IVoterRegistryRepository,
+  UpdateCandidateInput,
+  UpdateElectionInput,
 } from '@/class/service-contracts';
 import { supabase } from '@/class/supabase-client';
 
 class RepositoryBase {
   protected throwOnError(context: string, error: unknown): never {
     console.error('Supabase Error Details:', error);
-    const message = error instanceof Error ? error.message : 'Unknown data access error';
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
+          ? error.message
+          : 'Unknown data access error';
     throw new DataAccessError(`${context}: ${message}`, error);
   }
 }
@@ -110,6 +117,7 @@ export class SupabaseProfileRepository extends RepositoryBase implements IProfil
       .from('profiles')
       .select('*')
       .eq('role', role)
+      .limit(1)
       .maybeSingle();
 
     if (error) {
@@ -190,6 +198,35 @@ export class SupabaseElectionRepository extends RepositoryBase implements IElect
     return data as ElectionRow;
   }
 
+  async update(input: UpdateElectionInput): Promise<ElectionRow> {
+    const { data, error } = await supabase
+      .from('elections')
+      .update({
+        title: input.title,
+        description: input.description ?? null,
+        starts_at: input.startsAtIso,
+        ends_at: input.endsAtIso,
+        status: input.status,
+      })
+      .eq('id', input.electionId)
+      .select('*')
+      .single();
+
+    if (error) {
+      this.throwOnError('Failed to update election', error);
+    }
+
+    return data as ElectionRow;
+  }
+
+  async delete(electionId: string): Promise<void> {
+    const { error } = await supabase.from('elections').delete().eq('id', electionId);
+
+    if (error) {
+      this.throwOnError('Failed to delete election', error);
+    }
+  }
+
   async findById(electionId: string): Promise<ElectionRow | null> {
     const { data, error } = await supabase.from('elections').select('*').eq('id', electionId).maybeSingle();
 
@@ -243,6 +280,32 @@ export class SupabaseCandidateRepository extends RepositoryBase implements ICand
     }
 
     return (data ?? []) as CandidateRow[];
+  }
+
+  async update(input: UpdateCandidateInput): Promise<CandidateRow> {
+    const { data, error } = await supabase
+      .from('candidates')
+      .update({
+        display_name: input.displayName,
+        party_name: input.partyName ?? null,
+      })
+      .eq('id', input.candidateId)
+      .select('*')
+      .single();
+
+    if (error) {
+      this.throwOnError('Failed to update candidate', error);
+    }
+
+    return data as CandidateRow;
+  }
+
+  async delete(candidateId: string): Promise<void> {
+    const { error } = await supabase.from('candidates').delete().eq('id', candidateId);
+
+    if (error) {
+      this.throwOnError('Failed to delete candidate', error);
+    }
   }
 }
 

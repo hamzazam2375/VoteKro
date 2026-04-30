@@ -12,6 +12,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
     "levelup": "^5.1.1",
-    "rocksdb": "^5.2.1"
+    "rocksdb": "^5.2.1",
+    "votekro": "file:.."
   }
 }

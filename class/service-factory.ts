@@ -17,8 +17,8 @@ import { VotingService } from '@/class/voting-class';
 
 export class ServiceFactory {
   private readonly authRepository = new SupabaseAuthRepository();
-  private readonly profileRepository = new SupabaseProfileRepository();
-  private readonly electionRepository = new SupabaseElectionRepository();
+  readonly profileRepository = new SupabaseProfileRepository();
+  readonly electionRepository = new SupabaseElectionRepository();
   private readonly candidateRepository = new SupabaseCandidateRepository();
   private readonly voterRegistryRepository = new SupabaseVoterRegistryRepository();
   private readonly voteLedgerRepository = env.rocksDbLedgerUrl.trim().length > 0
@@ -43,7 +43,11 @@ export class ServiceFactory {
     this.voterRegistryRepository,
     this.voteLedgerRepository
   );
-  private readonly auditorServiceInstance = new AuditorService(this.voteLedgerRepository, this.auditLogRepository);
+  private readonly auditorServiceInstance = new AuditorService(
+    this.voteLedgerRepository,
+    this.auditLogRepository,
+    this.candidateRepository
+  );
 
   get authService(): AuthService {
     return this.authServiceInstance;

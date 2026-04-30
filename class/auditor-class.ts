@@ -1,11 +1,24 @@
 import { BaseService } from '@/class/base-service';
-import type { AuditLogRow, VerifyChainResultRow, VoteBlockRow } from '@/class/database-types';
-import type { IAuditLogRepository, IVoteLedgerRepository } from '@/class/service-contracts';
+import type { AuditLogRow, CandidateRow, VerifyChainResultRow, VoteBlockRow } from '@/class/database-types';
+import type { IAuditLogRepository, ICandidateRepository, IVoteLedgerRepository } from '@/class/service-contracts';
+import {
+  countVotesFromBlockchain,
+  verifyVoteCounts,
+  generateVerificationReport,
+  type VoteCountVerificationResult,
+  type VoteCounts,
+} from '@/class/vote-count-verification';
+import {
+  verifyFullBlockchain,
+  getVerificationReport,
+  type FullBlockchainVerification,
+} from '@/class/blockchain-verification';
 
 export class AuditorService extends BaseService {
   constructor(
     private readonly voteLedgerRepository: IVoteLedgerRepository,
-    private readonly auditLogRepository: IAuditLogRepository
+    private readonly auditLogRepository: IAuditLogRepository,
+    private readonly candidateRepository: ICandidateRepository
   ) {
     super();
   }
@@ -22,5 +35,236 @@ export class AuditorService extends BaseService {
 
   async getAuditLogs(limit = 100): Promise<AuditLogRow[]> {
     return this.auditLogRepository.listRecent(limit);
+  }
+
+  /**
+   * Filter audit logs by type and/or search query
+   * Supports filtering by:
+   * - type: 'ADMIN_ACTION' | 'VOTE' | 'SYSTEM'
+   * - searchText: searches in action field
+   */
+  filterAuditLogs(
+    logs: AuditLogRow[],
+    type?: string | null,
+    searchText?: string | null,
+    startDate?: string | null,
+    endDate?: string | null
+  ): AuditLogRow[] {
+    let filtered = logs;
+
+    // Filter by type (searching in action field)
+    if (type) {
+      filtered = filtered.filter((log) => {
+        const action = log.action.toUpperCase();
+        return action.includes(type.toUpperCase());
+      });
+    }
+
+    // Filter by search text
+    if (searchText) {
+      const searchLower = searchText.toLowerCase();
+      filtered = filtered.filter((log) => {
+        const actionLower = log.action.toLowerCase();
+        const metadataStr = JSON.stringify(log.metadata).toLowerCase();
+        return actionLower.includes(searchLower) || metadataStr.includes(searchLower);
+      });
+    }
+
+    // Filter by date range
+    if (startDate) {
+      const startDateTime = new Date(startDate).getTime();
+      filtered = filtered.filter((log) => {
+        const logTime = new Date(log.created_at).getTime();
+        return logTime >= startDateTime;
+      });
+    }
+
+    if (endDate) {
+      const endDateTime = new Date(endDate).getTime() + 86400000; // Add 1 day to include the entire end date
+      filtered = filtered.filter((log) => {
+        const logTime = new Date(log.created_at).getTime();
+        return logTime <= endDateTime;
+      });
+    }
+
+    // Sort by timestamp descending (newest first)
+    return filtered.sort((a, b) => {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }
+
+  /**
+   * Get formatted logs with type classification
+   * Converts action strings to log types: ADMIN_ACTION, VOTE, SYSTEM
+   */
+  getFormattedAuditLogs(logs: AuditLogRow[]): Array<AuditLogRow & { displayType: string }> {
+    return logs.map((log) => ({
+      ...log,
+      displayType: this.classifyLogType(log.action),
+    }));
+  }
+
+  /**
+   * Classify log entry to determine its type
+   */
+  private classifyLogType(action: string): string {
+    const upperAction = action.toUpperCase();
+    if (
+      upperAction.includes('ADMIN') ||
+      upperAction.includes('CREATED') ||
+      upperAction.includes('ADDED') ||
+      upperAction.includes('UPDATED') ||
+      upperAction.includes('DELETED') ||
+      upperAction.includes('ELECTION') ||
+      upperAction.includes('CANDIDATE')
+    ) {
+      return 'ADMIN_ACTION';
+    }
+    if (upperAction.includes('VOTE') || upperAction.includes('CAST')) {
+      return 'VOTE';
+    }
+    if (
+      upperAction.includes('VERIFIED') ||
+      upperAction.includes('CHECK') ||
+      upperAction.includes('BLOCKCHAIN') ||
+      upperAction.includes('INTEGRITY')
+    ) {
+      return 'SYSTEM';
+    }
+    return 'SYSTEM';
+  }
+
+  /**
+   * Get candidates for an election
+   * Used for vote count verification mapping
+   */
+  async getElectionCandidates(electionId: string): Promise<CandidateRow[]> {
+    this.requireNonEmpty(electionId, 'Election id');
+    return this.candidateRepository.listByElection(electionId);
+  }
+
+  /**
+   * Count votes from blockchain ledger
+   * Extract and count votes per candidate from all blocks
+   */
+  async countVotesFromLedger(electionId: string): Promise<VoteCounts> {
+    this.requireNonEmpty(electionId, 'Election id');
+    const blocks = await this.getLedger(electionId);
+    const candidates = await this.getElectionCandidates(electionId);
+    return countVotesFromBlockchain(blocks, candidates);
+  }
+
+  /**
+   * Verify vote counts: Compare blockchain votes with computed results
+   * This is the core verification function for detecting vote count mismatches
+   */
+  async verifyVoteCountConsistency(
+    electionId: string,
+    resultCounts: VoteCounts
+  ): Promise<VoteCountVerificationResult> {
+    this.requireNonEmpty(electionId, 'Election id');
+    this.requireNonEmpty(resultCounts, 'Result counts');
+
+    const blocks = await this.getLedger(electionId);
+    const candidates = await this.getElectionCandidates(electionId);
+    const blockchainCounts = countVotesFromBlockchain(blocks, candidates);
+
+    return verifyVoteCounts(blockchainCounts, resultCounts, candidates);
+  }
+
+  /**
+   * Generate verification report for auditing purposes
+   * Returns a detailed human-readable report of the vote count verification
+   */
+  async generateVoteCountReport(
+    electionId: string,
+    resultCounts: VoteCounts
+  ): Promise<string> {
+    const verificationResult = await this.verifyVoteCountConsistency(electionId, resultCounts);
+    return generateVerificationReport(verificationResult);
+  }
+
+  /**
+   * Verify full blockchain integrity
+   * Performs comprehensive checks including:
+   * ✅ Hash correctness (SHA-256 recalculation)
+   * ✅ Hash linkage between blocks
+   * Detects any tampering at block level
+   * 
+   * Has timeout protection to prevent hanging
+   * IMPORTANT: Returns error status in summary instead of throwing, so auditors can see what went wrong
+   */
+  async verifyFullBlockchainIntegrity(electionId: string): Promise<FullBlockchainVerification> {
+    this.requireNonEmpty(electionId, 'Election id');
+    
+    try {
+      // Create a timeout promise (10 seconds)
+      const timeoutPromise = new Promise<FullBlockchainVerification>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error('TIMEOUT: Blockchain verification took longer than 10 seconds'));
+        }, 10000);
+      });
+
+      // Create the actual verification promise
+      const verificationPromise = (async () => {
+        const blocks = await this.getLedger(electionId);
+        
+        // Validate blocks before verification
+        if (!Array.isArray(blocks)) {
+          throw new Error('ERROR: Blocks data is not an array. Received: ' + typeof blocks);
+        }
+        
+        if (blocks.length === 0) {
+          console.warn('No blocks found for election:', electionId);
+          // Return valid result for empty blockchain (no votes cast yet)
+          return {
+            isFullyValid: true,
+            totalBlocks: 0,
+            invalidBlocks: [],
+            allBlocksStatus: [],
+            timestamp: new Date().toISOString(),
+            summary: 'Empty blockchain (no votes cast yet)',
+          };
+        }
+        
+        // Validate that blocks have required fields
+        for (let i = 0; i < blocks.length; i++) {
+          const block = blocks[i];
+          if (!block.id || block.block_index === undefined || !block.current_hash || !block.previous_hash) {
+            throw new Error(
+              `ERROR: Block ${i} is missing required fields. Block: ${JSON.stringify(block)}`
+            );
+          }
+        }
+        
+        return verifyFullBlockchain(blocks);
+      })();
+
+      // Race between verification and timeout
+      return await Promise.race([verificationPromise, timeoutPromise]);
+    } catch (error) {
+      // ✅ NEW: Return error status instead of success result
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Blockchain verification error:', error);
+      
+      // Return error status that auditors can see
+      return {
+        isFullyValid: false,
+        totalBlocks: 0,
+        invalidBlocks: [],
+        allBlocksStatus: [],
+        timestamp: new Date().toISOString(),
+        summary: `⚠️ VERIFICATION FAILED: ${errorMessage}`,
+      };
+    }
+  }
+
+  /**
+   * Generate detailed blockchain integrity report
+   * Returns human-readable report for auditing
+   */
+  async generateBlockchainIntegrityReport(electionId: string): Promise<string> {
+    const verification = await this.verifyFullBlockchainIntegrity(electionId);
+    return getVerificationReport(verification);
   }
 }
