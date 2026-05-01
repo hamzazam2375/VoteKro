@@ -2,19 +2,19 @@ import type { ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
 import DateTimePicker, {
-    type DateTimePickerEvent,
+  type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 export default function AdminCreateElectionScreen() {
@@ -191,9 +191,14 @@ export default function AdminCreateElectionScreen() {
         ]}
       />
 
-      <ScrollView
-        contentContainerStyle={styles.contentContainer}
+      <Pressable
+        style={styles.backButton}
+        onPress={() => router.replace("/AdminDashboard")}
       >
+        <Text style={styles.backButtonText}>← Back</Text>
+      </Pressable>
+
+      <ScrollView contentContainerStyle={styles.contentContainer}>
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>📋 Create New Election</Text>
 
@@ -400,5 +405,23 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 13,
     fontWeight: "700",
+  },
+  backButton: {
+    alignSelf: "flex-start",
+    borderWidth: 1.5,
+    borderColor: "#2e63e3",
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    backgroundColor: "#ffffff",
+    marginBottom: 0,
+    marginLeft: 16,
+    marginTop: 12,
+    marginRight: 16,
+  },
+  backButtonText: {
+    color: "#2e63e3",
+    fontSize: 13,
+    fontWeight: "600",
   },
 });

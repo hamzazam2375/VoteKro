@@ -262,7 +262,6 @@ export default function AdminManageElections() {
       return "closed";
     }
 
-
     return "open";
   };
 
@@ -422,6 +421,13 @@ export default function AdminManageElections() {
           { label: "Logout", onPress: handleLogout, variant: "outline" },
         ]}
       />
+
+      <Pressable
+        style={styles.backButton}
+        onPress={() => router.replace("/AdminDashboard")}
+      >
+        <Text style={styles.backButtonText}>← Back</Text>
+      </Pressable>
 
       <ScrollView
         style={styles.content}
@@ -814,5 +820,23 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "500",
+  },
+  backButton: {
+    alignSelf: "flex-start",
+    borderWidth: 1.5,
+    borderColor: "#2e63e3",
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    backgroundColor: "#ffffff",
+    marginBottom: 0,
+    marginLeft: 16,
+    marginTop: 12,
+    marginRight: 16,
+  },
+  backButtonText: {
+    color: "#2e63e3",
+    fontSize: 13,
+    fontWeight: "600",
   },
 });

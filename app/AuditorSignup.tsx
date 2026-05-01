@@ -6,13 +6,12 @@ import { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
-    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
-    View,
+    View
 } from "react-native";
 
 export default function AuditorSignupScreen() {
@@ -180,14 +179,12 @@ export default function AuditorSignupScreen() {
             </Pressable>
 
             {/* Back Button */}
-            {Platform.OS === "web" ? (
-              <Pressable
-                style={styles.backButton}
-                onPress={() => router.replace("/AdminDashboard")}
-              >
-                <Text style={styles.backButtonText}>← Back</Text>
-              </Pressable>
-            ) : null}
+            <Pressable
+              style={styles.backButton}
+              onPress={() => router.replace("/AdminDashboard")}
+            >
+              <Text style={styles.backButtonText}>← Back</Text>
+            </Pressable>
           </View>
         </View>
       </ScrollView>

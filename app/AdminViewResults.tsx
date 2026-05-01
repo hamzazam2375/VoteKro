@@ -10,13 +10,12 @@ import { useCallback, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
-    Modal,
     Pressable,
     ScrollView,
     StyleSheet,
     Text,
     View,
-    useWindowDimensions,
+    useWindowDimensions
 } from "react-native";
 
 type CandidateResult = {
@@ -168,6 +167,13 @@ export default function AdminViewResults() {
         ]}
       />
 
+      <Pressable
+        style={styles.backButton}
+        onPress={() => router.replace("/AdminDashboard")}
+      >
+        <Text style={styles.backButtonText}>← Back</Text>
+      </Pressable>
+
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -186,8 +192,7 @@ export default function AdminViewResults() {
               <Pressable
                 style={[
                   styles.mobileFilterChip,
-                  selectedElectionId === "all" &&
-                    styles.mobileFilterChipActive,
+                  selectedElectionId === "all" && styles.mobileFilterChipActive,
                 ]}
                 onPress={() => setSelectedElectionId("all")}
               >
@@ -513,5 +518,23 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "500",
+  },
+  backButton: {
+    alignSelf: "flex-start",
+    borderWidth: 1.5,
+    borderColor: "#2e63e3",
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    backgroundColor: "#ffffff",
+    marginBottom: 0,
+    marginLeft: 16,
+    marginTop: 12,
+    marginRight: 16,
+  },
+  backButtonText: {
+    color: "#2e63e3",
+    fontSize: 13,
+    fontWeight: "600",
   },
 });
