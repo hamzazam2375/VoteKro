@@ -1,20 +1,22 @@
-const requiredPublicVars = ['EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY'] as const;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-type RequiredPublicVar = (typeof requiredPublicVars)[number];
+if (!supabaseUrl || supabaseUrl.trim().length === 0) {
+  throw new Error(
+    "Missing required environment variable: EXPO_PUBLIC_SUPABASE_URL",
+  );
+}
 
-const readPublicVar = (key: RequiredPublicVar): string => {
-  const value = process.env[key];
-  if (!value || value.trim().length === 0) {
-    throw new Error(`Missing required environment variable: ${key}`);
-  }
-
-  return value;
-};
+if (!supabaseAnonKey || supabaseAnonKey.trim().length === 0) {
+  throw new Error(
+    "Missing required environment variable: EXPO_PUBLIC_SUPABASE_ANON_KEY",
+  );
+}
 
 export const env = {
-  supabaseUrl: readPublicVar('EXPO_PUBLIC_SUPABASE_URL'),
-  supabaseAnonKey: readPublicVar('EXPO_PUBLIC_SUPABASE_ANON_KEY'),
-  castVoteEdgeFunctionUrl: process.env.EXPO_PUBLIC_CAST_VOTE_EDGE_URL ?? '',
-  rocksDbLedgerUrl: process.env.EXPO_PUBLIC_ROCKSDB_LEDGER_URL ?? '',
-  voteEncryptionKey: process.env.EXPO_PUBLIC_VOTE_ENCRYPTION_KEY ?? process.env.ROCKSDB_LEDGER_SECRET ?? '',
+  supabaseUrl,
+  supabaseAnonKey,
+  castVoteEdgeFunctionUrl: process.env.EXPO_PUBLIC_CAST_VOTE_EDGE_URL ?? "",
+  rocksDbLedgerUrl: process.env.EXPO_PUBLIC_ROCKSDB_LEDGER_URL ?? "",
+  voteEncryptionKey: process.env.EXPO_PUBLIC_VOTE_ENCRYPTION_KEY ?? "",
 };
