@@ -8,6 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "build:web": "npx expo export -p web",
     "rocksdb:install": "npm install --prefix rocksdb-ledger",
     "rocksdb:start": "npm start --prefix rocksdb-ledger"
   },
