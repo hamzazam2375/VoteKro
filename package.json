@@ -12,6 +12,7 @@
     "rocksdb:start": "npm start --prefix rocksdb-ledger"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.1.1",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-community/datetimepicker": "^9.1.0",
     "@react-navigation/bottom-tabs": "^7.4.0",

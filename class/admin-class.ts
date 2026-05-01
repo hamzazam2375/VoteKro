@@ -1,22 +1,22 @@
 import { AuthService } from "@/class/auth-class";
 import { BaseService } from "@/class/base-service";
 import type {
-  CandidateRow,
-  ElectionRow,
-  ProfileRow,
-  VoterRegistryRow,
+    CandidateRow,
+    ElectionRow,
+    ProfileRow,
+    VoterRegistryRow,
 } from "@/class/database-types";
 import { EmailService } from "@/class/email-service";
 import { ValidationError } from "@/class/errors";
 import type {
-  AddCandidateInput,
-  CreateElectionInput,
-  ICandidateRepository,
-  IElectionRepository,
-  IProfileRepository,
-  IVoterRegistryRepository,
-  UpdateCandidateInput,
-  UpdateElectionInput,
+    AddCandidateInput,
+    CreateElectionInput,
+    ICandidateRepository,
+    IElectionRepository,
+    IProfileRepository,
+    IVoterRegistryRepository,
+    UpdateCandidateInput,
+    UpdateElectionInput,
 } from "@/class/service-contracts";
 
 type RegisterUserInput = {
@@ -118,6 +118,24 @@ export class AdminService extends BaseService {
     this.requireValidEmail(email);
 
     await this.emailService.initiateVoterRegistrationAuthorization(
+      fullName,
+      email,
+    );
+  }
+
+  async initiateAuditorRegistrationAuthorization(
+    input: RegisterUserInput,
+  ): Promise<void> {
+    const fullName = input.fullName.trim();
+    const email = input.email.trim();
+
+    await this.authService.getRequiredProfile("admin");
+
+    this.requireNonEmpty(fullName, "Full name");
+    this.requireNonEmpty(email, "Email");
+    this.requireValidEmail(email);
+
+    await this.emailService.initiateAuditorRegistrationAuthorization(
       fullName,
       email,
     );

@@ -1,7 +1,6 @@
 import type { ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -20,8 +19,6 @@ export default function AuditorSignupScreen() {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -77,37 +74,25 @@ export default function AuditorSignupScreen() {
       Alert.alert("Error", "Please enter auditor gmail");
       return;
     }
-    if (!password.trim()) {
-      Alert.alert("Error", "Please enter password");
-      return;
-    }
-    if (!confirmPassword.trim()) {
-      Alert.alert("Error", "Please confirm password");
-      return;
-    }
-    if (password.length < 8) {
-      Alert.alert("Error", "Password must be at least 8 characters");
-      return;
-    }
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
-      return;
-    }
-
     setIsLoading(true);
     try {
-      await serviceFactory.adminService.registerAuditor({
-        fullName,
-        email,
-        password,
-      });
-
-      Alert.alert("Success! ✓", "Auditor registered and added successfully.", [
+      await serviceFactory.adminService.initiateAuditorRegistrationAuthorization(
         {
-          text: "OK",
-          onPress: () => router.replace("/AdminDashboard"),
+          fullName,
+          email,
         },
-      ]);
+      );
+
+      Alert.alert(
+        "Email Sent",
+        "Authorization email sent. Ask auditor to click the button in email to complete registration.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace("/AdminDashboard"),
+          },
+        ],
+      );
     } catch (error) {
       const alertContent =
         serviceFactory.authService.getRegistrationErrorAlert(error);
@@ -141,7 +126,8 @@ export default function AuditorSignupScreen() {
 
             {/* Description */}
             <Text style={styles.description}>
-              Create auditor using Gmail with custom password.
+              Send auditor authorization email. Auditor must click the email
+              button to complete registration.
             </Text>
 
             {/* Full Name Input */}
@@ -172,67 +158,7 @@ export default function AuditorSignupScreen() {
               />
             </View>
 
-            {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.passwordInputWrap}>
-                <TextInput
-                  style={styles.passwordInput}
-                  placeholder="Enter password"
-                  placeholderTextColor="#999"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  editable={!isLoading}
-                />
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.toggleButton,
-                    pressed && styles.toggleButtonPressed,
-                  ]}
-                  onPress={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
-                >
-                  <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={20}
-                    color="#666"
-                  />
-                </Pressable>
-              </View>
-            </View>
-
-            {/* Confirm Password Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Confirm Password</Text>
-              <View style={styles.passwordInputWrap}>
-                <TextInput
-                  style={styles.passwordInput}
-                  placeholder="Confirm password"
-                  placeholderTextColor="#999"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirmPassword}
-                  editable={!isLoading}
-                />
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.toggleButton,
-                    pressed && styles.toggleButtonPressed,
-                  ]}
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  disabled={isLoading}
-                >
-                  <Ionicons
-                    name={
-                      showConfirmPassword ? "eye-off-outline" : "eye-outline"
-                    }
-                    size={20}
-                    color="#666"
-                  />
-                </Pressable>
-              </View>
-            </View>
+            {/* No password input — authorization will be sent by email */}
 
             {/* Register Button */}
             <Pressable
@@ -247,7 +173,9 @@ export default function AuditorSignupScreen() {
               {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.registerButtonText}>Register Auditor</Text>
+                <Text style={styles.registerButtonText}>
+                  ✉ Send Authorization Email
+                </Text>
               )}
             </Pressable>
 

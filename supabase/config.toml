@@ -1,0 +1,5 @@
+[functions.complete-voter-registration]
+verify_jwt = false
+
+[functions.complete-auditor-registration]
+verify_jwt = false

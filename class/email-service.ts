@@ -103,6 +103,27 @@ If you did not request this account or have any questions, please contact suppor
     }
   }
 
+  async initiateAuditorRegistrationAuthorization(
+    fullName: string,
+    email: string,
+  ): Promise<void> {
+    const { error } = await supabase.functions.invoke(
+      "start-auditor-registration",
+      {
+        body: {
+          fullName,
+          email,
+        },
+      },
+    );
+
+    if (error) {
+      throw new Error(
+        `Failed to initiate auditor registration authorization: ${error.message}`,
+      );
+    }
+  }
+
   async sendAuditorCredentials(
     email: string,
     fullName: string,
