@@ -1,14 +1,15 @@
-import type { ProfileRow, CandidateRow } from '@/class/database-types';
-import { serviceFactory } from '@/class/service-factory';
-import { Navbar } from '@/components/navbar';
-import { VoteCountVerificationComponent } from '@/components/vote-count-verification';
-import { BlockchainIntegrityViewer } from '@/components/blockchain-integrity-viewer';
-import type { VoteCountVerificationResult, VoteCounts } from '@/class/vote-count-verification';
 import type { FullBlockchainVerification } from '@/class/blockchain-verification';
+import type { CandidateRow, ProfileRow } from '@/class/database-types';
+import { serviceFactory } from '@/class/service-factory';
+import type { VoteCounts, VoteCountVerificationResult } from '@/class/vote-count-verification';
+import { BlockchainIntegrityViewer } from '@/components/blockchain-integrity-viewer';
+import { Navbar } from '@/components/navbar';
+import { TamperDetectionReport } from '@/components/tamper-detection-report';
+import { VoteCountVerificationComponent } from '@/components/vote-count-verification';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 export default function AuditorVerifyVotes() {
     const router = useRouter();
@@ -19,11 +20,13 @@ export default function AuditorVerifyVotes() {
     const [isLoading, setIsLoading] = useState(true);
     const [verificationResult, setVerificationResult] = useState<VoteCountVerificationResult | null>(null);
     const [blockchainVerification, setBlockchainVerification] = useState<FullBlockchainVerification | null>(null);
+    const [tamperReport, setTamperReport] = useState<string | null>(null);
     const [isVerifying, setIsVerifying] = useState(false);
     const [isBlockchainVerifying, setIsBlockchainVerifying] = useState(false);
+    const [isTamperDetecting, setIsTamperDetecting] = useState(false);
     const [selectedElectionId, setSelectedElectionId] = useState<string | null>(null);
     const [electionName, setElectionName] = useState<string>('');
-    const [activeTab, setActiveTab] = useState<'votes' | 'blockchain'>('votes');
+    const [activeTab, setActiveTab] = useState<'tamper' | 'votes' | 'blockchain'>('tamper');
 
     useEffect(() => {
         const loadData = async () => {
@@ -42,8 +45,9 @@ export default function AuditorVerifyVotes() {
                     setSelectedElectionId(firstElection.id);
                     setElectionName(firstElection.title || 'Election');
                     
-                    // Auto-run both verifications on load
+                    // Auto-run all verifications on load
                     console.log('Starting verification for election:', firstElection.id);
+                    await runTamperDetection(firstElection.id);
                     await runVerification(firstElection.id);
                     await runBlockchainVerification(firstElection.id);
                 } else {
@@ -62,6 +66,52 @@ export default function AuditorVerifyVotes() {
 
         void loadData();
     }, [router]);
+
+    /**
+     * Run comprehensive tamper detection
+     */
+    const runTamperDetection = async (electionId: string) => {
+        if (!electionId) {
+            console.warn('No election ID provided for tamper detection');
+            return;
+        }
+
+        try {
+            setIsTamperDetecting(true);
+            console.log('Running comprehensive tamper detection for election:', electionId);
+
+            // Expected vote count (sample - could be from election config)
+            const expectedVoteCount = 600;
+
+            const report = await serviceFactory.auditorService.generateComprehensiveTamperReport(
+                electionId,
+                expectedVoteCount
+            );
+
+            console.log('Tamper Detection Report:\n', report);
+            setTamperReport(report);
+
+            // Alert based on risk level
+            if (report.includes('HIGH RISK')) {
+                Alert.alert(
+                    '🚨 High Risk Detected',
+                    'Tampering indicators detected! Do not certify results without investigation.',
+                    [{ text: 'OK', style: 'default' }]
+                );
+            } else if (report.includes('MEDIUM RISK')) {
+                Alert.alert(
+                    '⚠️ Medium Risk',
+                    'Some irregularities detected. Review findings before certifying.',
+                    [{ text: 'OK', style: 'default' }]
+                );
+            }
+        } catch (error) {
+            console.error('Tamper detection error:', error);
+            Alert.alert('Verification Error', 'Failed to perform tamper detection. Please try again.');
+        } finally {
+            setIsTamperDetecting(false);
+        }
+    };
 
     /**
      * Run vote count verification
@@ -246,6 +296,12 @@ export default function AuditorVerifyVotes() {
         }
     };
 
+    const handleTamperRecalculate = async () => {
+        if (selectedElectionId) {
+            await runTamperDetection(selectedElectionId);
+        }
+    };
+
     const handleGoBack = () => {
         router.back();
     };
@@ -284,6 +340,21 @@ export default function AuditorVerifyVotes() {
                     {/* Tab Navigation */}
                     <View style={styles.tabContainer}>
                         <Pressable
+                            onPress={() => setActiveTab('tamper')}
+                            style={[
+                                styles.tab,
+                                activeTab === 'tamper' && styles.activeTab,
+                            ]}
+                        >
+                            <Text style={[
+                                styles.tabText,
+                                activeTab === 'tamper' && styles.activeTabText,
+                            ]}>
+                                🚨 Tamper Detection
+                            </Text>
+                        </Pressable>
+
+                        <Pressable
                             onPress={() => setActiveTab('votes')}
                             style={[
                                 styles.tab,
@@ -294,7 +365,7 @@ export default function AuditorVerifyVotes() {
                                 styles.tabText,
                                 activeTab === 'votes' && styles.activeTabText,
                             ]}>
-                                📊 Vote Count Verification
+                                📊 Vote Count
                             </Text>
                         </Pressable>
 
@@ -309,10 +380,21 @@ export default function AuditorVerifyVotes() {
                                 styles.tabText,
                                 activeTab === 'blockchain' && styles.activeTabText,
                             ]}>
-                                🔗 Blockchain Integrity
+                                🔗 Blockchain
                             </Text>
                         </Pressable>
                     </View>
+
+                    {/* Tamper Detection Tab */}
+                    {activeTab === 'tamper' && (
+                        <View style={styles.tabContent}>
+                            <TamperDetectionReport
+                                report={tamperReport}
+                                isLoading={isTamperDetecting}
+                                onRefresh={handleTamperRecalculate}
+                            />
+                        </View>
+                    )}
 
                     {/* Vote Count Verification Tab */}
                     {activeTab === 'votes' && (
@@ -572,6 +654,9 @@ const styles = StyleSheet.create({
     },
     activeTabText: {
         color: 'white',
+    },
+    tabContent: {
+        marginTop: 16,
     },
     statusCard: {
         flexDirection: 'row',
