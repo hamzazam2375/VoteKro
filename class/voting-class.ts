@@ -1,6 +1,6 @@
 import { BaseService } from '@/class/base-service';
 import type { CandidateRow, ElectionRow, VerifyChainResultRow, VoteBlockRow, VoterRegistryRow } from '@/class/database-types';
-import { AuthenticationError } from '@/class/errors';
+import { AuthenticationError, ValidationError } from '@/class/errors';
 import type {
     CastVoteInput,
     IAuthRepository,
@@ -55,6 +55,58 @@ export class VotingService extends BaseService {
     return this.voterRegistryRepository.getByElectionAndVoter(electionId, userId);
   }
 
+  async verifyVoterEligibility(electionId: string, now = new Date()): Promise<VoterRegistryRow> {
+    this.requireNonEmpty(electionId, 'Election id');
+
+    // Get current authenticated user
+    const userId = await this.authRepository.getCurrentUserId();
+    if (!userId) {
+      throw new AuthenticationError('User is not authenticated');
+    }
+
+    // Get the election
+    const election = await this.electionRepository.findById(electionId);
+    if (!election) {
+      throw new ValidationError('Election not found');
+    }
+
+    // Verify election is active
+    if (election.status !== 'open') {
+      throw new ValidationError('Election is not active. Current status: ' + election.status);
+    }
+
+    const startsAt = new Date(election.starts_at).getTime();
+    const endsAt = new Date(election.ends_at).getTime();
+    const currentTime = now.getTime();
+
+    if (currentTime < startsAt) {
+      throw new ValidationError('Election has not started yet');
+    }
+
+    if (currentTime > endsAt) {
+      throw new ValidationError('Election has ended');
+    }
+
+    // Get voter's registration status for this election
+    const voterRegistry = await this.voterRegistryRepository.getByElectionAndVoter(electionId, userId);
+
+    if (!voterRegistry) {
+      throw new ValidationError('Voter is not registered for this election');
+    }
+
+    // Verify voter is eligible (approved)
+    if (!voterRegistry.is_eligible) {
+      throw new ValidationError('Voter is not approved for this election');
+    }
+
+    // Verify voter has not already voted
+    if (voterRegistry.has_voted) {
+      throw new ValidationError('Voter has already voted in this election');
+    }
+
+    return voterRegistry;
+  }
+
   async castVote(input: CastVoteInput): Promise<VoteBlockRow> {
     this.requireNonEmpty(input.electionId, 'Election id');
     this.requireNonEmpty(input.candidateId, 'Candidate id');
@@ -63,6 +115,9 @@ export class VotingService extends BaseService {
     if (!userId) {
       throw new AuthenticationError('User is not authenticated');
     }
+
+    // Verify voter eligibility before casting vote
+    await this.verifyVoterEligibility(input.electionId);
 
     return this.voteLedgerRepository.castVoteSecure(input.electionId, input.candidateId, input.nonce, userId);
   }
