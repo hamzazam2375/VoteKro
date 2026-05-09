@@ -8,14 +8,12 @@ import { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
-    Modal,
-    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
     Text,
     useWindowDimensions,
-    View,
+    View
 } from "react-native";
 
 export default function AdminDashboard() {
@@ -609,10 +607,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 28,
     width: 320,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
+    boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.18)",
     elevation: 8,
   },
   modalTitle: {
@@ -706,10 +701,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1.5,
     borderColor: "#90caf9",
-    shadowColor: "#1a73e8",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
+    boxShadow: "0px 3px 8px rgba(26, 115, 232, 0.12)",
     elevation: 4,
   },
   statLabel: {
@@ -753,10 +745,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1.5,
     borderColor: "#e0e0e0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    boxShadow: "0px 3px 8px rgba(0, 0, 0, 0.08)",
     elevation: 3,
   },
   actionCardPressed: {

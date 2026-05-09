@@ -1,7 +1,7 @@
 import type { AuditLogRow, ProfileRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
-import { Navbar } from '@/components/navbar';
 import { AuditLogsViewer } from '@/components/audit-logs-viewer';
+import { Navbar } from '@/components/navbar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -219,10 +219,7 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         padding: 28,
         width: 320,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.18,
-        shadowRadius: 12,
+        boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.18)',
         elevation: 8,
     },
     modalTitle: {
@@ -315,10 +312,7 @@ const styles = StyleSheet.create({
         borderRadius: 18,
         borderWidth: 1.5,
         borderColor: '#90caf9',
-        shadowColor: '#1a73e8',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.12,
-        shadowRadius: 8,
+        boxShadow: '0px 3px 8px rgba(26, 115, 232, 0.12)',
         elevation: 4,
     },
     statLabel: {
@@ -366,10 +360,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         borderWidth: 1,
         borderColor: '#e0e0e0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
         elevation: 3,
     },
     verificationTitle: {
@@ -404,10 +395,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         borderWidth: 1,
         borderColor: '#e0e0e0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
         elevation: 3,
     },
     electionName: {
@@ -464,10 +452,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         borderWidth: 1,
         borderColor: '#e0e0e0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
         elevation: 3,
         overflow: 'hidden',
     },
@@ -509,10 +494,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         borderWidth: 1,
         borderColor: '#e0e0e0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
         elevation: 3,
         overflow: 'hidden',
         maxHeight: 600,
@@ -522,10 +504,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         borderWidth: 1,
         borderColor: '#e0e0e0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
         elevation: 3,
         overflow: 'hidden',
     },

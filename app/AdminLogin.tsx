@@ -147,13 +147,7 @@ const styles = StyleSheet.create({
         maxWidth: 460,
         borderWidth: 1,
         borderColor: '#d8e2f0',
-        shadowColor: '#1b2b4a',
-        shadowOffset: {
-            width: 0,
-            height: 6,
-        },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
+        boxShadow: '0px 6px 12px rgba(27, 43, 74, 0.08)',
         elevation: 4,
     },
     titleContainer: {
@@ -193,10 +187,7 @@ const styles = StyleSheet.create({
     },
     roleButtonActive: {
         backgroundColor: '#2f64e6',
-        shadowColor: '#2f64e6',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 10,
+        boxShadow: '0px 4px 10px rgba(47, 100, 230, 0.2)',
         elevation: 3,
     },
     roleButtonPressed: {
@@ -235,10 +226,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         alignItems: 'center',
         marginTop: 10,
-        shadowColor: '#2f64e6',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.16,
-        shadowRadius: 8,
+        boxShadow: '0px 4px 8px rgba(47, 100, 230, 0.16)',
         elevation: 3,
     },
     loginButtonPressed: {

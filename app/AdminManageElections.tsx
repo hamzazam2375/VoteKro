@@ -601,10 +601,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1.5,
     borderColor: "#2e63e3",
-    shadowColor: "#2e63e3",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
+    boxShadow: "0px 4px 10px rgba(46, 99, 227, 0.08)",
     elevation: 4,
   },
   electionHeader: {
@@ -692,10 +689,7 @@ const styles = StyleSheet.create({
     padding: 20,
     width: "92%",
     maxWidth: 430,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
+    boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.12)",
     elevation: 8,
   },
   modalHeader: {

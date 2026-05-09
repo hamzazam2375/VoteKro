@@ -2,19 +2,19 @@ import type { ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
 import DateTimePicker, {
-  type DateTimePickerEvent,
+    type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
 export default function AdminCreateElectionScreen() {
@@ -333,10 +333,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 28,
     paddingVertical: 24,
-    shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    boxShadow: "0px 5px 12px rgba(15, 23, 42, 0.08)",
     elevation: 4,
   },
   formTitle: {

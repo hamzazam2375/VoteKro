@@ -230,10 +230,7 @@ const styles = StyleSheet.create({
     borderColor: "#e3e7ec",
     paddingHorizontal: 20,
     paddingVertical: 22,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.09,
-    shadowRadius: 10,
+    boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.09)",
     elevation: 3,
   },
   titleContainer: {
@@ -279,10 +276,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0f9962",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#059669",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
+    boxShadow: "0px 3px 6px rgba(5, 150, 105, 0.2)",
     elevation: 2,
   },
   registerButtonPressed: {

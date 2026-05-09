@@ -1,21 +1,20 @@
+import type { ElectionRow } from "@/class/database-types";
+import { serviceFactory } from "@/class/service-factory";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  Alert,
-  FlatList,
-  TextInput,
-  ActivityIndicator,
-  RefreshControl,
-  Pressable,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Modal,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { serviceFactory } from "@/class/service-factory";
-import type { ElectionRow } from "@/class/database-types";
 
 interface VoteBlock {
   id: string;
@@ -798,10 +797,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    boxShadow: "0px 2px 3px rgba(0, 0, 0, 0.1)",
     elevation: 3,
   },
   cardLabel: {
@@ -1012,10 +1008,7 @@ const styles = StyleSheet.create({
   chainCardInvalid: {
     borderColor: "#ff4d4f",
     backgroundColor: "#fff1f0",
-    shadowColor: "#ff4d4f",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    boxShadow: "0px 0px 8px rgba(255, 77, 79, 0.3)",
     elevation: 5,
   },
   chainCardTitle: {

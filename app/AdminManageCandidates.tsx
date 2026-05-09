@@ -1,23 +1,23 @@
 import type {
-    CandidateRow,
-    ElectionRow,
-    ProfileRow,
+  CandidateRow,
+  ElectionRow,
+  ProfileRow,
 } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-    useWindowDimensions,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
 } from "react-native";
 
 function blurActiveElementOnWeb() {
@@ -812,10 +812,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#2e63e3",
     padding: 20,
-    shadowColor: "#2e63e3",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
+    boxShadow: "0px 4px 10px rgba(46, 99, 227, 0.08)",
     elevation: 4,
   },
   electionCardHeader: {
