@@ -2,12 +2,12 @@ import { BaseService } from '@/class/base-service';
 import type { CandidateRow, ElectionRow, VerifyChainResultRow, VoteBlockRow, VoterRegistryRow } from '@/class/database-types';
 import { AuthenticationError, ValidationError } from '@/class/errors';
 import type {
-    CastVoteInput,
-    IAuthRepository,
-    ICandidateRepository,
-    IElectionRepository,
-    IVoteLedgerRepository,
-    IVoterRegistryRepository,
+  CastVoteInput,
+  IAuthRepository,
+  ICandidateRepository,
+  IElectionRepository,
+  IVoteLedgerRepository,
+  IVoterRegistryRepository,
 } from '@/class/service-contracts';
 
 export class VotingService extends BaseService {
@@ -119,7 +119,12 @@ export class VotingService extends BaseService {
     // Verify voter eligibility before casting vote
     await this.verifyVoterEligibility(input.electionId);
 
-    return this.voteLedgerRepository.castVoteSecure(input.electionId, input.candidateId, input.nonce, userId);
+    // Mark voter as having voted (for duplicate prevention)
+    await this.voterRegistryRepository.markAsVoted(input.electionId, userId);
+
+    // Cast vote ANONYMOUSLY - vote is stored without voter identity
+    // voterId is intentionally not passed to maintain anonymity
+    return this.voteLedgerRepository.castVoteSecure(input.electionId, input.candidateId, input.nonce);
   }
 
   async verifyElectionChain(electionId: string): Promise<VerifyChainResultRow> {

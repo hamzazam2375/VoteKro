@@ -84,6 +84,7 @@ export interface ICandidateRepository {
 export interface IVoterRegistryRepository {
   registerEligible(electionId: string, voterId: string): Promise<VoterRegistryRow>;
   getByElectionAndVoter(electionId: string, voterId: string): Promise<VoterRegistryRow | null>;
+  markAsVoted(electionId: string, voterId: string): Promise<VoterRegistryRow>;
 }
 
 export interface IVoteLedgerRepository {

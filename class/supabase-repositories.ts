@@ -345,6 +345,25 @@ export class SupabaseVoterRegistryRepository extends RepositoryBase implements I
 
     return (data as VoterRegistryRow | null) ?? null;
   }
+
+  async markAsVoted(electionId: string, voterId: string): Promise<VoterRegistryRow> {
+    const { data, error } = await supabase
+      .from('voter_registry')
+      .update({
+        has_voted: true,
+        voted_at: new Date().toISOString(),
+      })
+      .eq('election_id', electionId)
+      .eq('voter_id', voterId)
+      .select('*')
+      .single();
+
+    if (error) {
+      this.throwOnError('Failed to mark voter as voted', error);
+    }
+
+    return data as VoterRegistryRow;
+  }
 }
 
 export class SupabaseVoteLedgerRepository extends RepositoryBase implements IVoteLedgerRepository {
