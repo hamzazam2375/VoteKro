@@ -55,6 +55,15 @@ export interface VoteBlockRow {
   created_at: string;
 }
 
+export interface VoteVerificationReceipt {
+  verificationToken: string;
+  electionId: string;
+  blockIndex: number;
+  voteCommitment: string;
+  createdAt: string;
+  message: string;
+}
+
 export interface AuditLogRow {
   id: string;
   actor_id: string | null;

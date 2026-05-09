@@ -1,7 +1,8 @@
 import { BaseService } from '@/class/base-service';
-import type { CandidateRow, ElectionRow, VerifyChainResultRow, VoteBlockRow, VoterRegistryRow } from '@/class/database-types';
+import type { CandidateRow, ElectionRow, VerifyChainResultRow, VoteBlockRow, VoterRegistryRow, VoteVerificationReceipt } from '@/class/database-types';
 import { EmailService } from '@/class/email-service';
 import { AuthenticationError, ValidationError } from '@/class/errors';
+import { sha256 } from '@/class/crypto';
 import type {
   CastVoteInput,
   IAuthRepository,
@@ -112,6 +113,15 @@ export class VotingService extends BaseService {
     return voterRegistry;
   }
 
+  private async generateVerificationToken(
+    electionId: string,
+    voteCommitment: string,
+    nonce: string
+  ): Promise<string> {
+    // Generate unique verification token: SHA256(electionId|voteCommitment|nonce)
+    return sha256(`${electionId}|${voteCommitment}|${nonce}`);
+  }
+
   async castVote(input: CastVoteInput): Promise<VoteBlockRow> {
     this.requireNonEmpty(input.electionId, 'Election id');
     this.requireNonEmpty(input.candidateId, 'Candidate id');
@@ -131,9 +141,21 @@ export class VotingService extends BaseService {
     // voterId is intentionally not passed to maintain anonymity
     const voteBlock = await this.voteLedgerRepository.castVoteSecure(input.electionId, input.candidateId, input.nonce);
 
-    // Send vote confirmation email
+    // Generate unique verification token for vote verification
+    const verificationToken = await this.generateVerificationToken(
+      input.electionId,
+      voteBlock.vote_commitment,
+      voteBlock.nonce
+    );
+
+    // Send confirmation email with verification token
     try {
-      await this.sendVoteConfirmationEmail(userId, input.electionId, input.candidateId);
+      await this.sendVoteConfirmationEmail(
+        userId,
+        input.electionId,
+        input.candidateId,
+        verificationToken
+      );
     } catch (error) {
       // Log error but don't fail the vote casting if email fails
       console.error('Failed to send vote confirmation email:', error);
@@ -147,10 +169,63 @@ export class VotingService extends BaseService {
     return this.voteLedgerRepository.verifyChain(electionId);
   }
 
+  async verifyVoteInBlockchain(
+    electionId: string,
+    verificationToken: string
+  ): Promise<VoteVerificationReceipt> {
+    this.requireNonEmpty(electionId, 'Election id');
+    this.requireNonEmpty(verificationToken, 'Verification token');
+
+    // Get all votes for this election
+    const votes = await this.voteLedgerRepository.listLedger(electionId);
+
+    // Find the vote that matches this verification token
+    // Token format: SHA256(electionId|voteCommitment|nonce)
+    let matchedVote: VoteBlockRow | null = null;
+
+    for (const vote of votes) {
+      const generatedToken = await this.generateVerificationToken(
+        electionId,
+        vote.vote_commitment,
+        vote.nonce
+      );
+
+      if (generatedToken === verificationToken) {
+        matchedVote = vote;
+        break;
+      }
+    }
+
+    if (!matchedVote) {
+      throw new ValidationError(
+        'Vote not found in blockchain. Please verify your verification token is correct.'
+      );
+    }
+
+    // Verify the entire election chain is valid
+    const chainVerification = await this.voteLedgerRepository.verifyChain(electionId);
+    if (!chainVerification.is_valid) {
+      throw new ValidationError(
+        `Blockchain integrity check failed at block ${chainVerification.invalid_block_index}. Reason: ${chainVerification.reason}`
+      );
+    }
+
+    // Return verification receipt (without voter identity)
+    return {
+      verificationToken,
+      electionId,
+      blockIndex: matchedVote.block_index,
+      voteCommitment: matchedVote.vote_commitment,
+      createdAt: matchedVote.created_at,
+      message: `✓ Your vote has been verified in the blockchain at block #${matchedVote.block_index}. The election blockchain is valid and uncompromised.`,
+    };
+  }
+
   private async sendVoteConfirmationEmail(
     userId: string,
     electionId: string,
-    candidateId: string
+    candidateId: string,
+    verificationToken: string
   ): Promise<void> {
     // Get voter profile for email
     const profile = await this.profileRepository.getByUserId(userId);
@@ -186,7 +261,8 @@ export class VotingService extends BaseService {
         profile.full_name,
         election.title,
         candidate.display_name,
-        candidate.party_name || 'Independent'
+        candidate.party_name || 'Independent',
+        verificationToken
       ),
     });
   }
@@ -195,7 +271,8 @@ export class VotingService extends BaseService {
     voterName: string,
     electionTitle: string,
     candidateName: string,
-    partyName: string
+    partyName: string,
+    verificationToken: string
   ): string {
     return `
       <html>
@@ -213,11 +290,28 @@ export class VotingService extends BaseService {
               <p><strong>Timestamp:</strong> ${new Date().toLocaleString()}</p>
             </div>
 
+            <div style="background-color: #e8f4f8; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #2c5aa0;">
+              <h3 style="color: #2c5aa0; margin-top: 0;">🔐 Verify Your Vote in Blockchain</h3>
+              <p>You can verify that your vote is securely stored on the blockchain without revealing your identity:</p>
+              
+              <div style="background-color: white; padding: 15px; border-radius: 3px; margin: 10px 0; word-break: break-all;">
+                <p style="margin: 0; font-size: 12px; color: #666;">Verification Token:</p>
+                <p style="margin: 5px 0; font-family: monospace; font-size: 11px; color: #000; font-weight: bold;">
+                  ${verificationToken}
+                </p>
+              </div>
+              
+              <p style="font-size: 13px; color: #555;">
+                Save this token to verify your vote later using the blockchain verification tool in the VoteKro app.
+              </p>
+            </div>
+
             <p><strong>Important Notes:</strong></p>
             <ul style="line-height: 1.8;">
               <li>Your vote is <strong>completely anonymous</strong> - your identity is not linked to your vote on the ledger</li>
               <li>Your vote is <strong>encrypted</strong> and secured on the blockchain</li>
               <li>You can only vote once per election - this prevents duplicate voting</li>
+              <li>Use your verification token to prove your vote exists without revealing how you voted</li>
               <li>The integrity of all votes can be verified using our blockchain verification system</li>
             </ul>
 
