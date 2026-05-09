@@ -5,6 +5,7 @@ import {
   type FullBlockchainVerification,
 } from '@/class/blockchain-verification';
 import type { AuditLogRow, CandidateRow, VerifyChainResultRow, VoteBlockRow } from '@/class/database-types';
+import { ValidationError } from '@/class/errors';
 import type { IAuditLogRepository, ICandidateRepository, IVoteLedgerRepository } from '@/class/service-contracts';
 import {
   countVotesFromBlockchain,
@@ -163,7 +164,10 @@ export class AuditorService extends BaseService {
     resultCounts: VoteCounts
   ): Promise<VoteCountVerificationResult> {
     this.requireNonEmpty(electionId, 'Election id');
-    this.requireNonEmpty(resultCounts, 'Result counts');
+    // `requireNonEmpty` expects a string; validate object separately
+    if (!resultCounts || Object.keys(resultCounts).length === 0) {
+      throw new ValidationError('Result counts are required');
+    }
 
     const blocks = await this.getLedger(electionId);
     const candidates = await this.getElectionCandidates(electionId);
