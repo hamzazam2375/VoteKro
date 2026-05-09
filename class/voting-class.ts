@@ -1,8 +1,8 @@
 import { BaseService } from '@/class/base-service';
+import { sha256 } from '@/class/crypto';
 import type { CandidateRow, ElectionRow, VerifyChainResultRow, VoteBlockRow, VoterRegistryRow, VoteVerificationReceipt } from '@/class/database-types';
 import { EmailService } from '@/class/email-service';
 import { AuthenticationError, ValidationError } from '@/class/errors';
-import { sha256 } from '@/class/crypto';
 import type {
   CastVoteInput,
   IAuthRepository,
@@ -39,6 +39,77 @@ export class VotingService extends BaseService {
       const current = now.getTime();
       return current >= startsAt && current <= endsAt;
     });
+  }
+
+  async getRemainingVotingTime(
+    electionId: string,
+    now = new Date()
+  ): Promise<{ remainingMs: number; remainingTime: string; votingActive: boolean }> {
+    this.requireNonEmpty(electionId, 'Election id');
+
+    const election = await this.electionRepository.findById(electionId);
+    if (!election) {
+      throw new ValidationError('Election not found');
+    }
+
+    const startsAt = new Date(election.starts_at).getTime();
+    const endsAt = new Date(election.ends_at).getTime();
+    const currentTime = now.getTime();
+
+    // Voting has not started
+    if (currentTime < startsAt) {
+      const timeUntilStart = startsAt - currentTime;
+      const days = Math.floor(timeUntilStart / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((timeUntilStart % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
+
+      return {
+        remainingMs: 0,
+        remainingTime: `Starts in ${days}d ${hours}h ${minutes}m`,
+        votingActive: false,
+      };
+    }
+
+    // Voting is active
+    if (currentTime <= endsAt) {
+      const remainingMs = endsAt - currentTime;
+      const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
+
+      return {
+        remainingMs,
+        remainingTime: `${days}d ${hours}h ${minutes}m ${seconds}s remaining`,
+        votingActive: true,
+      };
+    }
+
+    // Voting has ended
+    return {
+      remainingMs: 0,
+      remainingTime: 'Voting has ended',
+      votingActive: false,
+    };
+  }
+
+  async isVotingWindowOpen(electionId: string, now = new Date()): Promise<boolean> {
+    this.requireNonEmpty(electionId, 'Election id');
+
+    try {
+      const election = await this.electionRepository.findById(electionId);
+      if (!election || election.status !== 'open') {
+        return false;
+      }
+
+      const startsAt = new Date(election.starts_at).getTime();
+      const endsAt = new Date(election.ends_at).getTime();
+      const currentTime = now.getTime();
+
+      return currentTime >= startsAt && currentTime <= endsAt;
+    } catch {
+      return false;
+    }
   }
 
   async listAllElections(): Promise<ElectionRow[]> {
@@ -81,17 +152,8 @@ export class VotingService extends BaseService {
       throw new ValidationError('Election is not active. Current status: ' + election.status);
     }
 
-    const startsAt = new Date(election.starts_at).getTime();
-    const endsAt = new Date(election.ends_at).getTime();
-    const currentTime = now.getTime();
-
-    if (currentTime < startsAt) {
-      throw new ValidationError('Election has not started yet');
-    }
-
-    if (currentTime > endsAt) {
-      throw new ValidationError('Election has ended');
-    }
+    // Validate voting time window (must be within start and end times)
+    await this.validateVotingTimeWindow(election, now);
 
     // Get voter's registration status for this election
     const voterRegistry = await this.voterRegistryRepository.getByElectionAndVoter(electionId, userId);
@@ -111,6 +173,33 @@ export class VotingService extends BaseService {
     }
 
     return voterRegistry;
+  }
+
+  private async validateVotingTimeWindow(election: ElectionRow, now = new Date()): Promise<void> {
+    const startsAt = new Date(election.starts_at).getTime();
+    const endsAt = new Date(election.ends_at).getTime();
+    const currentTime = now.getTime();
+
+    // Check if voting has not started yet
+    if (currentTime < startsAt) {
+      const hoursRemaining = Math.floor((startsAt - currentTime) / (1000 * 60 * 60));
+      const minutesRemaining = Math.floor(((startsAt - currentTime) % (1000 * 60 * 60)) / (1000 * 60));
+
+      throw new ValidationError(
+        `Voting has not started yet. The election will start in ${hoursRemaining} hours and ${minutesRemaining} minutes. Start time: ${new Date(startsAt).toLocaleString()}`
+      );
+    }
+
+    // Check if voting has ended
+    if (currentTime > endsAt) {
+      const timeOverdue = currentTime - endsAt;
+      const hoursOverdue = Math.floor(timeOverdue / (1000 * 60 * 60));
+      const minutesOverdue = Math.floor((timeOverdue % (1000 * 60 * 60)) / (1000 * 60));
+
+      throw new ValidationError(
+        `Voting period has ended. The election ended ${hoursOverdue} hours and ${minutesOverdue} minutes ago. End time was: ${new Date(endsAt).toLocaleString()}`
+      );
+    }
   }
 
   private async generateVerificationToken(

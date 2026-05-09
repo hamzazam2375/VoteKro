@@ -18,6 +18,6 @@ export type {
 
 export type {
     AuditLogRow, CandidateRow, ElectionRow, ElectionStatus,
-    ProfileRow, UserRole, VerifyChainResultRow, VoteBlockRow, VoteVerificationReceipt, VoterRegistryRow
+    ProfileRow, UserRole, VerifyChainResultRow, VoteBlockRow, VoterRegistryRow, VoteVerificationReceipt
 } from '@/class/database-types';
 
