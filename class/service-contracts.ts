@@ -1,11 +1,11 @@
 import type {
-  AuditLogRow,
-  CandidateRow,
-  ElectionRow,
-  ProfileRow,
-  VerifyChainResultRow,
-  VoteBlockRow,
-  VoterRegistryRow,
+    AuditLogRow,
+    CandidateRow,
+    ElectionRow,
+    ProfileRow,
+    VerifyChainResultRow,
+    VoteBlockRow,
+    VoterRegistryRow,
 } from '@/class/database-types';
 
 export interface CreateElectionInput {

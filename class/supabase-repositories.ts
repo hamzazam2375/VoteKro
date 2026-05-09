@@ -1,25 +1,25 @@
 import type {
-  AuditLogRow,
-  CandidateRow,
-  ElectionRow,
-  ProfileRow,
-  VerifyChainResultRow,
-  VoteBlockRow,
-  VoterRegistryRow,
+    AuditLogRow,
+    CandidateRow,
+    ElectionRow,
+    ProfileRow,
+    VerifyChainResultRow,
+    VoteBlockRow,
+    VoterRegistryRow,
 } from '@/class/database-types';
 import { DataAccessError } from '@/class/errors';
 import type {
-  AddCandidateInput,
-  CreateElectionInput,
-  IAuditLogRepository,
-  IAuthRepository,
-  ICandidateRepository,
-  IElectionRepository,
-  IProfileRepository,
-  IVoteLedgerRepository,
-  IVoterRegistryRepository,
-  UpdateCandidateInput,
-  UpdateElectionInput,
+    AddCandidateInput,
+    CreateElectionInput,
+    IAuditLogRepository,
+    IAuthRepository,
+    ICandidateRepository,
+    IElectionRepository,
+    IProfileRepository,
+    IVoteLedgerRepository,
+    IVoterRegistryRepository,
+    UpdateCandidateInput,
+    UpdateElectionInput,
 } from '@/class/service-contracts';
 import { supabase } from '@/class/supabase-client';
 
