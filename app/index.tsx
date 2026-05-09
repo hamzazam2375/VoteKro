@@ -25,29 +25,6 @@ const featureHighlights = [
     },
 ];
 
-const votingSteps = [
-    {
-        number: '01',
-        title: 'Sign In',
-        body: 'Voter logs in with their registered account and opens the voting dashboard.',
-    },
-    {
-        number: '02',
-        title: 'Choose Election',
-        body: 'Select an active election and review candidates with their details.',
-    },
-    {
-        number: '03',
-        title: 'Cast Vote',
-        body: 'Submit encrypted vote commitment securely through the vote ledger service.',
-    },
-    {
-        number: '04',
-        title: 'Verify Trust',
-        body: 'Audit layer validates chain integrity so results remain transparent and tamper-resistant.',
-    },
-];
-
 const electionSetupSteps = [
     {
         number: '01',

@@ -137,7 +137,7 @@ export default function VoterDashboard() {
         setVoteErrorMessage(null);
 
         try {
-            const block = await serviceFactory.votingService.castVote({
+            await serviceFactory.votingService.castVote({
                 electionId: selectedElection.id,
                 candidateId: selectedCandidateId,
             });

@@ -1,19 +1,19 @@
 import type { ElectionRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 
 interface VoteBlock {
@@ -71,7 +71,6 @@ const verifyBlockchain = (blocks: VoteBlock[]): { isValid: boolean; blocks: Vote
 };
 
 const AuditorBlockchainLedger: React.FC = () => {
-  const router = useRouter();
   const searchParams = useLocalSearchParams();
   const [blocks, setBlocks] = useState<VoteBlock[]>([]);
   const [elections, setElections] = useState<ElectionRow[]>([]);
@@ -82,12 +81,10 @@ const AuditorBlockchainLedger: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [electionsLoading, setElectionsLoading] = useState(true);
-  const [chainValid, setChainValid] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [voterNameMap, setVoterNameMap] = useState<Record<string, string>>({});
   const [searchBlockId, setSearchBlockId] = useState<string>("");
   const [viewMode, setViewMode] = useState<"table" | "chain">("chain");
-  const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [showElectionPicker, setShowElectionPicker] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [metrics, setMetrics] = useState<BlockChainMetrics>({
@@ -213,7 +210,6 @@ const AuditorBlockchainLedger: React.FC = () => {
             : "Failed to fetch blockchain ledger";
         setError(errorMsg);
         setBlocks([]);
-        setChainValid(false);
         setMetrics({
           totalBlocks: 0,
           isValid: false,
