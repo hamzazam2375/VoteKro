@@ -12,9 +12,9 @@ export { AuditorService } from "@/class/auditor-class";
 export { AuthService } from "@/class/auth-class";
 export { EmailService } from "@/class/email-service";
 export {
-    FaceDetectionService,
-    faceDetectionService
-} from "@/class/face-detection";
+    FaceRecognitionService,
+    faceRecognitionService
+} from "@/class/face-recognition";
 export { FaceRepository, faceRepository } from "@/class/face-repository";
 export { VotingService } from "@/class/voting-class";
 
@@ -48,10 +48,9 @@ export type {
 } from "@/class/database-types";
 
 export type {
-    DetectedFace,
-    FaceDetectionResult,
-    FaceImage
-} from "@/class/face-detection";
+    FaceEmbeddingResult,
+    FaceComparisonResult
+} from "@/class/face-recognition";
 
-export type { VoterFaceRow } from "@/class/face-repository";
+export type { VoterFaceRow, VoterFaceEmbeddingRow, FaceImage } from "@/class/face-repository";
 

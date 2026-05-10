@@ -261,7 +261,7 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
       return "closed";
     }
 
-    return "open";
+    return "active";
   };
 
   const getElectionStatus = (election: ElectionRow) => {
@@ -270,9 +270,9 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
     const endsAt = new Date(election.ends_at).getTime();
 
     if (now < startsAt) {
-      return { label: "Upcoming", color: "#f59e0b" };
+      return { label: "Draft", color: "#6b7280" };
     } else if (now > endsAt) {
-      return { label: "Ended", color: "#6b7280" };
+      return { label: "Closed", color: "#6b7280" };
     } else {
       return { label: "Active", color: "#10b981" };
     }

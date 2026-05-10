@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router';
-import { ReactNode, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Navbar, type NavbarAction } from './navbar';
+import { Navbar, type DashboardHomeRoute, type NavbarAction } from './navbar';
 
 export type DashboardSidebarItem = {
     key: string;
@@ -12,31 +12,68 @@ export type DashboardSidebarItem = {
     active?: boolean;
 };
 
+type DashboardUserDetails = {
+    email?: string;
+};
+
 type DashboardShellProps = {
     sidebarItems: DashboardSidebarItem[];
     userName: string;
     userRole: string;
+    userDetails?: DashboardUserDetails;
     infoText?: string;
     onLogout: () => void;
     children: ReactNode;
     actions?: NavbarAction[];
     compactNavbar?: boolean;
+    homeRoute?: DashboardHomeRoute;
 };
 
 export function DashboardShell({
     sidebarItems,
     userName,
     userRole,
+    userDetails,
     infoText,
     onLogout,
     children,
     actions,
     compactNavbar = false,
+    homeRoute = '/',
 }: DashboardShellProps) {
     const { width } = useWindowDimensions();
     const isMobile = width < 600;
     const insets = useSafeAreaInsets();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [showUserDetails, setShowUserDetails] = useState(false);
+    const hoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (hoverCloseTimerRef.current) {
+                clearTimeout(hoverCloseTimerRef.current);
+            }
+        };
+    }, []);
+
+    const openUserDetails = () => {
+        if (hoverCloseTimerRef.current) {
+            clearTimeout(hoverCloseTimerRef.current);
+            hoverCloseTimerRef.current = null;
+        }
+        setShowUserDetails(true);
+    };
+
+    const closeUserDetails = () => {
+        if (hoverCloseTimerRef.current) {
+            clearTimeout(hoverCloseTimerRef.current);
+        }
+
+        hoverCloseTimerRef.current = setTimeout(() => {
+            setShowUserDetails(false);
+            hoverCloseTimerRef.current = null;
+        }, 120);
+    };
 
     const handleItemPress = (onPress: () => void) => {
         onPress();
@@ -71,6 +108,7 @@ export function DashboardShell({
                 <Navbar
                     compact={compactNavbar}
                     infoText={infoText}
+                    homeRoute={homeRoute}
                     actions={actions ?? [{ label: 'Logout', onPress: onLogout, variant: 'outline' }]}
                 />
             )}
@@ -108,11 +146,34 @@ export function DashboardShell({
                         </View>
 
                         <View style={styles.sidebarFooter}>
-                            <View style={styles.welcomeCard}>
-                                <Text style={styles.welcomeText}>{userName}</Text>
-                                <Text style={styles.welcomeSubtext}>{userRole}</Text>
-                            </View>
+                            <Pressable
+                                style={({ pressed }) => [styles.userProfileCard, pressed && styles.userProfileCardPressed]}
+                                accessibilityRole="button"
+                                onHoverIn={openUserDetails}
+                                onHoverOut={closeUserDetails}
+                                onPress={() => {
+                                    if (Platform.OS !== 'web') {
+                                        setShowUserDetails((previous) => !previous);
+                                    }
+                                }}
+                            >
+                                <Text numberOfLines={1} style={styles.userProfileName}>{userName}</Text>
+                                <Text style={styles.userProfileRole}>{userRole}</Text>
+                            </Pressable>
+
+                            {showUserDetails ? (
+                                <Pressable
+                                    style={styles.userDetailsTooltip}
+                                    onHoverIn={openUserDetails}
+                                    onHoverOut={closeUserDetails}
+                                >
+                                    <Text style={styles.userDetailsTitle}>Login Details</Text>
+                                    <Text style={styles.userDetailsText}>Email: {userDetails?.email ?? 'N/A'}</Text>
+                                    <Text style={styles.userDetailsText}>Password: Not available for security</Text>
+                                </Pressable>
+                            ) : null}
                         </View>
+
                     </View>
                 )}
 
@@ -185,7 +246,7 @@ const styles = StyleSheet.create({
         paddingVertical: 20,
         paddingHorizontal: 12,
         flexDirection: 'column',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start',
     },
     sidebarMobile: {
         position: 'absolute',
@@ -213,6 +274,12 @@ const styles = StyleSheet.create({
         gap: 8,
         flex: 1,
     },
+    sidebarFooter: {
+        position: 'relative',
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#edf0f5',
+    },
     sidebarButton: {
         paddingVertical: 12,
         paddingHorizontal: 14,
@@ -230,29 +297,50 @@ const styles = StyleSheet.create({
     sidebarButtonTextActive: {
         color: '#ffffff',
     },
-    sidebarFooter: {
-        paddingTop: 12,
-        borderTopWidth: 1,
-        borderTopColor: '#e0e0e0',
-    },
-    welcomeCard: {
-        backgroundColor: '#f0f4ff',
+    userProfileCard: {
+        backgroundColor: '#f6f8fc',
+        borderWidth: 1,
+        borderColor: '#e1e7f2',
         borderRadius: 10,
-        paddingVertical: 14,
         paddingHorizontal: 12,
-        borderLeftWidth: 3,
-        borderLeftColor: '#1a73e8',
+        paddingVertical: 10,
     },
-    welcomeText: {
+    userProfileCardPressed: {
+        opacity: 0.95,
+    },
+    userProfileName: {
         fontSize: 14,
         fontWeight: '700',
-        color: '#1a73e8',
-        marginBottom: 4,
+        color: '#1f2e4a',
     },
-    welcomeSubtext: {
+    userProfileRole: {
+        marginTop: 2,
         fontSize: 12,
-        color: '#677b94',
-        fontWeight: '500',
+        fontWeight: '600',
+        color: '#5d6d86',
+        textTransform: 'capitalize',
+    },
+    userDetailsTooltip: {
+        marginTop: 10,
+        backgroundColor: '#ffffff',
+        borderWidth: 1,
+        borderColor: '#dce5f1',
+        borderRadius: 10,
+        padding: 10,
+        boxShadow: '0px 6px 16px rgba(0, 0, 0, 0.12)',
+        elevation: 6,
+    },
+    userDetailsTitle: {
+        fontSize: 12,
+        fontWeight: '800',
+        color: '#1f2e4a',
+        marginBottom: 6,
+        textTransform: 'uppercase',
+    },
+    userDetailsText: {
+        fontSize: 12,
+        color: '#41536f',
+        lineHeight: 18,
     },
     content: {
         flex: 1,

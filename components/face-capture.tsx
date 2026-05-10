@@ -1,13 +1,11 @@
 import {
-    faceDetectionService,
-    type FaceDetectionResult,
-} from "@/class/face-detection";
+  faceRecognitionService,
+} from "@/class/face-recognition";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
-    Dimensions,
     Platform,
     Pressable,
     StyleSheet,
@@ -15,14 +13,20 @@ import {
     View,
 } from "react-native";
 
+export interface FaceCaptureResult {
+  imageData: string;     // base64 data URI or blob URL
+  embedding: number[];   // 128-d face embedding (empty on native)
+  faceCount: number;
+}
+
 export interface FaceCaptureProps {
-  onFaceCapture: (base64Image: string, numFaces: number) => void;
+  onFaceCapture: (result: FaceCaptureResult) => void;
   onCancel: () => void;
   title?: string;
   subtitle?: string;
 }
 
-const { width, height } = Dimensions.get("window");
+const isWeb = Platform.OS === "web";
 
 export function FaceCapture({
   onFaceCapture,
@@ -32,39 +36,33 @@ export function FaceCapture({
 }: FaceCaptureProps) {
   const [permission, requestPermission] = useCameraPermissions();
   const [isInitializing, setIsInitializing] = useState(true);
-  const [detectionMessage, setDetectionMessage] = useState(
-    "Initializing face detection...",
+  const [statusMessage, setStatusMessage] = useState(
+    "Loading face recognition models...",
   );
-  const [lastDetectionResult, setLastDetectionResult] =
-    useState<FaceDetectionResult | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [modelsReady, setModelsReady] = useState(false);
   const cameraRef = useRef<any>(null);
-  const detectionIntervalRef = useRef<NodeJS.Timeout>();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const isNative = Platform.OS !== "web";
 
+  // Initialize face recognition models
   useEffect(() => {
-    const initializeFaceDetection = async () => {
+    const init = async () => {
       try {
-        await faceDetectionService.initialize();
-        setDetectionMessage("✓ Ready! Position your face in the frame.");
+        await faceRecognitionService.initialize();
+        setModelsReady(true);
+        setStatusMessage("✓ Models loaded. Position your face and capture.");
         setIsInitializing(false);
       } catch (error) {
-        const errorMsg =
-          error instanceof Error ? error.message : "Unknown error";
-        console.error("Face detection initialization error:", errorMsg);
-        setDetectionMessage(`❌ ${errorMsg}`);
-        Alert.alert("Error", errorMsg);
+        const msg = error instanceof Error ? error.message : "Unknown error";
+        console.error("Face recognition init error:", msg);
+        setStatusMessage(`❌ ${msg}`);
+        setIsInitializing(false);
       }
     };
 
-    void initializeFaceDetection();
+    void init();
 
     return () => {
-      if (detectionIntervalRef.current) {
-        clearInterval(detectionIntervalRef.current);
-      }
-      faceDetectionService.dispose();
+      faceRecognitionService.dispose();
     };
   }, []);
 
@@ -74,13 +72,11 @@ export function FaceCapture({
     }
   }, [permission, requestPermission]);
 
-  const capturePhoto = async () => {
-    if (!cameraRef.current || isCapturing) {
-      return;
-    }
+  const captureAndProcess = async () => {
+    if (!cameraRef.current || isCapturing) return;
 
     setIsCapturing(true);
-    setDetectionMessage("📸 Capturing and analyzing...");
+    setStatusMessage("📸 Capturing face...");
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
@@ -88,50 +84,62 @@ export function FaceCapture({
         base64: true,
       });
 
-      // Build a usable data URI from the photo
-      const base64Data = photo.base64
-        ? `data:image/jpeg;base64,${photo.base64}`
-        : photo.uri; // web CameraView may return data URI in uri
+      // Debug: log what the camera returns
+      console.log("Photo keys:", Object.keys(photo));
+      console.log("Photo URI type:", photo.uri?.substring(0, 30));
+      console.log("Photo base64 exists:", !!photo.base64);
+      console.log("Photo base64 prefix:", photo.base64?.substring(0, 30));
 
-      if (!base64Data) {
-        Alert.alert("Error", "Failed to capture photo. Please try again.");
+      // Get image data - prefer URI (blob URL) on web since base64 might be malformed
+      let imageData: string;
+      if (photo.uri) {
+        imageData = photo.uri;
+      } else if (photo.base64) {
+        imageData = photo.base64.startsWith("data:")
+          ? photo.base64
+          : `data:image/jpeg;base64,${photo.base64}`;
+      } else {
+        Alert.alert("Error", "Failed to capture photo.");
+        setStatusMessage("❌ Capture failed. Try again.");
         return;
       }
 
-      // detectFaces handles both web (canvas/FaceDetector) and native (visual confirm)
-      const result = await faceDetectionService.detectFaces(base64Data);
-      const validation = faceDetectionService.validateDetection(result);
+      console.log("Using imageData type:", imageData.substring(0, 30));
 
-      if (validation.isValid) {
-        setDetectionMessage("✓ Face verified! Saving...");
-        onFaceCapture(base64Data, result.faces.length);
-      } else {
-        setDetectionMessage(validation.message);
-        Alert.alert(
-          "Face Not Detected",
-          "No face was found in the captured photo. Please position your face clearly in the frame and try again.",
-        );
+      setStatusMessage("🔍 Analyzing face...");
+
+      // Generate face embedding
+      const result = await faceRecognitionService.generateEmbedding(imageData);
+
+      if (!result.detected) {
+        setStatusMessage(result.message);
+        Alert.alert("Face Detection Failed", result.message);
+        return;
       }
+
+      setStatusMessage("✓ Face Processing!");
+
+      onFaceCapture({
+        imageData,
+        embedding: result.embedding,
+        faceCount: result.faceCount,
+      });
     } catch (error) {
-      const errorMsg =
-        error instanceof Error ? error.message : "Failed to capture photo";
-      Alert.alert("Capture Error", errorMsg);
-      console.error("Photo capture error:", error);
+      const msg = error instanceof Error ? error.message : "Capture failed";
+      Alert.alert("Capture Error", msg);
+      console.error("Capture error:", error);
+      setStatusMessage(`❌ ${msg}`);
     } finally {
       setIsCapturing(false);
     }
   };
 
+  // Permission screens
   if (!permission) {
     return (
       <View style={styles.container}>
         <Text style={styles.errorText}>Camera permission is required</Text>
-        <Pressable
-          style={styles.button}
-          onPress={() => {
-            requestPermission();
-          }}
-        >
+        <Pressable style={styles.button} onPress={() => requestPermission()}>
           <Text style={styles.buttonText}>Grant Permission</Text>
         </Pressable>
       </View>
@@ -156,89 +164,52 @@ export function FaceCapture({
         <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
 
-      <CameraView
+      <View style={styles.cameraWrapper}>
+        <CameraView
           ref={cameraRef}
           style={styles.camera}
           facing="front"
-          onCameraReady={async () => {
-            if (isNative) {
-              // On native, TF.js face detection is not available.
-              // Set a placeholder result so the admin can visually confirm
-              // the face and proceed to capture.
-              setLastDetectionResult({
-                faces: [{ bbox: [0, 0, 100, 100], confidence: 1.0 }],
-                hasError: false,
-                message: "✓ Camera ready — visually confirm face and capture",
-              });
-              setDetectionMessage(
-                "✓ Camera ready — visually confirm face and capture",
-              );
-              return;
+          onCameraReady={() => {
+            if (modelsReady) {
+              setStatusMessage("✓ Ready! Position your face and press Capture.");
             }
-
-            // Web: Start periodic face detection by taking low-res snapshots
-            if (detectionIntervalRef.current) {
-              clearInterval(detectionIntervalRef.current);
-            }
-
-            detectionIntervalRef.current = setInterval(async () => {
-              try {
-                if (!cameraRef.current) return;
-
-                const snapshot = await cameraRef.current.takePictureAsync({
-                  quality: 0.2,
-                  base64: true,
-                  skipProcessing: true,
-                });
-
-                if (!snapshot || !snapshot.base64) return;
-
-                // Create an Image element for detection (web only)
-                const img = new Image();
-                img.src = `data:image/jpeg;base64,${snapshot.base64}`;
-                img.onload = async () => {
-                  const result = await faceDetectionService.detectFaces(img);
-                  setLastDetectionResult(result);
-                  setDetectionMessage(result.message);
-                };
-              } catch (err) {
-                console.error("Periodic detection error:", err);
-              }
-            }, 800);
           }}
         />
-
-      <View style={styles.overlay} pointerEvents="none">
-        <View style={styles.faceFrame} />
+        <View style={styles.overlay} pointerEvents="none">
+          <View style={styles.faceFrame} />
+        </View>
       </View>
 
       <View style={styles.footer}>
         <Text
           style={[
             styles.statusMessage,
-            lastDetectionResult && lastDetectionResult.faces.length === 1
+            modelsReady && !isCapturing
               ? styles.statusSuccess
               : styles.statusWarning,
           ]}
         >
-          {detectionMessage}
+          {statusMessage}
         </Text>
 
         {isInitializing ? (
-          <ActivityIndicator
-            size="large"
-            color="#2e63e3"
-            style={styles.loader}
-          />
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="large" color="#2e63e3" />
+            <Text style={styles.loaderText}>Loading face recognition models...</Text>
+          </View>
         ) : (
           <View style={styles.buttonContainer}>
             <Pressable
-              style={[styles.button, styles.captureButton]}
-              onPress={capturePhoto}
-              disabled={isCapturing || isInitializing}
+              style={[
+                styles.button,
+                styles.captureButton,
+                (!modelsReady || isCapturing) && styles.buttonDisabled,
+              ]}
+              onPress={captureAndProcess}
+              disabled={!modelsReady || isCapturing}
             >
               <Text style={styles.buttonText}>
-                {isCapturing ? "Capturing..." : "Capture Face"}
+                {isCapturing ? "Analyzing..." : "Capture Face"}
               </Text>
             </Pressable>
 
@@ -252,12 +223,6 @@ export function FaceCapture({
           </View>
         )}
       </View>
-
-      {lastDetectionResult && lastDetectionResult.faces.length !== 1 && (
-        <View style={styles.warning}>
-          <Text style={styles.warningText}>{lastDetectionResult.message}</Text>
-        </View>
-      )}
     </View>
   );
 }
@@ -265,30 +230,57 @@ export function FaceCapture({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: isWeb ? "#f5f7fb" : "#000",
+    ...(isWeb
+      ? {
+          height: "100vh" as any,
+          width: "100%" as any,
+          overflow: "hidden" as any,
+        }
+      : {}),
   },
   header: {
-    paddingTop: 20,
+    paddingTop: isWeb ? 16 : 20,
+    paddingBottom: 8,
     paddingHorizontal: 20,
-    backgroundColor: "rgba(0,0,0,0.7)",
+    backgroundColor: isWeb ? "#fff" : "rgba(0,0,0,0.7)",
+    borderBottomWidth: isWeb ? 1 : 0,
+    borderBottomColor: "#e0e4ec",
     zIndex: 10,
+    alignItems: isWeb ? "center" : ("flex-start" as const),
   },
   title: {
-    fontSize: 24,
+    fontSize: isWeb ? 20 : 24,
     fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 5,
+    color: isWeb ? "#0d1b3f" : "#fff",
+    marginBottom: 2,
   },
   subtitle: {
-    fontSize: 14,
-    color: "#ccc",
-    marginBottom: 10,
+    fontSize: 13,
+    color: isWeb ? "#4a607f" : "#ccc",
+    marginBottom: 2,
   },
   camera: {
-    width: width,
-    height: Math.round(height * 0.6),
-    justifyContent: "center",
-    alignItems: "center",
+    ...(isWeb ? { width: "100%" as any, height: 380 } : { flex: 1 }),
+  },
+  cameraWrapper: {
+    ...(isWeb
+      ? {
+          width: "100%" as any,
+          maxWidth: 640,
+          height: 380,
+          alignSelf: "center" as const,
+          borderRadius: 12,
+          overflow: "hidden" as const,
+          marginVertical: 10,
+          backgroundColor: "#000",
+        }
+      : {
+          flex: 1,
+          position: "relative" as const,
+          overflow: "hidden" as const,
+          backgroundColor: "#000",
+        }),
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -297,18 +289,21 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   faceFrame: {
-    width: 220,
-    height: 280,
+    width: isWeb ? 200 : 220,
+    height: isWeb ? 260 : 280,
     borderWidth: 3,
     borderColor: "#2e63e3",
     borderRadius: 20,
     backgroundColor: "transparent",
   },
   footer: {
-    backgroundColor: "rgba(0,0,0,0.85)",
-    padding: 20,
-    paddingBottom: 30,
+    backgroundColor: "#f5f7fb",
+    padding: isWeb ? 16 : 20,
+    paddingBottom: isWeb ? 20 : 30,
     zIndex: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#e0e4ec",
+    alignItems: "center",
   },
   statusMessage: {
     textAlign: "center",
@@ -318,13 +313,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   statusSuccess: {
-    color: "#4caf50",
+    color: "#2e7d32",
   },
   statusWarning: {
-    color: "#ff9800",
+    color: "#e65100",
   },
-  loader: {
-    marginVertical: 20,
+  loaderContainer: {
+    alignItems: "center",
+    gap: 10,
+    marginVertical: 10,
+  },
+  loaderText: {
+    fontSize: 13,
+    color: "#4a607f",
   },
   buttonContainer: {
     flexDirection: "row",
@@ -342,9 +343,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#2e63e3",
   },
   cancelButton: {
-    backgroundColor: "transparent",
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#888",
+    borderColor: "#c7d2e2",
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   buttonText: {
     color: "#fff",
@@ -352,25 +356,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   cancelButtonText: {
-    color: "#ccc",
+    color: "#374151",
     fontSize: 16,
     fontWeight: "600",
-  },
-  warning: {
-    position: "absolute",
-    bottom: 80,
-    left: 20,
-    right: 20,
-    backgroundColor: "rgba(255, 152, 0, 0.9)",
-    padding: 12,
-    borderRadius: 8,
-    zIndex: 15,
-  },
-  warningText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "500",
-    textAlign: "center",
   },
   errorText: {
     color: "#ff4444",

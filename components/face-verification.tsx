@@ -1,6 +1,6 @@
 import {
-    faceDetectionService
-} from "@/class/face-detection";
+    faceRecognitionService
+} from "@/class/face-recognition";
 import { useEffect, useState } from "react";
 import {
     ActivityIndicator,

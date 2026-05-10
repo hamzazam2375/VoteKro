@@ -180,7 +180,6 @@ export default function AuditorDashboard() {
                             </View>
                         </View>
 
-
                     </View>
                 </ScrollView>
             </View>

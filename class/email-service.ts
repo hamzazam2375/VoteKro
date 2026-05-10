@@ -86,6 +86,7 @@ If you did not request this account or have any questions, please contact suppor
     fullName: string,
     email: string,
     faceImageBase64: string,
+    faceEmbedding?: number[],
   ): Promise<void> {
     const { error } = await supabase.functions.invoke(
       "start-voter-registration",
@@ -94,6 +95,7 @@ If you did not request this account or have any questions, please contact suppor
           fullName,
           email,
           faceImageBase64: faceImageBase64,
+          faceEmbedding: faceEmbedding ?? [],
         },
       },
     );
