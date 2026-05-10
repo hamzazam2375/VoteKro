@@ -150,7 +150,6 @@ export default function VoterSignupScreen({ isEmbedded }: { isEmbedded?: boolean
         />
       )}
 
-<<<<<<< Updated upstream
       {showFaceCapture && (
         <FaceCapture
           onFaceCapture={handleFaceCapture}
@@ -168,26 +167,14 @@ export default function VoterSignupScreen({ isEmbedded }: { isEmbedded?: boolean
           ]}
           showsVerticalScrollIndicator={false}
         >
-=======
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          styles.mobileCenteredContent,
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        {!isEmbedded && (
->>>>>>> Stashed changes
-          <Pressable
-            style={styles.backButton}
-            onPress={() => router.replace("/AdminDashboard")}
-          >
-            <Text style={styles.backButtonText}>← Back</Text>
-          </Pressable>
-<<<<<<< Updated upstream
-=======
-        )}
->>>>>>> Stashed changes
+          {!isEmbedded && (
+            <Pressable
+              style={styles.backButton}
+              onPress={() => router.replace("/AdminDashboard")}
+            >
+              <Text style={styles.backButtonText}>← Back</Text>
+            </Pressable>
+          )}
 
           <View style={styles.centerContainer}>
             <View style={styles.card}>

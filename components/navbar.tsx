@@ -115,45 +115,46 @@ export function Navbar({
 }
 
 const styles = StyleSheet.create({
-<<<<<<< Updated upstream
-  navbar: {
+navbar: {
     paddingHorizontal: 24,
     paddingBottom: 12,
-    backgroundColor: "#f0f2f5",
-    borderBottomWidth: 2,
-    borderBottomColor: "#2d63ea",
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#d9e0ec',
     zIndex: 2,
+    boxShadow: '0px 2px 8px rgba(36, 59, 99, 0.06)',
+    elevation: 2,
   },
   navbarCompact: {
     paddingHorizontal: 16,
     paddingBottom: 10,
-    backgroundColor: "#f6f7fa",
+    backgroundColor: '#ffffff',
   },
   topRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     minHeight: 48,
   },
   topRowCompact: {
     minHeight: 40,
   },
   brandWrap: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   brandWrapPressed: {
     opacity: 0.82,
   },
   brandName: {
-    color: "#2c63dd",
-    fontSize: 28,
-    fontWeight: "800",
+    color: '#1a73e8',
+    fontSize: 26,
+    fontWeight: '800',
     letterSpacing: 0.2,
   },
   brandNameCompact: {
-    fontSize: 30,
+    fontSize: 26,
   },
   brandLogo: {
     width: 32,
@@ -164,30 +165,30 @@ const styles = StyleSheet.create({
     height: 28,
   },
   actionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
   },
   infoText: {
     fontSize: 14,
-    color: "#2f64e6",
-    fontWeight: "500",
+    color: '#5c6f89',
+    fontWeight: '500',
     marginRight: 8,
   },
   infoTextCompact: {
     fontSize: 14,
-    color: "#2f64e6",
+    color: '#5c6f89',
     marginRight: 8,
   },
   infoTextMobile: {
     fontSize: 13,
-    color: "#2f64e6",
-    fontWeight: "500",
+    color: '#5c6f89',
+    fontWeight: '500',
     marginTop: 4,
     paddingHorizontal: 2,
   },
   infoTextMobileCompact: {
-    color: "#2f64e6",
+    color: '#2f64e6',
   },
   actionButton: {
     borderRadius: 10,
@@ -201,12 +202,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   actionButtonSolid: {
-    backgroundColor: "#2e63e3",
-    borderColor: "#2e63e3",
+    backgroundColor: '#1a73e8',
+    borderColor: '#1a73e8',
   },
   actionButtonOutline: {
-    backgroundColor: "transparent",
-    borderColor: "#2e63e3",
+    backgroundColor: 'transparent',
+    borderColor: '#1a73e8',
   },
   actionButtonPressed: {
     opacity: 0.88,
@@ -214,122 +215,16 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: '700',
   },
   actionTextCompact: {
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: '700',
   },
   actionTextSolid: {
-    color: "#ffffff",
+    color: '#ffffff',
   },
   actionTextOutline: {
-    color: "#2e63e3",
+    color: '#1a73e8',
   },
-=======
-    navbar: {
-        paddingHorizontal: 24,
-        paddingBottom: 12,
-        backgroundColor: '#ffffff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#d9e0ec',
-        zIndex: 2,
-        boxShadow: '0px 2px 8px rgba(36, 59, 99, 0.06)',
-        elevation: 2,
-    },
-    navbarCompact: {
-        paddingHorizontal: 16,
-        paddingBottom: 10,
-        backgroundColor: '#ffffff',
-    },
-    topRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        minHeight: 48,
-    },
-    topRowCompact: {
-        minHeight: 40,
-    },
-    brandWrap: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    brandWrapPressed: {
-        opacity: 0.82,
-    },
-    brandName: {
-        color: '#1a73e8',
-        fontSize: 26,
-        fontWeight: '800',
-        letterSpacing: 0.2,
-    },
-    brandNameCompact: {
-        fontSize: 26,
-    },
-    actionsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    infoText: {
-        fontSize: 14,
-        color: '#5c6f89',
-        fontWeight: '500',
-        marginRight: 8,
-    },
-    infoTextCompact: {
-        fontSize: 14,
-        color: '#5c6f89',
-        marginRight: 8,
-    },
-    infoTextMobile: {
-        fontSize: 13,
-        color: '#5c6f89',
-        fontWeight: '500',
-        marginTop: 4,
-        paddingHorizontal: 2,
-    },
-    infoTextMobileCompact: {
-        color: '#2f64e6',
-    },
-    actionButton: {
-        borderRadius: 10,
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderWidth: 1.5,
-    },
-    actionButtonCompact: {
-        borderRadius: 10,
-        paddingVertical: 6,
-        paddingHorizontal: 14,
-    },
-    actionButtonSolid: {
-        backgroundColor: '#1a73e8',
-        borderColor: '#1a73e8',
-    },
-    actionButtonOutline: {
-        backgroundColor: 'transparent',
-        borderColor: '#1a73e8',
-    },
-    actionButtonPressed: {
-        opacity: 0.88,
-        transform: [{ scale: 0.98 }],
-    },
-    actionText: {
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    actionTextCompact: {
-        fontSize: 14,
-        fontWeight: '700',
-    },
-    actionTextSolid: {
-        color: '#ffffff',
-    },
-    actionTextOutline: {
-        color: '#1a73e8',
-    },
->>>>>>> Stashed changes
 });

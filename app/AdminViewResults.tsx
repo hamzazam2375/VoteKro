@@ -36,8 +36,7 @@ export default function AdminViewResults({ isEmbedded }: { isEmbedded?: boolean 
     Record<string, CandidateRow[]>
   >({});
   const [selectedElectionId, setSelectedElectionId] = useState<string>("all");
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-
+  
   const loadData = useCallback(async () => {
     try {
       const userProfile =
@@ -137,7 +136,6 @@ export default function AdminViewResults({ isEmbedded }: { isEmbedded?: boolean 
   };
 
   const doLogout = async () => {
-    setShowLogoutModal(false);
     try {
       await serviceFactory.authService.signOut();
       router.replace("/");
@@ -523,22 +521,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
-  backButton: {
-    alignSelf: "flex-start",
-    borderWidth: 1.5,
-    borderColor: "#2e63e3",
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    backgroundColor: "#ffffff",
-    marginBottom: 0,
-    marginLeft: 16,
-    marginTop: 12,
-    marginRight: 16,
-  },
-  backButtonText: {
-    color: "#2e63e3",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-});
+  });

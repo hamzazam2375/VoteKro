@@ -108,7 +108,7 @@ export default function AdminDashboard() {
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Logout", style: "destructive", onPress: doLogout },
+      { text: "Logout", style: "destructive", onPress: () => void doLogout() },
     ]);
   };
 
@@ -849,10 +849,7 @@ const styles = StyleSheet.create({
     maxWidth: "80%",
     height: "100%",
     borderRightWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    boxShadow: "2px 0px 8px rgba(0, 0, 0, 0.2)",
     elevation: 10,
   },
   sidebarOverlay: {

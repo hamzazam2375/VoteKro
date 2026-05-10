@@ -2,19 +2,19 @@ import type { ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
 import DateTimePicker, {
-  type DateTimePickerEvent,
+    type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
 export default function AdminCreateElectionScreen({ isEmbedded }: { isEmbedded?: boolean } = {}) {
@@ -52,10 +52,16 @@ export default function AdminCreateElectionScreen({ isEmbedded }: { isEmbedded?:
     void loadProfile();
   }, [router]);
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Logout", style: "destructive", onPress: () => void doLogout() },
+    ]);
+  };
+
+  const doLogout = async () => {
     try {
       await serviceFactory.authService.signOut();
-      Alert.alert("Success", "Logged out successfully");
       router.replace("/");
     } catch (logoutError) {
       const message = serviceFactory.authService.getErrorMessage(
