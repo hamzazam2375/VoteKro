@@ -1,5 +1,6 @@
 import type { CandidateRow, ElectionRow, ProfileRow, VoterRegistryRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
+import { supabase } from '@/class/supabase-client';
 import { DashboardShell } from '@/components/dashboard-shell';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -35,6 +36,7 @@ export default function VoterDashboard() {
     const [currentView, setCurrentView] = useState<'home' | 'history'>('home');
     const [showSearchBar, setShowSearchBar] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [userEmail, setUserEmail] = useState('');
     const [electionResults, setElectionResults] = useState<Map<string, ElectionResultRow[]>>(new Map());
     const [voteDetails, setVoteDetails] = useState<Map<string, { hash: string; date: string; candidate: string }>>(new Map());
     const searchInputRef = useRef<any>(null);
@@ -79,6 +81,11 @@ export default function VoterDashboard() {
             try {
                 const userProfile = await serviceFactory.authService.getRequiredProfile('voter');
                 setProfile(userProfile);
+
+                const {
+                    data: { user },
+                } = await supabase.auth.getUser();
+                setUserEmail(user?.email ?? '');
 
                 const electionRows = await serviceFactory.votingService.listAllElections();
                 setElections(electionRows);
@@ -421,6 +428,9 @@ export default function VoterDashboard() {
                 homeRoute="/VoterDashboard"
                 userName={displayName}
                 userRole="Voter"
+                userDetails={{
+                    email: userEmail,
+                }}
                 onLogout={handleLogout}
                 sidebarItems={[
                     {
