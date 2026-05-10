@@ -2,12 +2,13 @@ import {
     faceDetectionService,
     type FaceDetectionResult,
 } from "@/class/face-detection";
-import * as ExpoCamera from "expo-camera";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
     Dimensions,
+    Platform,
     Pressable,
     StyleSheet,
     Text,
@@ -29,8 +30,6 @@ export function FaceCapture({
   title = "Capture Your Face",
   subtitle = "Position your face in the frame",
 }: FaceCaptureProps) {
-  const useCameraPermissions =
-    (ExpoCamera as any).useCameraPermissions ?? (() => [null, async () => {}]);
   const [permission, requestPermission] = useCameraPermissions();
   const [isInitializing, setIsInitializing] = useState(true);
   const [detectionMessage, setDetectionMessage] = useState(
@@ -40,33 +39,9 @@ export function FaceCapture({
     useState<FaceDetectionResult | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const cameraRef = useRef<any>(null);
-  // Resolve the actual Camera component safely — handle various module shapes
-  let CameraCompCandidate: any =
-    (ExpoCamera as any).Camera ?? (ExpoCamera as any).default ?? null;
-  if (CameraCompCandidate && typeof CameraCompCandidate !== "function") {
-    // If it's a module object with a default export, try that
-    if (
-      CameraCompCandidate.default &&
-      typeof CameraCompCandidate.default === "function"
-    ) {
-      CameraCompCandidate = CameraCompCandidate.default;
-    } else {
-      // Not a renderable component
-      CameraCompCandidate = null;
-    }
-  }
-  const CameraComp: any = CameraCompCandidate;
   const detectionIntervalRef = useRef<NodeJS.Timeout>();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  // Safe camera type for platforms where Camera.Constants may be undefined (web)
-  const cameraConstants: any =
-    (CameraComp && CameraComp.Constants) ||
-    (ExpoCamera as any).Constants ||
-    null;
-  const cameraType: any = cameraConstants
-    ? cameraConstants.Type.front
-    : "front";
+  const isNative = Platform.OS !== "web";
 
   useEffect(() => {
     const initializeFaceDetection = async () => {
@@ -105,6 +80,7 @@ export function FaceCapture({
     }
 
     setIsCapturing(true);
+    setDetectionMessage("📸 Capturing and analyzing...");
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
@@ -112,16 +88,28 @@ export function FaceCapture({
         base64: true,
       });
 
-      if (
-        photo.base64 &&
-        lastDetectionResult &&
-        lastDetectionResult.faces.length === 1
-      ) {
-        onFaceCapture(`data:image/jpeg;base64,${photo.base64}`, 1);
+      // Build a usable data URI from the photo
+      const base64Data = photo.base64
+        ? `data:image/jpeg;base64,${photo.base64}`
+        : photo.uri; // web CameraView may return data URI in uri
+
+      if (!base64Data) {
+        Alert.alert("Error", "Failed to capture photo. Please try again.");
+        return;
+      }
+
+      // detectFaces handles both web (canvas/FaceDetector) and native (visual confirm)
+      const result = await faceDetectionService.detectFaces(base64Data);
+      const validation = faceDetectionService.validateDetection(result);
+
+      if (validation.isValid) {
+        setDetectionMessage("✓ Face verified! Saving...");
+        onFaceCapture(base64Data, result.faces.length);
       } else {
+        setDetectionMessage(validation.message);
         Alert.alert(
-          "Error",
-          "Please ensure exactly one face is detected before capturing.",
+          "Face Not Detected",
+          "No face was found in the captured photo. Please position your face clearly in the frame and try again.",
         );
       }
     } catch (error) {
@@ -168,15 +156,27 @@ export function FaceCapture({
         <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
 
-      {CameraComp ? (
-        <CameraComp
+      <CameraView
           ref={cameraRef}
           style={styles.camera}
-          type={cameraType}
-          zoom={0}
-          ratio={"16:9"}
+          facing="front"
           onCameraReady={async () => {
-            // Start periodic face detection by taking low-res snapshots
+            if (isNative) {
+              // On native, TF.js face detection is not available.
+              // Set a placeholder result so the admin can visually confirm
+              // the face and proceed to capture.
+              setLastDetectionResult({
+                faces: [{ bbox: [0, 0, 100, 100], confidence: 1.0 }],
+                hasError: false,
+                message: "✓ Camera ready — visually confirm face and capture",
+              });
+              setDetectionMessage(
+                "✓ Camera ready — visually confirm face and capture",
+              );
+              return;
+            }
+
+            // Web: Start periodic face detection by taking low-res snapshots
             if (detectionIntervalRef.current) {
               clearInterval(detectionIntervalRef.current);
             }
@@ -193,7 +193,7 @@ export function FaceCapture({
 
                 if (!snapshot || !snapshot.base64) return;
 
-                // Create an Image element for detection
+                // Create an Image element for detection (web only)
                 const img = new Image();
                 img.src = `data:image/jpeg;base64,${snapshot.base64}`;
                 img.onload = async () => {
@@ -207,20 +207,8 @@ export function FaceCapture({
             }, 800);
           }}
         />
-      ) : (
-        <View
-          style={[
-            styles.camera,
-            { justifyContent: "center", alignItems: "center" },
-          ]}
-        >
-          <Text style={{ color: "#fff" }}>
-            Camera not available on this platform.
-          </Text>
-        </View>
-      )}
 
-      <View style={styles.overlay}>
+      <View style={styles.overlay} pointerEvents="none">
         <View style={styles.faceFrame} />
       </View>
 
@@ -247,12 +235,7 @@ export function FaceCapture({
             <Pressable
               style={[styles.button, styles.captureButton]}
               onPress={capturePhoto}
-              disabled={
-                isCapturing ||
-                isInitializing ||
-                !lastDetectionResult ||
-                lastDetectionResult.faces.length !== 1
-              }
+              disabled={isCapturing || isInitializing}
             >
               <Text style={styles.buttonText}>
                 {isCapturing ? "Capturing..." : "Capture Face"}

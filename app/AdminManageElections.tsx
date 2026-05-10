@@ -2,23 +2,23 @@ import type { ElectionRow, ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
 import DateTimePicker, {
-  type DateTimePickerEvent,
+    type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
-export default function AdminManageElections() {
+export default function AdminManageElections({ isEmbedded }: { isEmbedded?: boolean } = {}) {
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -414,19 +414,23 @@ export default function AdminManageElections() {
         </View>
       </Modal>
 
-      <Navbar
-        infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
-        actions={[
-          { label: "Logout", onPress: handleLogout, variant: "outline" },
-        ]}
-      />
+      {!isEmbedded && (
+        <Navbar
+          infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
+          actions={[
+            { label: "Logout", onPress: handleLogout, variant: "outline" },
+          ]}
+        />
+      )}
 
-      <Pressable
-        style={styles.backButton}
-        onPress={() => router.replace("/AdminDashboard")}
-      >
-        <Text style={styles.backButtonText}>← Back</Text>
-      </Pressable>
+      {!isEmbedded && (
+        <Pressable
+          style={styles.backButton}
+          onPress={() => router.replace("/AdminDashboard")}
+        >
+          <Text style={styles.backButtonText}>← Back</Text>
+        </Pressable>
+      )}
 
       <ScrollView
         style={styles.content}

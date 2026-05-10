@@ -24,7 +24,7 @@ type CandidateResult = {
   percentage: number;
 };
 
-export default function AdminViewResults() {
+export default function AdminViewResults({ isEmbedded }: { isEmbedded?: boolean } = {}) {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isMobile = width < 760;
@@ -36,8 +36,7 @@ export default function AdminViewResults() {
     Record<string, CandidateRow[]>
   >({});
   const [selectedElectionId, setSelectedElectionId] = useState<string>("all");
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-
+  
   const loadData = useCallback(async () => {
     try {
       const userProfile =
@@ -137,7 +136,6 @@ export default function AdminViewResults() {
   };
 
   const doLogout = async () => {
-    setShowLogoutModal(false);
     try {
       await serviceFactory.authService.signOut();
       router.replace("/");
@@ -160,19 +158,23 @@ export default function AdminViewResults() {
 
   return (
     <View style={styles.container}>
-      <Navbar
-        infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
-        actions={[
-          { label: "Logout", onPress: handleLogout, variant: "outline" },
-        ]}
-      />
+      {!isEmbedded && (
+        <Navbar
+          infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
+          actions={[
+            { label: "Logout", onPress: handleLogout, variant: "outline" },
+          ]}
+        />
+      )}
 
-      <Pressable
-        style={styles.backButton}
-        onPress={() => router.replace("/AdminDashboard")}
-      >
-        <Text style={styles.backButtonText}>← Back</Text>
-      </Pressable>
+      {!isEmbedded && (
+        <Pressable
+          style={styles.backButton}
+          onPress={() => router.replace("/AdminDashboard")}
+        >
+          <Text style={styles.backButtonText}>← Back</Text>
+        </Pressable>
+      )}
 
       <ScrollView
         style={styles.content}
@@ -519,22 +521,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
-  backButton: {
-    alignSelf: "flex-start",
-    borderWidth: 1.5,
-    borderColor: "#2e63e3",
-    borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    backgroundColor: "#ffffff",
-    marginBottom: 0,
-    marginLeft: 16,
-    marginTop: 12,
-    marginRight: 16,
-  },
-  backButtonText: {
-    color: "#2e63e3",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-});
+  });

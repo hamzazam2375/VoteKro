@@ -1,5 +1,7 @@
+import { faceDetectionService } from "@/class/face-detection";
 import { faceRepository } from "@/class/face-repository";
 import { serviceFactory } from "@/class/service-factory";
+import { supabase } from "@/class/supabase-client";
 import { FaceCapture } from "@/components/face-capture";
 import { Navbar } from "@/components/navbar";
 import { PasswordField } from "@/components/password-field";
@@ -27,15 +29,17 @@ export default function VoterLoginScreen() {
   const [userIdForVerification, setUserIdForVerification] = useState<
     string | null
   >(null);
+  const [faceAttempts, setFaceAttempts] = useState(0);
+  const maxFaceAttempts = 3;
 
   const handleLogin = async () => {
     setIsLoading(true);
     setErrorMessage("");
     try {
-      try {
+      // Only sign out if there's an existing session to avoid AuthSessionMissingError
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session) {
         await serviceFactory.authService.signOut();
-      } catch {
-        // Ignore if there is no active session; sign-in still proceeds.
       }
 
       const profile = await serviceFactory.authService.loginForRole(
@@ -53,6 +57,7 @@ export default function VoterLoginScreen() {
         if (storedFace) {
           setStoredFaceBase64(storedFace.face_image_base64);
           setUserIdForVerification(profile.user_id);
+          setFaceAttempts(0);
           setStep("face-verification");
           setIsLoading(false);
           return;
@@ -70,19 +75,67 @@ export default function VoterLoginScreen() {
     }
   };
 
+  const handleFaceVerification = async (capturedBase64: string) => {
+    if (!storedFaceBase64) return;
+
+    setFaceAttempts((prev) => prev + 1);
+
+    try {
+      // Initialize face detection if not already
+      await faceDetectionService.initialize();
+
+      // Compare captured face with stored face
+      const comparison = await faceDetectionService.compareFaces(
+        storedFaceBase64,
+        capturedBase64,
+        0.6, // threshold
+      );
+
+      if (comparison.isSamePerson) {
+        Alert.alert("✓ Verified", "Face verification successful!");
+        router.push(serviceFactory.authService.getDashboardRoute("voter"));
+      } else {
+        const remaining = maxFaceAttempts - faceAttempts;
+        if (remaining <= 0) {
+          Alert.alert(
+            "Verification Failed",
+            "Maximum face verification attempts exceeded. Please try logging in again.",
+          );
+          // Reset to login
+          setStep("login");
+          setStoredFaceBase64(null);
+          setUserIdForVerification(null);
+          setFaceAttempts(0);
+        } else {
+          Alert.alert(
+            "Face Mismatch",
+            `Face does not match the registered photo. ${remaining} attempt(s) remaining. Please try again.`,
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Face verification error:", error);
+      Alert.alert(
+        "Verification Error",
+        "An error occurred during face verification. Please try again.",
+      );
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Navbar />
 
       {step === "face-verification" && storedFaceBase64 && (
         <FaceCapture
-          onFaceCapture={() => {
-            router.push(serviceFactory.authService.getDashboardRoute("voter"));
+          onFaceCapture={(base64Image) => {
+            void handleFaceVerification(base64Image);
           }}
           onCancel={() => {
             setStep("login");
             setStoredFaceBase64(null);
             setUserIdForVerification(null);
+            setFaceAttempts(0);
           }}
           title="Face Verification Required"
           subtitle="Position your face to verify your identity for voting"

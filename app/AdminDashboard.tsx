@@ -2,19 +2,24 @@ import type { ElectionRow, ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
 import { useFocusEffect } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    useWindowDimensions,
-    View
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View
 } from "react-native";
+import AdminCreateElection from "./AdminCreateElection";
+import AdminManageCandidates from "./AdminManageCandidates";
+import AdminManageElections from "./AdminManageElections";
+import AdminViewResults from "./AdminViewResults";
+import AuditorSignup from "./AuditorSignup";
+import VoterSignup from "./VoterSignup";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -29,6 +34,8 @@ export default function AdminDashboard() {
     Record<string, number>
   >({});
   const [voteCounts, setVoteCounts] = useState<Record<string, number>>({});
+  const [currentPage, setCurrentPage] = useState<'overview' | 'create-election' | 'manage-elections' | 'manage-candidates' | 'view-results' | 'register-voter' | 'register-auditor'>('overview');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const loadDashboardOverview = useCallback(async () => {
     try {
@@ -101,7 +108,7 @@ export default function AdminDashboard() {
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Logout", style: "destructive", onPress: doLogout },
+      { text: "Logout", style: "destructive", onPress: () => void doLogout() },
     ]);
   };
 
@@ -138,448 +145,405 @@ export default function AdminDashboard() {
 
   return (
     <View style={styles.container}>
-      <Navbar
-        infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
-        actions={[
-          { label: "Logout", onPress: handleLogout, variant: "outline" },
-        ]}
-      />
-
-      {/* Main Content */}
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-      >
-        <View style={styles.innerWrapper}>
-          {/* Dashboard Title */}
-          <View style={styles.titleSection}>
-            <Text style={styles.dashboardTitle}>Admin Dashboard</Text>
-            <Text style={styles.dashboardSubtitle}>
-              Manage elections and monitor voting activity
-            </Text>
-          </View>
-
-          {/* Stats Cards */}
-          <View
-            style={[
-              styles.statsContainer,
-              isMobile && styles.statsContainerMobile,
-            ]}
+      {/* Custom Header for Mobile with Hamburger */}
+      {isMobile ? (
+        <View style={styles.mobileHeader}>
+          <Pressable
+            style={styles.mobileHamburger}
+            onPress={() => setSidebarOpen(!sidebarOpen)}
           >
-            <View
-              style={[
-                styles.statCard,
-                isMobile ? styles.cardFullWidth : styles.cardThirdWidth,
-              ]}
-            >
-              <Text style={styles.statLabel}>Total Elections</Text>
-              <Text style={styles.statNumber}>{elections.length}</Text>
-            </View>
-            <View
-              style={[
-                styles.statCard,
-                isMobile ? styles.cardFullWidth : styles.cardThirdWidth,
-              ]}
-            >
-              <Text style={styles.statLabel}>Registered Voters</Text>
-              <Text style={styles.statNumber}>{registeredVotersCount}</Text>
-            </View>
-            <View
-              style={[
-                styles.statCard,
-                isMobile ? styles.cardFullWidth : styles.cardThirdWidth,
-              ]}
-            >
-              <Text style={styles.statLabel}>Total Votes Cast</Text>
-              <Text style={styles.statNumber}>{totalVotesCast}</Text>
-            </View>
-          </View>
+            <Text style={styles.mobileHamburgerIcon}>☰</Text>
+          </Pressable>
+          <Text style={styles.mobileLogo}>VoteKro</Text>
+          <Pressable
+            style={styles.mobileLogoutButton}
+            onPress={handleLogout}
+          >
+            <Text style={styles.mobileLogoutText}>Logout</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Navbar
+          actions={[
+            { label: "Logout", onPress: handleLogout, variant: "outline" },
+          ]}
+        />
+      )}
 
-          {/* Quick Actions */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>⚡ Quick Actions</Text>
-            <View
-              style={[styles.actionsGrid, isMobile && styles.actionsGridMobile]}
-            >
+      {/* Main Layout - Sidebar + Content */}
+      <View style={[styles.mainLayout, isMobile && styles.mainLayoutMobile]}>
+        {/* Overlay Backdrop - Mobile Only */}
+        {isMobile && sidebarOpen && (
+          <Pressable
+            style={styles.sidebarOverlay}
+            onPress={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Sidebar Navigation */}
+        {(!isMobile || sidebarOpen) && (
+          <View style={[styles.sidebar, isMobile && styles.sidebarMobile]}>
+            <View style={styles.sidebarMenu}>
+              {/* Overview */}
               <Pressable
-                style={
-                  [
-                    styles.actionCard,
-                    isMobile ? styles.cardFullWidth : styles.cardThirdWidth,
-                  ] as any
-                }
-                onPress={() => router.push("/AdminCreateElection")}
+                style={[styles.sidebarButton, currentPage === 'overview' && styles.sidebarButtonActive]}
+                onPress={() => {
+                  setCurrentPage('overview');
+                  if (isMobile) setSidebarOpen(false);
+                }}
               >
-                <View style={styles.cardInner}>
-                  <LinearGradient
-                    colors={["#1a73e8", "#7c3aed", "#e91e8c"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.cardStripe}
-                  />
-                  <View style={styles.cardBody}>
-                    <Text style={styles.actionIcon}>📋</Text>
-                    <Text style={styles.actionTitle}>Create New Election</Text>
-                    <Text style={styles.actionDesc}>
-                      Create and configure a new election event
-                    </Text>
-                    <View style={styles.actionBtn}>
-                      <Text style={styles.actionBtnText}>Create Election</Text>
-                    </View>
-                  </View>
-                </View>
+                <Text style={[styles.sidebarButtonText, currentPage === 'overview' && styles.sidebarButtonTextActive]}>
+                  📊 Dashboard
+                </Text>
               </Pressable>
 
+              {/* Create Election */}
               <Pressable
-                style={
-                  [
-                    styles.actionCard,
-                    isMobile ? styles.cardFullWidth : styles.cardThirdWidth,
-                  ] as any
-                }
-                onPress={() => router.push("/AdminManageElections")}
+                style={[styles.sidebarButton, currentPage === 'create-election' && styles.sidebarButtonActive]}
+                onPress={() => {
+                  setCurrentPage('create-election');
+                  if (isMobile) setSidebarOpen(false);
+                }}
               >
-                <View style={styles.cardInner}>
-                  <LinearGradient
-                    colors={["#1a73e8", "#7c3aed", "#e91e8c"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.cardStripe}
-                  />
-                  <View style={styles.cardBody}>
-                    <Text style={styles.actionIcon}>✏️</Text>
-                    <Text style={styles.actionTitle}>Manage Elections</Text>
-                    <Text style={styles.actionDesc}>
-                      Edit, delete, or update election details
-                    </Text>
-                    <View style={styles.actionBtn}>
-                      <Text style={styles.actionBtnText}>Manage Elections</Text>
-                    </View>
-                  </View>
-                </View>
+                <Text style={[styles.sidebarButtonText, currentPage === 'create-election' && styles.sidebarButtonTextActive]}>
+                  📋 Create Election
+                </Text>
               </Pressable>
 
+              {/* Manage Elections */}
               <Pressable
-                style={
-                  [
-                    styles.actionCard,
-                    isMobile ? styles.cardFullWidth : styles.cardThirdWidth,
-                  ] as any
-                }
-                onPress={() => router.push("/AdminManageCandidates")}
+                style={[styles.sidebarButton, currentPage === 'manage-elections' && styles.sidebarButtonActive]}
+                onPress={() => {
+                  setCurrentPage('manage-elections');
+                  if (isMobile) setSidebarOpen(false);
+                }}
               >
-                <View style={styles.cardInner}>
-                  <LinearGradient
-                    colors={["#1a73e8", "#7c3aed", "#e91e8c"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.cardStripe}
-                  />
-                  <View style={styles.cardBody}>
-                    <Text style={styles.actionIcon}>👤</Text>
-                    <Text style={styles.actionTitle}>Manage Candidates</Text>
-                    <Text style={styles.actionDesc}>
-                      Add, edit, or delete candidates
-                    </Text>
-                    <View style={styles.actionBtn}>
-                      <Text style={styles.actionBtnText}>Add Candidates</Text>
-                    </View>
-                  </View>
-                </View>
+                <Text style={[styles.sidebarButtonText, currentPage === 'manage-elections' && styles.sidebarButtonTextActive]}>
+                  ✏️ Manage Elections
+                </Text>
               </Pressable>
 
+              {/* Manage Candidates */}
               <Pressable
-                style={
-                  [
-                    styles.actionCard,
-                    isMobile ? styles.cardFullWidth : styles.cardThirdWidth,
-                  ] as any
-                }
-                onPress={() => router.push("/AdminViewResults")}
+                style={[styles.sidebarButton, currentPage === 'manage-candidates' && styles.sidebarButtonActive]}
+                onPress={() => {
+                  setCurrentPage('manage-candidates');
+                  if (isMobile) setSidebarOpen(false);
+                }}
               >
-                <View style={styles.cardInner}>
-                  <LinearGradient
-                    colors={["#1a73e8", "#7c3aed", "#e91e8c"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.cardStripe}
-                  />
-                  <View style={styles.cardBody}>
-                    <Text style={styles.actionIcon}>📊</Text>
-                    <Text style={styles.actionTitle}>View Results</Text>
-                    <Text style={styles.actionDesc}>
-                      See voting results and statistics
-                    </Text>
-                    <View style={styles.actionBtn}>
-                      <Text style={styles.actionBtnText}>View Results</Text>
-                    </View>
-                  </View>
-                </View>
+                <Text style={[styles.sidebarButtonText, currentPage === 'manage-candidates' && styles.sidebarButtonTextActive]}>
+                  👤 Manage Candidates
+                </Text>
               </Pressable>
 
+              {/* View Results */}
               <Pressable
-                style={
-                  [
-                    styles.actionCard,
-                    isMobile ? styles.cardFullWidth : styles.cardThirdWidth,
-                  ] as any
-                }
-                onPress={() => router.push("/VoterSignup")}
+                style={[styles.sidebarButton, currentPage === 'view-results' && styles.sidebarButtonActive]}
+                onPress={() => {
+                  setCurrentPage('view-results');
+                  if (isMobile) setSidebarOpen(false);
+                }}
               >
-                <View style={styles.cardInner}>
-                  <LinearGradient
-                    colors={["#1a73e8", "#7c3aed", "#e91e8c"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.cardStripe}
-                  />
-                  <View style={styles.cardBody}>
-                    <Text style={styles.actionIcon}>✅</Text>
-                    <Text style={styles.actionTitle}>Register Voter</Text>
-                    <Text style={styles.actionDesc}>
-                      Create voter account with Gmail
-                    </Text>
-                    <View style={styles.actionBtn}>
-                      <Text style={styles.actionBtnText}>Register Voter</Text>
-                    </View>
-                  </View>
-                </View>
+                <Text style={[styles.sidebarButtonText, currentPage === 'view-results' && styles.sidebarButtonTextActive]}>
+                  📈 View Results
+                </Text>
               </Pressable>
 
-              {profile?.role === "admin" && (
+              {/* Register Voter */}
+              <Pressable
+                style={[styles.sidebarButton, currentPage === 'register-voter' && styles.sidebarButtonActive]}
+                onPress={() => {
+                  setCurrentPage('register-voter');
+                  if (isMobile) setSidebarOpen(false);
+                }}
+              >
+                <Text style={[styles.sidebarButtonText, currentPage === 'register-voter' && styles.sidebarButtonTextActive]}>
+                  ✅ Register Voter
+                </Text>
+              </Pressable>
+
+              {/* Register Auditor - Admin Only */}
+              {profile?.role === 'admin' && (
                 <Pressable
-                  style={
-                    [
-                      styles.actionCard,
-                      isMobile ? styles.cardFullWidth : styles.cardThirdWidth,
-                    ] as any
-                  }
-                  onPress={() => router.push("/AuditorSignup")}
+                  style={[styles.sidebarButton, currentPage === 'register-auditor' && styles.sidebarButtonActive]}
+                  onPress={() => {
+                    setCurrentPage('register-auditor');
+                    if (isMobile) setSidebarOpen(false);
+                  }}
                 >
-                  <View style={styles.cardInner}>
-                    <LinearGradient
-                      colors={["#1a73e8", "#7c3aed", "#e91e8c"]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.cardStripe}
-                    />
-                    <View style={styles.cardBody}>
-                      <Text style={styles.actionIcon}>🔍</Text>
-                      <Text style={styles.actionTitle}>Register Auditor</Text>
-                      <Text style={styles.actionDesc}>
-                        Create auditor account with Gmail
-                      </Text>
-                      <View style={styles.actionBtn}>
-                        <Text style={styles.actionBtnText}>
-                          Register Auditor
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
+                  <Text style={[styles.sidebarButtonText, currentPage === 'register-auditor' && styles.sidebarButtonTextActive]}>
+                    🔍 Register Auditor
+                  </Text>
                 </Pressable>
               )}
             </View>
-          </View>
 
-          {/* Active Elections Table */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📊 Active Elections</Text>
-            {isMobile ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={[styles.tableContainer, { minWidth: 600 }]}>
-                  {/* Table Header */}
-                  <View style={styles.tableHeader}>
-                    <Text
-                      style={[
-                        styles.tableHeaderCell,
-                        { flex: 2, minWidth: 140 },
-                      ]}
-                    >
-                      Election Name
-                    </Text>
-                    <View style={styles.headerDivider} />
-                    <Text
-                      style={[
-                        styles.tableHeaderCell,
-                        { flex: 1, minWidth: 70 },
-                      ]}
-                    >
-                      Status
-                    </Text>
-                    <View style={styles.headerDivider} />
-                    <Text
-                      style={[
-                        styles.tableHeaderCell,
-                        { flex: 1, minWidth: 90 },
-                      ]}
-                    >
-                      Start Date
-                    </Text>
-                    <View style={styles.headerDivider} />
-                    <Text
-                      style={[
-                        styles.tableHeaderCell,
-                        { flex: 1, minWidth: 90 },
-                      ]}
-                    >
-                      End Date
-                    </Text>
-                    <View style={styles.headerDivider} />
-                    <Text
-                      style={[
-                        styles.tableHeaderCell,
-                        { flex: 1, minWidth: 80 },
-                      ]}
-                    >
-                      Candidates
-                    </Text>
-                    <View style={styles.headerDivider} />
-                    <Text
-                      style={[
-                        styles.tableHeaderCell,
-                        { flex: 1, minWidth: 80 },
-                      ]}
-                    >
-                      Results
-                    </Text>
+                      </View>
+        )}
+
+        {/* Content Area */}
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+        >
+          <View style={styles.innerWrapper}>
+            {/* Page Content Based on Selection */}
+            {currentPage === 'overview' && (
+              <>
+                {/* Dashboard Title */}
+                <View style={styles.titleSection}>
+                  <Text style={styles.dashboardTitle}>Admin Dashboard</Text>
+                  <Text style={styles.dashboardSubtitle}>
+                    Manage elections and monitor voting activity
+                  </Text>
+                </View>
+
+                {/* Stats Cards */}
+                <View
+                  style={[
+                    styles.statsContainer,
+                    isMobile && styles.statsContainerMobile,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.statCard,
+                      isMobile ? styles.cardFullWidth : styles.cardThirdWidth,
+                    ]}
+                  >
+                    <Text style={styles.statLabel}>Total Elections</Text>
+                    <Text style={styles.statNumber}>{elections.length}</Text>
                   </View>
-                  {activeElections.length === 0 ? (
-                    <View style={styles.emptyState}>
-                      <Text style={styles.emptyText}>No active elections</Text>
-                      {upcomingElectionsCount > 0 ? (
-                        <Text style={styles.emptyHintText}>
-                          {upcomingElectionsCount} election(s) are scheduled and
-                          will appear here once the start date is reached.
-                        </Text>
-                      ) : null}
-                    </View>
+                  <View
+                    style={[
+                      styles.statCard,
+                      isMobile ? styles.cardFullWidth : styles.cardThirdWidth,
+                    ]}
+                  >
+                    <Text style={styles.statLabel}>Registered Voters</Text>
+                    <Text style={styles.statNumber}>{registeredVotersCount}</Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.statCard,
+                      isMobile ? styles.cardFullWidth : styles.cardThirdWidth,
+                    ]}
+                  >
+                    <Text style={styles.statLabel}>Total Votes Cast</Text>
+                    <Text style={styles.statNumber}>{totalVotesCast}</Text>
+                  </View>
+                </View>
+
+                {/* Active Elections Table */}
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>📊 Active Elections</Text>
+                  {isMobile ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <View style={[styles.tableContainer, { minWidth: 600 }]}>
+                        {/* Table Header */}
+                        <View style={styles.tableHeader}>
+                          <Text
+                            style={[
+                              styles.tableHeaderCell,
+                              { flex: 2, minWidth: 140 },
+                            ]}
+                          >
+                            Election Name
+                          </Text>
+                          <View style={styles.headerDivider} />
+                          <Text
+                            style={[
+                              styles.tableHeaderCell,
+                              { flex: 1, minWidth: 70 },
+                            ]}
+                          >
+                            Status
+                          </Text>
+                          <View style={styles.headerDivider} />
+                          <Text
+                            style={[
+                              styles.tableHeaderCell,
+                              { flex: 1, minWidth: 90 },
+                            ]}
+                          >
+                            Start Date
+                          </Text>
+                          <View style={styles.headerDivider} />
+                          <Text
+                            style={[
+                              styles.tableHeaderCell,
+                              { flex: 1, minWidth: 90 },
+                            ]}
+                          >
+                            End Date
+                          </Text>
+                          <View style={styles.headerDivider} />
+                          <Text
+                            style={[
+                              styles.tableHeaderCell,
+                              { flex: 1, minWidth: 80 },
+                            ]}
+                          >
+                            Candidates
+                          </Text>
+                          <View style={styles.headerDivider} />
+                          <Text
+                            style={[
+                              styles.tableHeaderCell,
+                              { flex: 1, minWidth: 80 },
+                            ]}
+                          >
+                            Results
+                          </Text>
+                        </View>
+                        {activeElections.length === 0 ? (
+                          <View style={styles.emptyState}>
+                            <Text style={styles.emptyText}>No active elections</Text>
+                            {upcomingElectionsCount > 0 ? (
+                              <Text style={styles.emptyHintText}>
+                                {upcomingElectionsCount} election(s) are scheduled and
+                                will appear here once the start date is reached.
+                              </Text>
+                            ) : null}
+                          </View>
+                        ) : (
+                          activeElections.map((election) => (
+                            <View key={election.id} style={styles.tableRow}>
+                              <Text
+                                style={[
+                                  styles.tableRowCell,
+                                  { flex: 2, minWidth: 140 },
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {election.title}
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.tableRowCell,
+                                  { flex: 1, minWidth: 70 },
+                                ]}
+                              >
+                                active
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.tableRowCell,
+                                  { flex: 1, minWidth: 90 },
+                                ]}
+                              >
+                                {new Date(election.starts_at).toLocaleDateString()}
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.tableRowCell,
+                                  { flex: 1, minWidth: 90 },
+                                ]}
+                              >
+                                {new Date(election.ends_at).toLocaleDateString()}
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.tableRowCell,
+                                  { flex: 1, minWidth: 80 },
+                                ]}
+                              >
+                                {candidateCounts[election.id] ?? 0}
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.tableRowCell,
+                                  { flex: 1, minWidth: 80 },
+                                ]}
+                              >
+                                {voteCounts[election.id] ?? 0} votes
+                              </Text>
+                            </View>
+                          ))
+                        )}
+                      </View>
+                    </ScrollView>
                   ) : (
-                    activeElections.map((election) => (
-                      <View key={election.id} style={styles.tableRow}>
-                        <Text
-                          style={[
-                            styles.tableRowCell,
-                            { flex: 2, minWidth: 140 },
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {election.title}
+                    <View style={styles.tableContainer}>
+                      {/* Table Header */}
+                      <View style={styles.tableHeader}>
+                        <Text style={[styles.tableHeaderCell, { flex: 2 }]}>
+                          Election Name
                         </Text>
-                        <Text
-                          style={[
-                            styles.tableRowCell,
-                            { flex: 1, minWidth: 70 },
-                          ]}
-                        >
-                          active
+                        <View style={styles.headerDivider} />
+                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>
+                          Status
                         </Text>
-                        <Text
-                          style={[
-                            styles.tableRowCell,
-                            { flex: 1, minWidth: 90 },
-                          ]}
-                        >
-                          {new Date(election.starts_at).toLocaleDateString()}
+                        <View style={styles.headerDivider} />
+                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>
+                          Start Date
                         </Text>
-                        <Text
-                          style={[
-                            styles.tableRowCell,
-                            { flex: 1, minWidth: 90 },
-                          ]}
-                        >
-                          {new Date(election.ends_at).toLocaleDateString()}
+                        <View style={styles.headerDivider} />
+                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>
+                          End Date
                         </Text>
-                        <Text
-                          style={[
-                            styles.tableRowCell,
-                            { flex: 1, minWidth: 80 },
-                          ]}
-                        >
-                          {candidateCounts[election.id] ?? 0}
+                        <View style={styles.headerDivider} />
+                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>
+                          Candidates
                         </Text>
-                        <Text
-                          style={[
-                            styles.tableRowCell,
-                            { flex: 1, minWidth: 80 },
-                          ]}
-                        >
-                          {voteCounts[election.id] ?? 0} votes
+                        <View style={styles.headerDivider} />
+                        <Text style={[styles.tableHeaderCell, { flex: 1 }]}>
+                          Results
                         </Text>
                       </View>
-                    ))
+                      {activeElections.length === 0 ? (
+                        <View style={styles.emptyState}>
+                          <Text style={styles.emptyText}>No active elections</Text>
+                          {upcomingElectionsCount > 0 ? (
+                            <Text style={styles.emptyHintText}>
+                              {upcomingElectionsCount} election(s) are scheduled and
+                              will appear here once the start date is reached.
+                            </Text>
+                          ) : null}
+                        </View>
+                      ) : (
+                        activeElections.map((election) => (
+                          <View key={election.id} style={styles.tableRow}>
+                            <Text
+                              style={[styles.tableRowCell, { flex: 2 }]}
+                              numberOfLines={1}
+                            >
+                              {election.title}
+                            </Text>
+                            <Text style={[styles.tableRowCell, { flex: 1 }]}>
+                              active
+                            </Text>
+                            <Text style={[styles.tableRowCell, { flex: 1 }]}>
+                              {new Date(election.starts_at).toLocaleDateString()}
+                            </Text>
+                            <Text style={[styles.tableRowCell, { flex: 1 }]}>
+                              {new Date(election.ends_at).toLocaleDateString()}
+                            </Text>
+                            <Text style={[styles.tableRowCell, { flex: 1 }]}>
+                              {candidateCounts[election.id] ?? 0}
+                            </Text>
+                            <Text style={[styles.tableRowCell, { flex: 1 }]}>
+                              {voteCounts[election.id] ?? 0} votes
+                            </Text>
+                          </View>
+                        ))
+                      )}
+                    </View>
                   )}
                 </View>
-              </ScrollView>
-            ) : (
-              <View style={styles.tableContainer}>
-                {/* Table Header */}
-                <View style={styles.tableHeader}>
-                  <Text style={[styles.tableHeaderCell, { flex: 2 }]}>
-                    Election Name
-                  </Text>
-                  <View style={styles.headerDivider} />
-                  <Text style={[styles.tableHeaderCell, { flex: 1 }]}>
-                    Status
-                  </Text>
-                  <View style={styles.headerDivider} />
-                  <Text style={[styles.tableHeaderCell, { flex: 1 }]}>
-                    Start Date
-                  </Text>
-                  <View style={styles.headerDivider} />
-                  <Text style={[styles.tableHeaderCell, { flex: 1 }]}>
-                    End Date
-                  </Text>
-                  <View style={styles.headerDivider} />
-                  <Text style={[styles.tableHeaderCell, { flex: 1 }]}>
-                    Candidates
-                  </Text>
-                  <View style={styles.headerDivider} />
-                  <Text style={[styles.tableHeaderCell, { flex: 1 }]}>
-                    Results
-                  </Text>
-                </View>
-                {activeElections.length === 0 ? (
-                  <View style={styles.emptyState}>
-                    <Text style={styles.emptyText}>No active elections</Text>
-                    {upcomingElectionsCount > 0 ? (
-                      <Text style={styles.emptyHintText}>
-                        {upcomingElectionsCount} election(s) are scheduled and
-                        will appear here once the start date is reached.
-                      </Text>
-                    ) : null}
-                  </View>
-                ) : (
-                  activeElections.map((election) => (
-                    <View key={election.id} style={styles.tableRow}>
-                      <Text
-                        style={[styles.tableRowCell, { flex: 2 }]}
-                        numberOfLines={1}
-                      >
-                        {election.title}
-                      </Text>
-                      <Text style={[styles.tableRowCell, { flex: 1 }]}>
-                        active
-                      </Text>
-                      <Text style={[styles.tableRowCell, { flex: 1 }]}>
-                        {new Date(election.starts_at).toLocaleDateString()}
-                      </Text>
-                      <Text style={[styles.tableRowCell, { flex: 1 }]}>
-                        {new Date(election.ends_at).toLocaleDateString()}
-                      </Text>
-                      <Text style={[styles.tableRowCell, { flex: 1 }]}>
-                        {candidateCounts[election.id] ?? 0}
-                      </Text>
-                      <Text style={[styles.tableRowCell, { flex: 1 }]}>
-                        {voteCounts[election.id] ?? 0} votes
-                      </Text>
-                    </View>
-                  ))
-                )}
-              </View>
+              </>
             )}
+
+            {/* Other Pages - Display Components */}
+            {currentPage === 'create-election' && <AdminCreateElection isEmbedded={true} />}
+            {currentPage === 'manage-elections' && <AdminManageElections isEmbedded={true} />}
+            {currentPage === 'manage-candidates' && <AdminManageCandidates isEmbedded={true} />}
+            {currentPage === 'view-results' && <AdminViewResults isEmbedded={true} />}
+            {currentPage === 'register-voter' && <VoterSignup isEmbedded={true} />}
+            {currentPage === 'register-auditor' && <AuditorSignup isEmbedded={true} />}
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -588,6 +552,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
+    position: "relative",
   },
   centerContainer: {
     flex: 1,
@@ -847,4 +812,131 @@ const styles = StyleSheet.create({
     maxWidth: 460,
     lineHeight: 18,
   },
+  // Main Layout
+  mainLayout: {
+    flex: 1,
+    flexDirection: "row",
+    position: "relative",
+  },
+  mainLayoutMobile: {
+    flexDirection: "column",
+  },
+  // Sidebar Styles
+  sidebar: {
+    width: 240,
+    backgroundColor: "#ffffff",
+    borderRightWidth: 1,
+    borderRightColor: "#e0e0e0",
+    paddingVertical: 20,
+    paddingHorizontal: 12,
+    flexDirection: "column",
+    justifyContent: "space-between",
+  },
+  sidebarMobile: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    bottom: 0,
+    zIndex: 999,
+    width: 240,
+    maxWidth: "80%",
+    height: "100%",
+    borderRightWidth: 1,
+    boxShadow: "2px 0px 8px rgba(0, 0, 0, 0.2)",
+    elevation: 10,
+  },
+  sidebarOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 500,
+  },
+  sidebarMenu: {
+    gap: 8,
+    flex: 1,
+  },
+  sidebarButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: "transparent",
+  },
+  sidebarButtonActive: {
+    backgroundColor: "#1a73e8",
+  },
+  sidebarButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#4a4a4a",
+  },
+  sidebarButtonTextActive: {
+    color: "#ffffff",
+  },
+  // Mobile Header
+  mobileHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  mobileHamburger: {
+    padding: 8,
+    marginRight: 12,
+  },
+  mobileHamburgerIcon: {
+    fontSize: 28,
+    color: "#1a73e8",
+    fontWeight: "700",
+  },
+  mobileLogo: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#1a73e8",
+    flex: 1,
+  },
+  mobileLogoutButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: "#1a73e8",
+  },
+  mobileLogoutText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1a73e8",
+  },
+  // Sidebar Footer
+  sidebarFooter: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#e0e0e0",
+  },
+  welcomeCard: {
+    backgroundColor: "#f0f4ff",
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: "#1a73e8",
+  },
+  welcomeText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1a73e8",
+    marginBottom: 4,
+  },
+  welcomeSubtext: {
+    fontSize: 12,
+    color: "#677b94",
+    fontWeight: "500",
+  },
 });
+

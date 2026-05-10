@@ -61,7 +61,7 @@ serve(async (req) => {
 
   const { data: requestRow, error: requestError } = await adminClient
     .from("voter_registration_requests")
-    .select("id, full_name, email, generated_password, expires_at, status")
+    .select("id, full_name, email, generated_password, expires_at, status, face_image_base64")
     .eq("approval_token", token)
     .maybeSingle();
 
@@ -129,10 +129,32 @@ serve(async (req) => {
       .update({ status: "failed" })
       .eq("id", requestRow.id);
 
+    // Detect duplicate user and show a friendly message
+    const errMsg = createUserError?.message ?? "Unknown error";
+    const isDuplicate = errMsg.toLowerCase().includes("already been registered") ||
+      errMsg.toLowerCase().includes("already exists") ||
+      errMsg.toLowerCase().includes("duplicate");
+
+    if (isDuplicate) {
+      return new Response(
+        htmlPage(
+          "Already Registered",
+          `A voter account with the email <strong>${requestRow.email}</strong> already exists.<br><br>` +
+          `You can log in directly using the credentials that were sent to your email. ` +
+          `If you forgot your password, please contact the election administrator.`,
+          false,
+        ),
+        {
+          status: 409,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        },
+      );
+    }
+
     return new Response(
       htmlPage(
         "Registration Failed",
-        `Unable to create voter account: ${createUserError?.message ?? "Unknown error"}`,
+        `We were unable to create your voter account. Please contact the election administrator and share this error: <em>${errMsg}</em>`,
         false,
       ),
       {
@@ -167,6 +189,24 @@ serve(async (req) => {
         headers: { "Content-Type": "text/html; charset=utf-8" },
       },
     );
+  }
+
+  // Transfer face image from registration request to voter_faces table
+  if (requestRow.face_image_base64) {
+    try {
+      await adminClient.from("voter_faces").insert({
+        voter_id: createdUserData.user.id,
+        face_image_base64: requestRow.face_image_base64,
+        is_primary: true,
+        metadata: {
+          registrationMethod: "admin-capture",
+          transferredAt: new Date().toISOString(),
+        },
+      });
+    } catch (faceErr) {
+      console.error("Failed to transfer face image:", faceErr);
+      // Non-fatal: voter account is still created
+    }
   }
 
   await adminClient

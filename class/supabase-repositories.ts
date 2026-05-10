@@ -1,25 +1,25 @@
 import type {
-    AuditLogRow,
-    CandidateRow,
-    ElectionRow,
-    ProfileRow,
-    VerifyChainResultRow,
-    VoteBlockRow,
-    VoterRegistryRow,
+  AuditLogRow,
+  CandidateRow,
+  ElectionRow,
+  ProfileRow,
+  VerifyChainResultRow,
+  VoteBlockRow,
+  VoterRegistryRow,
 } from '@/class/database-types';
 import { DataAccessError } from '@/class/errors';
 import type {
-    AddCandidateInput,
-    CreateElectionInput,
-    IAuditLogRepository,
-    IAuthRepository,
-    ICandidateRepository,
-    IElectionRepository,
-    IProfileRepository,
-    IVoteLedgerRepository,
-    IVoterRegistryRepository,
-    UpdateCandidateInput,
-    UpdateElectionInput,
+  AddCandidateInput,
+  CreateElectionInput,
+  IAuditLogRepository,
+  IAuthRepository,
+  ICandidateRepository,
+  IElectionRepository,
+  IProfileRepository,
+  IVoteLedgerRepository,
+  IVoterRegistryRepository,
+  UpdateCandidateInput,
+  UpdateElectionInput,
 } from '@/class/service-contracts';
 import { supabase } from '@/class/supabase-client';
 
@@ -90,6 +90,14 @@ export class SupabaseAuthRepository extends RepositoryBase implements IAuthRepos
     } = await supabase.auth.getUser();
 
     if (error) {
+      // Supabase may return an AuthSessionMissingError when no session is available.
+      // Treat that as unauthenticated rather than throwing to callers, so UI flows
+      // can handle re-authentication gracefully.
+      const msg = typeof error === 'object' && error !== null && 'message' in error ? (error as any).message : String(error);
+      if (msg && (msg.includes('AuthSessionMissing') || msg.toLowerCase().includes('auth session missing') || (error as any)?.status === 403)) {
+        return null;
+      }
+
       this.throwOnError('Failed to fetch current user', error);
     }
 

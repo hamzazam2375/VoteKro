@@ -2,22 +2,22 @@ import type { ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
 import DateTimePicker, {
-    type DateTimePickerEvent,
+  type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
-export default function AdminCreateElectionScreen() {
+export default function AdminCreateElectionScreen({ isEmbedded }: { isEmbedded?: boolean } = {}) {
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
@@ -52,10 +52,16 @@ export default function AdminCreateElectionScreen() {
     void loadProfile();
   }, [router]);
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Logout", style: "destructive", onPress: () => void doLogout() },
+    ]);
+  };
+
+  const doLogout = async () => {
     try {
       await serviceFactory.authService.signOut();
-      Alert.alert("Success", "Logged out successfully");
       router.replace("/");
     } catch (logoutError) {
       const message = serviceFactory.authService.getErrorMessage(
@@ -180,23 +186,26 @@ export default function AdminCreateElectionScreen() {
 
   return (
     <View style={styles.container}>
-      <Navbar
-        infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
-        actions={[
-          {
-            label: "Logout",
-            onPress: () => void handleLogout(),
-            variant: "outline",
-          },
-        ]}
-      />
+      {!isEmbedded && (
+        <Navbar
+          actions={[
+            {
+              label: "Logout",
+              onPress: () => void handleLogout(),
+              variant: "outline",
+            },
+          ]}
+        />
+      )}
 
-      <Pressable
-        style={styles.backButton}
-        onPress={() => router.replace("/AdminDashboard")}
-      >
-        <Text style={styles.backButtonText}>← Back</Text>
-      </Pressable>
+      {!isEmbedded && (
+        <Pressable
+          style={styles.backButton}
+          onPress={() => router.replace("/AdminDashboard")}
+        >
+          <Text style={styles.backButtonText}>← Back</Text>
+        </Pressable>
+      )}
 
       <ScrollView contentContainerStyle={styles.contentContainer}>
         <View style={styles.formCard}>
@@ -228,20 +237,14 @@ export default function AdminCreateElectionScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Start Date</Text>
-            <Pressable
-              style={styles.datePickerButton}
-              onPress={() => setShowStartDatePicker(true)}
-              disabled={isSubmitting}
-            >
-              <Text
-                style={[
-                  styles.datePickerButtonText,
-                  !startDate && styles.datePickerPlaceholder,
-                ]}
-              >
-                {startDate || "Select start date"}
-              </Text>
-            </Pressable>
+                        <TextInput
+                          style={styles.input}
+                          value={startDate}
+                          onChangeText={setStartDate}
+                          placeholder="YYYY-MM-DD"
+                          placeholderTextColor="#9ca3af"
+                          editable={!isSubmitting}
+                        />
             {showStartDatePicker ? (
               <DateTimePicker
                 value={toDateFromInput(startDate)}
@@ -254,20 +257,14 @@ export default function AdminCreateElectionScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>End Date</Text>
-            <Pressable
-              style={styles.datePickerButton}
-              onPress={() => setShowEndDatePicker(true)}
-              disabled={isSubmitting}
-            >
-              <Text
-                style={[
-                  styles.datePickerButtonText,
-                  !endDate && styles.datePickerPlaceholder,
-                ]}
-              >
-                {endDate || "Select end date"}
-              </Text>
-            </Pressable>
+                        <TextInput
+                          style={styles.input}
+                          value={endDate}
+                          onChangeText={setEndDate}
+                          placeholder="YYYY-MM-DD"
+                          placeholderTextColor="#9ca3af"
+                          editable={!isSubmitting}
+                        />
             {showEndDatePicker ? (
               <DateTimePicker
                 value={toDateFromInput(endDate)}
@@ -292,7 +289,7 @@ export default function AdminCreateElectionScreen() {
             {isSubmitting ? (
               <ActivityIndicator color="#ffffff" />
             ) : (
-              <Text style={styles.submitButtonText}>✓ Create Election</Text>
+              <Text style={styles.submitButtonText}>Create Election</Text>
             )}
           </Pressable>
         </View>

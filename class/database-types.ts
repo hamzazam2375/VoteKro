@@ -1,5 +1,5 @@
 export type UserRole = 'admin' | 'voter' | 'auditor';
-export type ElectionStatus = 'draft' | 'open' | 'closed' | 'published';
+export type ElectionStatus = 'draft' | 'open' | 'closed' | 'published' | 'active';
 
 export interface ProfileRow {
   user_id: string;

@@ -16,7 +16,7 @@ import {
   View,
 } from "react-native";
 
-export default function VoterSignupScreen() {
+export default function VoterSignupScreen({ isEmbedded }: { isEmbedded?: boolean } = {}) {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -141,12 +141,14 @@ export default function VoterSignupScreen() {
 
   return (
     <View style={styles.container}>
-      <Navbar
-        infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
-        actions={[
-          { label: "Logout", onPress: handleLogout, variant: "outline" },
-        ]}
-      />
+      {!isEmbedded && (
+        <Navbar
+          infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
+          actions={[
+            { label: "Logout", onPress: handleLogout, variant: "outline" },
+          ]}
+        />
+      )}
 
       {showFaceCapture && (
         <FaceCapture
@@ -165,12 +167,14 @@ export default function VoterSignupScreen() {
           ]}
           showsVerticalScrollIndicator={false}
         >
-          <Pressable
-            style={styles.backButton}
-            onPress={() => router.replace("/AdminDashboard")}
-          >
-            <Text style={styles.backButtonText}>← Back</Text>
-          </Pressable>
+          {!isEmbedded && (
+            <Pressable
+              style={styles.backButton}
+              onPress={() => router.replace("/AdminDashboard")}
+            >
+              <Text style={styles.backButtonText}>← Back</Text>
+            </Pressable>
+          )}
 
           <View style={styles.centerContainer}>
             <View style={styles.card}>
