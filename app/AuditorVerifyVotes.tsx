@@ -321,6 +321,7 @@ export default function AuditorVerifyVotes() {
         <View style={styles.container}>
             <Navbar
                 infoText={`${profile?.full_name?.split(' ')[0] || 'Auditor'} - Election Verification`}
+                auditorName="Auditor, Rizwan"
                 actions={[
                     { label: 'Back', onPress: handleGoBack, variant: 'outline' },
                 ]}
