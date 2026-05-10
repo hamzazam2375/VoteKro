@@ -4,17 +4,19 @@ import { Navbar } from "@/components/navbar";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View
+    ActivityIndicator,
+    Alert,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
-export default function AuditorSignupScreen({ isEmbedded }: { isEmbedded?: boolean } = {}) {
+export default function AuditorSignupScreen({
+  isEmbedded,
+}: { isEmbedded?: boolean } = {}) {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -82,7 +84,7 @@ export default function AuditorSignupScreen({ isEmbedded }: { isEmbedded?: boole
 
       Alert.alert(
         "Email Sent",
-        "Authorization email sent. Ask auditor to click the button in email to complete registration.",
+        "Authorization email sent with password. Auditor must click the authorize button first, then log in using the emailed credentials.",
         [
           {
             text: "OK",
@@ -125,8 +127,8 @@ export default function AuditorSignupScreen({ isEmbedded }: { isEmbedded?: boole
 
             {/* Description */}
             <Text style={styles.description}>
-              Send auditor authorization email. Auditor must click the email
-              button to complete registration.
+              Send an authorization email with login credentials. Auditor must
+              click the authorize button before logging in.
             </Text>
 
             {/* Full Name Input */}
@@ -157,7 +159,7 @@ export default function AuditorSignupScreen({ isEmbedded }: { isEmbedded?: boole
               />
             </View>
 
-            {/* No password input — authorization will be sent by email */}
+            {/* Password is generated automatically and sent in email */}
 
             {/* Register Button */}
             <Pressable
