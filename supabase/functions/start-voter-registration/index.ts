@@ -113,7 +113,6 @@ serve(async (req) => {
     const fullName = body.fullName?.trim();
     const email = body.email?.trim().toLowerCase();
     const faceImageBase64 = body.faceImageBase64;
-    const faceMetadata = body.faceMetadata ?? null;
 
     if (!fullName || !email) {
       return new Response(
@@ -129,37 +128,9 @@ serve(async (req) => {
     const generatedPassword = generatePassword();
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-    // If a face image was provided, store it first and keep its id
-    let faceId: string | null = null;
-    if (faceImageBase64) {
-      const { data: faceData, error: faceError } = await adminClient
-        .from("voter_faces")
-        .insert([
-          {
-            face_image_base64: faceImageBase64,
-            is_primary: true,
-            metadata: {
-              ...(typeof faceMetadata === "object" ? faceMetadata : {}),
-              registrationMethod: "admin-capture",
-              capturedAt: new Date().toISOString(),
-              requestedBy: user.id,
-            },
-          },
-        ])
-        .select()
-        .single();
-
-      if (faceError) {
-        // Log error but allow registration request to continue
-        console.error(
-          "Failed to store face image:",
-          faceError.message || faceError,
-        );
-      } else if (faceData && faceData.id) {
-        faceId = faceData.id;
-      }
-    }
-
+    // Face image will be stored after the voter account is created.
+    // For now, keep the base64 in the registration request metadata so it
+    // can be moved to voter_faces once the voter_id exists.
     const { error: insertError } = await adminClient
       .from("voter_registration_requests")
       .insert({
@@ -170,7 +141,7 @@ serve(async (req) => {
         requested_by: user.id,
         expires_at: expiresAt,
         status: "pending",
-        face_id: faceId,
+        face_image_base64: faceImageBase64 ?? null,
       });
 
     if (insertError) {

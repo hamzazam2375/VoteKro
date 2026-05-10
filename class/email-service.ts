@@ -93,7 +93,7 @@ If you did not request this account or have any questions, please contact suppor
         body: {
           fullName,
           email,
-          faceImage: faceImageBase64,
+          faceImageBase64: faceImageBase64,
         },
       },
     );
