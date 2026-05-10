@@ -91,12 +91,33 @@ class FaceRecognitionService {
     }
 
     if (!isWeb || !this.faceapi) {
-      return {
-        embedding: [],
-        faceCount: 1,
-        detected: true,
-        message: "Native mode — embedding generated server-side",
-      };
+      // Native: use hidden WebView to run face-api.js
+      try {
+        const { generateEmbeddingViaWebView } = require("@/components/face-recognition-webview");
+        const embedding = await generateEmbeddingViaWebView(imageSource);
+        if (embedding.length === 0) {
+          return {
+            embedding: [],
+            faceCount: 0,
+            detected: false,
+            message: "❌ No face detected on native. Position your face clearly.",
+          };
+        }
+        return {
+          embedding,
+          faceCount: 1,
+          detected: true,
+          message: "✓ Face detected (native WebView)",
+        };
+      } catch (error) {
+        console.error("Native face recognition error:", error);
+        return {
+          embedding: [],
+          faceCount: 0,
+          detected: false,
+          message: `Native face error: ${error instanceof Error ? error.message : "Unknown"}`,
+        };
+      }
     }
 
     try {

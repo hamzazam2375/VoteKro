@@ -1,6 +1,4 @@
-import {
-  faceRecognitionService,
-} from "@/class/face-recognition";
+import { faceRecognitionService } from "@/class/face-recognition";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -14,8 +12,8 @@ import {
 } from "react-native";
 
 export interface FaceCaptureResult {
-  imageData: string;     // base64 data URI or blob URL
-  embedding: number[];   // 128-d face embedding (empty on native)
+  imageData: string; // base64 data URI or blob URL
+  embedding: number[]; // 128-d face embedding (empty on native)
   faceCount: number;
 }
 
@@ -90,14 +88,14 @@ export function FaceCapture({
       console.log("Photo base64 exists:", !!photo.base64);
       console.log("Photo base64 prefix:", photo.base64?.substring(0, 30));
 
-      // Get image data - prefer URI (blob URL) on web since base64 might be malformed
+      // Use base64 first so native mobile does not hand a file:// URI to the detector.
       let imageData: string;
-      if (photo.uri) {
-        imageData = photo.uri;
-      } else if (photo.base64) {
+      if (photo.base64) {
         imageData = photo.base64.startsWith("data:")
           ? photo.base64
           : `data:image/jpeg;base64,${photo.base64}`;
+      } else if (photo.uri) {
+        imageData = photo.uri;
       } else {
         Alert.alert("Error", "Failed to capture photo.");
         setStatusMessage("❌ Capture failed. Try again.");
@@ -171,7 +169,9 @@ export function FaceCapture({
           facing="front"
           onCameraReady={() => {
             if (modelsReady) {
-              setStatusMessage("✓ Ready! Position your face and press Capture.");
+              setStatusMessage(
+                "✓ Ready! Position your face and press Capture.",
+              );
             }
           }}
         />
@@ -195,7 +195,9 @@ export function FaceCapture({
         {isInitializing ? (
           <View style={styles.loaderContainer}>
             <ActivityIndicator size="large" color="#2e63e3" />
-            <Text style={styles.loaderText}>Loading face recognition models...</Text>
+            <Text style={styles.loaderText}>
+              Loading face recognition models...
+            </Text>
           </View>
         ) : (
           <View style={styles.buttonContainer}>
@@ -261,7 +263,9 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   camera: {
-    ...(isWeb ? { width: "100%" as any, height: 380 } : { flex: 1 }),
+    ...(isWeb
+      ? { width: "100%" as any, height: 380 }
+      : { width: "100%" as any, height: "100%" as any }),
   },
   cameraWrapper: {
     ...(isWeb
@@ -277,6 +281,8 @@ const styles = StyleSheet.create({
         }
       : {
           flex: 1,
+          width: "100%" as any,
+          minHeight: 400,
           position: "relative" as const,
           overflow: "hidden" as const,
           backgroundColor: "#000",

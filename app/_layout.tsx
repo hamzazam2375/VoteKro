@@ -1,3 +1,4 @@
+import { FaceRecognitionWebView } from "@/components/face-recognition-webview";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Platform } from "react-native";
@@ -57,6 +58,7 @@ export default function RootLayout() {
           theme="light"
         />
       ) : null}
+      <FaceRecognitionWebView />
       <StatusBar style="dark" />
     </>
   );

@@ -64,36 +64,19 @@ export default function VoterLoginScreen() {
       // Fallback: check old voter_faces table
       const hasFace = await faceRepository.hasFaceRegistered(profile.user_id);
       if (hasFace) {
-        // Has face image but no embedding — generate embedding from stored image
-        const storedFace = await faceRepository.getPrimaryFace(profile.user_id);
-        if (storedFace?.face_image_base64) {
-          console.log("Legacy face found. Generating embedding from stored image...");
-          const { faceRecognitionService } = await import("@/class/face-recognition");
-          await faceRecognitionService.initialize();
-          const embResult = await faceRecognitionService.generateEmbedding(
-            storedFace.face_image_base64.startsWith("data:")
-              ? storedFace.face_image_base64
-              : `data:image/jpeg;base64,${storedFace.face_image_base64}`,
-          );
-          if (embResult.detected && embResult.embedding.length > 0) {
-            // Store the generated embedding for future logins
-            await faceRepository.storeEmbedding(
-              email,
-              embResult.embedding,
-              storedFace.face_image_base64,
-              profile.user_id,
-            );
-            setStoredEmbedding(embResult.embedding);
-            setUserIdForVerification(profile.user_id);
-            setFaceAttempts(0);
-            setStep("face-verification");
-            setIsLoading(false);
-            return;
-          }
-        }
+        // Has face image but no embedding yet
+        // Store the user info and show face capture
+        // We'll generate the stored face's embedding when the live capture comes back
+        console.log("Legacy face found. Will generate embedding during verification.");
+        setStoredEmbedding([]); // Empty — will generate on-the-fly
+        setUserIdForVerification(profile.user_id);
+        setFaceAttempts(0);
+        setStep("face-verification");
+        setIsLoading(false);
+        return;
       }
 
-      // No face or legacy face, proceed to dashboard
+      // No face registered, proceed to dashboard
       router.push(serviceFactory.authService.getDashboardRoute(profile.role));
     } catch (error) {
       const alertContent = serviceFactory.authService.getLoginErrorAlert(error);
@@ -105,12 +88,10 @@ export default function VoterLoginScreen() {
   };
 
   const handleFaceVerification = async (result: FaceCaptureResult) => {
-    if (storedEmbedding.length === 0) return;
-
     setFaceAttempts((prev) => prev + 1);
 
     try {
-      // Generate embedding from captured face
+      // Check if the live capture has a valid embedding
       if (result.embedding.length === 0) {
         Alert.alert(
           "Face Detection Failed",
@@ -119,9 +100,46 @@ export default function VoterLoginScreen() {
         return;
       }
 
+      let referenceEmbedding = storedEmbedding;
+
+      // If no stored embedding yet (legacy face), generate it now from stored image
+      if (referenceEmbedding.length === 0 && userIdForVerification) {
+        try {
+          const storedFace = await faceRepository.getPrimaryFace(userIdForVerification);
+          if (storedFace?.face_image_base64) {
+            console.log("Generating embedding from stored legacy face...");
+            const imageData = storedFace.face_image_base64.startsWith("data:")
+              ? storedFace.face_image_base64
+              : `data:image/jpeg;base64,${storedFace.face_image_base64}`;
+            const embResult = await faceRecognitionService.generateEmbedding(imageData);
+            if (embResult.detected && embResult.embedding.length > 0) {
+              referenceEmbedding = embResult.embedding;
+              setStoredEmbedding(referenceEmbedding);
+              // Also persist for future logins
+              await faceRepository.storeEmbedding(
+                email,
+                referenceEmbedding,
+                storedFace.face_image_base64,
+                userIdForVerification,
+              );
+            }
+          }
+        } catch (legacyError) {
+          console.error("Legacy embedding generation failed:", legacyError);
+        }
+      }
+
+      if (referenceEmbedding.length === 0) {
+        Alert.alert(
+          "Verification Error",
+          "Could not load stored face data for comparison. Please contact admin.",
+        );
+        return;
+      }
+
       // Compare embeddings using cosine similarity
       const comparison = faceRecognitionService.compareEmbeddings(
-        storedEmbedding,
+        referenceEmbedding,
         result.embedding,
         0.6, // threshold
       );
@@ -168,7 +186,7 @@ export default function VoterLoginScreen() {
     <View style={styles.container}>
       <Navbar />
 
-      {step === "face-verification" && storedEmbedding.length > 0 && (
+      {step === "face-verification" && (
         <FaceCapture
           onFaceCapture={(captureResult) => {
             void handleFaceVerification(captureResult);
