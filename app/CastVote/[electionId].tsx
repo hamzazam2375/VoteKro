@@ -2,7 +2,7 @@ import type { CandidateRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function CastVotePage() {
     const params = useLocalSearchParams();
@@ -38,12 +38,24 @@ export default function CastVotePage() {
         setSubmitting(true);
         try {
             await serviceFactory.votingService.castVote({ electionId, candidateId: selectedCandidateId });
-            Alert.alert('Vote submitted successfully', undefined, [
-                { text: 'OK', onPress: () => router.replace('/VoterDashboard') }
-            ]);
+            if (Platform.OS === 'web') {
+                // use react-toastify on web (ToastContainer is added in layout)
+                const { toast } = require('react-toastify');
+                toast.success('Vote submitted successfully');
+                setTimeout(() => router.replace('/VoterDashboard'), 1200);
+            } else {
+                Alert.alert('Vote submitted successfully', undefined, [
+                    { text: 'OK', onPress: () => router.replace('/VoterDashboard') }
+                ]);
+            }
         } catch (err: any) {
             console.error('Failed to cast vote', err);
-            Alert.alert('Vote Failed', err?.message ?? 'Failed to cast vote');
+            if (Platform.OS === 'web') {
+                const { toast } = require('react-toastify');
+                toast.error(err?.message ?? 'Failed to cast vote');
+            } else {
+                Alert.alert('Vote Failed', err?.message ?? 'Failed to cast vote');
+            }
         } finally {
             setSubmitting(false);
         }
