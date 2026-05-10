@@ -718,6 +718,19 @@ export default function VoterDashboard() {
                                             <Text style={styles.electionSummaryMeta}>
                                                 📅 {formatDate(election.starts_at)} - {formatDate(election.ends_at)}
                                             </Text>
+                                            <View style={styles.electionActionRow}>
+                                                {effectiveStatus === 'active' ? (
+                                                    <Pressable style={styles.electionPrimaryButton} onPress={() => router.push(`/CastVote/${election.id}`)}>
+                                                        <Text style={styles.electionPrimaryText}>Cast Vote</Text>
+                                                    </Pressable>
+                                                ) : null}
+
+                                                {effectiveStatus === 'closed' ? (
+                                                    <Pressable style={styles.electionSecondaryButton} onPress={() => router.push(`/ElectionResults/${election.id}`)}>
+                                                        <Text style={styles.electionSecondaryText}>See Results</Text>
+                                                    </Pressable>
+                                                ) : null}
+                                            </View>
                                         </Pressable>
                                     );
                                 })}
@@ -978,6 +991,33 @@ const styles = StyleSheet.create({
     electionSummaryMeta: {
         fontSize: 13,
         color: '#6a7a90',
+    },
+    electionActionRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 12,
+    },
+    electionPrimaryButton: {
+        backgroundColor: '#2f64e6',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+    },
+    electionPrimaryText: {
+        color: '#fff',
+        fontWeight: '800',
+    },
+    electionSecondaryButton: {
+        backgroundColor: '#ffffff',
+        borderWidth: 1,
+        borderColor: '#d9e0ec',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+    },
+    electionSecondaryText: {
+        color: '#233a67',
+        fontWeight: '700',
     },
     electionHeadingRow: {
         flexDirection: 'row',
