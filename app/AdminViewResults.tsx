@@ -15,7 +15,7 @@ import {
   StyleSheet,
   Text,
   View,
-  useWindowDimensions
+  useWindowDimensions,
 } from "react-native";
 
 type CandidateResult = {
@@ -34,35 +34,28 @@ const palette = [
   "#06b6d4",
 ];
 
-function ElectionChart({
-  results,
-}: {
-  results: CandidateResult[];
-}) {
-  const total = results.reduce((s, r) => s + r.votes, 0) || 1;
+function ElectionChart({ results }: { results: CandidateResult[] }) {
+  const maxVotes = Math.max(...results.map((r) => r.votes), 1);
 
   return (
     <View style={styles.chartContainer}>
-      <View style={styles.stackedBar}>
+      <View style={styles.verticalChartRow}>
         {results.map((r, idx) => (
-          <View
-            key={r.candidate.id}
-            style={[
-              styles.barSegment,
-              { flex: r.votes / total, backgroundColor: palette[idx % palette.length] },
-            ]}
-          />
-        ))}
-      </View>
-
-      <View style={styles.legendWrap}>
-        {results.map((r, idx) => (
-          <View key={r.candidate.id} style={styles.legendItem}>
-            <View
-              style={[styles.legendColor, { backgroundColor: palette[idx % palette.length] }]}
-            />
-            <Text style={styles.legendText} numberOfLines={1}>
-              {r.candidate.display_name} • {r.percentage.toFixed(1)}%
+          <View key={r.candidate.id} style={styles.verticalChartColumn}>
+            <View style={styles.verticalBarTrack}>
+              <View
+                style={[
+                  styles.verticalBarFill,
+                  {
+                    height: `${Math.max((r.votes / maxVotes) * 100, 8)}%`,
+                    backgroundColor: palette[idx % palette.length],
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.verticalBarValue}>{r.votes}</Text>
+            <Text style={styles.verticalBarLabel} numberOfLines={2}>
+              {r.candidate.display_name}
             </Text>
           </View>
         ))}
@@ -71,7 +64,9 @@ function ElectionChart({
   );
 }
 
-export default function AdminViewResults({ isEmbedded }: { isEmbedded?: boolean } = {}) {
+export default function AdminViewResults({
+  isEmbedded,
+}: { isEmbedded?: boolean } = {}) {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isMobile = width < 760;
@@ -83,7 +78,10 @@ export default function AdminViewResults({ isEmbedded }: { isEmbedded?: boolean 
     Record<string, CandidateRow[]>
   >({});
   const [selectedElectionId, setSelectedElectionId] = useState<string>("all");
-  
+  const [viewModes, setViewModes] = useState<Record<string, "graph" | "stats">>(
+    {},
+  );
+
   const loadData = useCallback(async () => {
     try {
       const userProfile =
@@ -104,6 +102,14 @@ export default function AdminViewResults({ isEmbedded }: { isEmbedded?: boolean 
       );
 
       setCandidatesByElection(Object.fromEntries(entries));
+
+      setViewModes((currentModes) => {
+        const nextModes: Record<string, "graph" | "stats"> = {};
+        for (const election of electionRows) {
+          nextModes[election.id] = currentModes[election.id] ?? "graph";
+        }
+        return nextModes;
+      });
 
       if (
         selectedElectionId !== "all" &&
@@ -152,13 +158,6 @@ export default function AdminViewResults({ isEmbedded }: { isEmbedded?: boolean 
     return { label: "Live", color: "#10b981" };
   };
 
-  const getCandidatePosition = (index: number) => {
-    if (index === 0) return { label: "👑 Winner", color: "#3b82f6" };
-    if (index === 1) return { label: "🥈 Runner-up", color: "#ec4899" };
-    if (index === 2) return { label: "🥉 3rd Place", color: "#10b981" };
-    return null;
-  };
-
   const visibleElections = useMemo(() => {
     if (selectedElectionId === "all") {
       return elections;
@@ -191,6 +190,13 @@ export default function AdminViewResults({ isEmbedded }: { isEmbedded?: boolean 
       };
     });
   }, [candidatesByElection, visibleElections]);
+
+  const setElectionMode = (electionId: string, mode: "graph" | "stats") => {
+    setViewModes((currentModes) => ({
+      ...currentModes,
+      [electionId]: mode,
+    }));
+  };
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -246,7 +252,7 @@ export default function AdminViewResults({ isEmbedded }: { isEmbedded?: boolean 
       >
         <View style={styles.innerWrapper}>
           <View style={styles.titleSection}>
-            <Text style={styles.pageTitle}>📊 Election Results</Text>
+            <Text style={styles.pageTitle}>Results</Text>
             <Text style={styles.pageSubtitle}>
               View voting results and statistics
             </Text>
@@ -269,7 +275,7 @@ export default function AdminViewResults({ isEmbedded }: { isEmbedded?: boolean 
                       styles.mobileFilterTextActive,
                   ]}
                 >
-                  All Elections
+                  All
                 </Text>
               </Pressable>
               {elections.map((election) => {
@@ -298,100 +304,112 @@ export default function AdminViewResults({ isEmbedded }: { isEmbedded?: boolean 
           </View>
 
           {electionResults.map(({ election, results }) => {
-            const totalVotes = results.reduce((s, r) => s + r.votes, 0);
             const statusInfo = getElectionStatus(election);
             const winner = results[0];
-            const runnerUp = results[1];
-            const margin = winner && runnerUp ? 
-              (((winner.votes - runnerUp.votes) / totalVotes) * 100).toFixed(1) : "0";
+            const candidateLabel =
+              statusInfo.label === "Closed" ? "👑" : "Leading";
+            const viewMode = viewModes[election.id] ?? "graph";
 
             return (
               <View key={election.id} style={styles.electionCard}>
                 {/* Header with status badge */}
                 <View style={styles.electionHeader}>
-                  <View>
+                  <View style={styles.electionHeaderTextBlock}>
                     <Text style={styles.electionTitle}>{election.title}</Text>
                     <Text style={styles.electionMeta}>
                       ID: {election.id} • {election.description || "Election"}
                     </Text>
+                    <Text
+                      style={styles.electionCandidateText}
+                      numberOfLines={1}
+                    >
+                      {candidateLabel}: {winner?.candidate.display_name || "—"}
+                    </Text>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: statusInfo.color }]}>
-                    <Text style={styles.statusBadgeText}>{statusInfo.label}</Text>
-                  </View>
-                </View>
-
-                {/* Stat cards */}
-                <View style={[styles.statsGrid, isMobile && styles.statsGridMobile]}>
-                  <View style={styles.statCard}>
-                    <Text style={styles.statLabel}>TOTAL VOTES</Text>
-                    <Text style={styles.statValue}>{totalVotes}</Text>
-                  </View>
-                  <View style={styles.statCard}>
-                    <Text style={styles.statLabel}>CANDIDATES</Text>
-                    <Text style={styles.statValue}>{results.length}</Text>
-                  </View>
-                  <View style={styles.statCard}>
-                    <Text style={styles.statLabel}>LEADING</Text>
-                    <Text style={styles.statValueBlue}>{winner?.candidate.display_name || "—"}</Text>
-                  </View>
-                  <View style={styles.statCard}>
-                    <Text style={styles.statLabel}>MARGIN</Text>
-                    <Text style={styles.statValueGreen}>+{margin}%</Text>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: statusInfo.color },
+                    ]}
+                  >
+                    <Text style={styles.statusBadgeText}>
+                      {statusInfo.label}
+                    </Text>
                   </View>
                 </View>
 
-                {/* Stacked bar chart */}
-                <ElectionChart results={results} />
+                <View style={styles.modeToggleRow}>
+                  <Pressable
+                    style={[
+                      styles.modeToggleButton,
+                      viewMode === "graph" && styles.modeToggleButtonActive,
+                    ]}
+                    onPress={() => setElectionMode(election.id, "graph")}
+                  >
+                    <Text
+                      style={[
+                        styles.modeToggleText,
+                        viewMode === "graph" && styles.modeToggleTextActive,
+                      ]}
+                    >
+                      Graph
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.modeToggleButton,
+                      viewMode === "stats" && styles.modeToggleButtonActive,
+                    ]}
+                    onPress={() => setElectionMode(election.id, "stats")}
+                  >
+                    <Text
+                      style={[
+                        styles.modeToggleText,
+                        viewMode === "stats" && styles.modeToggleTextActive,
+                      ]}
+                    >
+                      Stats
+                    </Text>
+                  </Pressable>
+                </View>
 
-                {/* Candidate cards */}
-                <View style={[styles.resultsGrid, isMobile && styles.resultsGridMobile]}>
-                  {results.map((entry, idx) => {
-                    const position = getCandidatePosition(idx);
-                    const initials = entry.candidate.display_name
-                      .split(" ")
-                      .map((n: string) => n[0])
-                      .join("")
-                      .toUpperCase()
-                      .slice(0, 2);
-
-                    return (
-                      <View
-                        key={entry.candidate.id}
-                        style={[
-                          styles.resultCard,
-                          isMobile && styles.resultCardMobile,
-                          position && { borderTopColor: position.color, borderTopWidth: 3 },
-                        ]}
-                      >
-                        {position && (
-                          <View style={[styles.positionBadge, { backgroundColor: position.color }]}>
-                            <Text style={styles.positionBadgeText}>{position.label}</Text>
-                          </View>
-                        )}
-
-                        <Text style={styles.candidateInitials}>{initials}</Text>
-
-                        <Text style={styles.candidateName}>
-                          {entry.candidate.display_name}
-                        </Text>
-                        <Text style={styles.candidateParty}>
-                          {entry.candidate.party_name ?? "Independent"}
-                        </Text>
-                        <Text style={styles.voteNumber}>{entry.votes}</Text>
-                        <Text style={styles.votePercent}>
-                          {entry.percentage.toFixed(1)}% of total votes
-                        </Text>
-                        <View style={styles.progressTrack}>
-                          <View
-                            style={[
-                              styles.progressFill,
-                              { width: `${Math.max(entry.percentage, 4)}%` },
-                            ]}
-                          />
+                {viewMode === "graph" ? (
+                  <ElectionChart results={results} />
+                ) : (
+                  <View
+                    style={[
+                      styles.statsList,
+                      isMobile && styles.statsListMobile,
+                    ]}
+                  >
+                    {results.map((entry) => (
+                      <View key={entry.candidate.id} style={styles.statsRow}>
+                        <View style={styles.statsIdentity}>
+                          <Text style={styles.candidateName} numberOfLines={1}>
+                            {entry.candidate.display_name}
+                          </Text>
+                          <Text style={styles.candidateParty} numberOfLines={1}>
+                            {entry.candidate.party_name ?? "Independent"}
+                          </Text>
+                        </View>
+                        <View style={styles.statsNumbers}>
+                          <Text style={styles.statValueBlue}>
+                            {entry.percentage.toFixed(1)}%
+                          </Text>
+                          <Text style={styles.statVotes}>
+                            {entry.votes} votes
+                          </Text>
                         </View>
                       </View>
-                    );
-                  })}
+                    ))}
+                  </View>
+                )}
+
+                <View style={styles.leadingLine}>
+                  <Text style={styles.leadingLineLabel}>Leading candidate</Text>
+                  <Text style={styles.leadingLineValue} numberOfLines={1}>
+                    {winner?.candidate.display_name || "—"}
+                  </Text>
                 </View>
               </View>
             );
@@ -522,11 +540,22 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 14,
     gap: 12,
+    flexWrap: "wrap",
+  },
+  electionHeaderTextBlock: {
+    flex: 1,
+    minWidth: 0,
   },
   electionTitle: {
     fontSize: 24,
     fontWeight: "700",
     color: "#111827",
+    marginBottom: 2,
+  },
+  electionCandidateText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1d4ed8",
     marginBottom: 2,
   },
   electionMeta: {
@@ -538,6 +567,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 999,
     minWidth: 70,
+    alignSelf: "flex-start",
   },
   statusBadgeText: {
     fontSize: 12,
@@ -592,39 +622,125 @@ const styles = StyleSheet.create({
     borderColor: "#e5e7eb",
     padding: 12,
   },
-  stackedBar: {
-    height: 20,
-    borderRadius: 10,
-    overflow: "hidden",
-    flexDirection: "row",
-    marginBottom: 12,
-    backgroundColor: "#e5e7eb",
-  },
-  barSegment: {
-    height: "100%",
-  },
-  legendWrap: {
+  verticalChartRow: {
     flexDirection: "row",
     flexWrap: "wrap",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: 10,
+    minHeight: 240,
+  },
+  verticalChartColumn: {
+    flex: 1,
+    minWidth: 58,
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  verticalBarTrack: {
+    width: 18,
+    height: 170,
+    borderRadius: 999,
+    backgroundColor: "#edf2f7",
+    justifyContent: "flex-end",
+    overflow: "hidden",
+  },
+  verticalBarFill: {
+    width: "100%",
+    borderRadius: 999,
+  },
+  verticalBarValue: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  verticalBarLabel: {
+    marginTop: 6,
+    fontSize: 11,
+    color: "#4b5563",
+    textAlign: "center",
+    maxWidth: 72,
+  },
+  modeToggleRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 14,
+  },
+  modeToggleButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 999,
+    paddingVertical: 8,
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+  },
+  modeToggleButtonActive: {
+    borderColor: "#2e63e3",
+    backgroundColor: "#e9f0ff",
+  },
+  modeToggleText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#4b5563",
+  },
+  modeToggleTextActive: {
+    color: "#1d4ed8",
+  },
+  statsList: {
+    gap: 10,
+    marginBottom: 12,
+  },
+  statsListMobile: {
     gap: 8,
   },
-  legendItem: {
+  statsRow: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    minWidth: 120,
-    maxWidth: 240,
-    marginRight: 12,
-    marginBottom: 4,
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
   },
-  legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 3,
-    marginRight: 8,
+  statsIdentity: {
+    flex: 1,
+    minWidth: 0,
   },
-  legendText: {
+  statsNumbers: {
+    alignItems: "flex-end",
+    gap: 2,
+  },
+  statVotes: {
     fontSize: 12,
-    color: "#374151",
+    color: "#6b7280",
+    fontWeight: "600",
+  },
+  leadingLine: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+  },
+  leadingLineLabel: {
+    fontSize: 12,
+    color: "#6b7280",
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  leadingLineValue: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#111827",
   },
   resultsGrid: {
     flexDirection: "row",
@@ -633,6 +749,49 @@ const styles = StyleSheet.create({
   },
   resultsGridMobile: {
     gap: 12,
+  },
+  podiumRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 14,
+  },
+  podiumRowMobile: {
+    gap: 8,
+  },
+  podiumCard: {
+    flex: 1,
+    borderRadius: 10,
+    padding: 14,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
+  winnerCard: {
+    borderTopWidth: 3,
+    borderTopColor: "#3b82f6",
+  },
+  runnerUpCard: {
+    borderTopWidth: 3,
+    borderTopColor: "#ec4899",
+  },
+  podiumLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#6b7280",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginBottom: 6,
+  },
+  podiumName: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 4,
+  },
+  podiumVotes: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#2563eb",
   },
   resultCard: {
     flex: 1,
@@ -780,4 +939,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
   },
-  });
+});

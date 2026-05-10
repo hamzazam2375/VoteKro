@@ -15,7 +15,11 @@ export type NavbarAction = {
   variant?: "solid" | "outline";
 };
 
-export type DashboardHomeRoute = '/' | '/AdminDashboard' | '/VoterDashboard' | '/AuditorDashboard';
+export type DashboardHomeRoute =
+  | "/"
+  | "/AdminDashboard"
+  | "/VoterDashboard"
+  | "/AuditorDashboard";
 
 type NavbarProps = {
   actions?: NavbarAction[];
@@ -30,7 +34,7 @@ export function Navbar({
   infoText,
   compact = false,
   auditorName,
-  homeRoute = '/',
+  homeRoute = "/",
 }: NavbarProps) {
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -46,7 +50,7 @@ export function Navbar({
       style={[
         styles.navbar,
         compact && styles.navbarCompact,
-        { paddingTop: insets.top + (compact ? 8 : 10) },
+        { paddingTop: insets.top + (compact ? 10 : 14) },
       ]}
     >
       {/* Top row: brand on left, action buttons on right */}
@@ -64,11 +68,18 @@ export function Navbar({
             style={[styles.brandLogo, compact && styles.brandLogoCompact]}
           />
           <View style={styles.brandTextContainer}>
-            <Text style={[styles.brandName, compact && styles.brandNameCompact]}>
+            <Text
+              style={[styles.brandName, compact && styles.brandNameCompact]}
+            >
               VoteKro
             </Text>
             {auditorName && (
-              <Text style={[styles.auditorNameBrand, compact && styles.auditorNameBrandCompact]}>
+              <Text
+                style={[
+                  styles.auditorNameBrand,
+                  compact && styles.auditorNameBrandCompact,
+                ]}
+              >
                 {auditorName}
               </Text>
             )}
@@ -128,33 +139,35 @@ export function Navbar({
 }
 
 const styles = StyleSheet.create({
-navbar: {
+  navbar: {
     paddingHorizontal: 24,
     paddingBottom: 12,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: '#d9e0ec',
+    borderBottomColor: "#d9e0ec",
     zIndex: 2,
-    boxShadow: '0px 2px 8px rgba(36, 59, 99, 0.06)',
+    boxShadow: "0px 2px 8px rgba(36, 59, 99, 0.06)",
     elevation: 2,
   },
   navbarCompact: {
     paddingHorizontal: 16,
     paddingBottom: 10,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     minHeight: 48,
+    flexWrap: "wrap",
+    gap: 12,
   },
   topRowCompact: {
     minHeight: 40,
   },
   brandWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   brandWrapPressed: {
@@ -162,12 +175,12 @@ navbar: {
   },
   brandTextContainer: {
     marginLeft: 8,
-    flexDirection: 'column',
+    flexDirection: "column",
   },
   brandName: {
-    color: '#1a73e8',
+    color: "#1a73e8",
     fontSize: 26,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 0.2,
   },
   brandNameCompact: {
@@ -191,30 +204,33 @@ navbar: {
     height: 28,
   },
   actionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
+    flexShrink: 1,
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
   },
   infoText: {
     fontSize: 14,
-    color: '#5c6f89',
-    fontWeight: '500',
+    color: "#5c6f89",
+    fontWeight: "500",
     marginRight: 8,
   },
   infoTextCompact: {
     fontSize: 14,
-    color: '#5c6f89',
+    color: "#5c6f89",
     marginRight: 8,
   },
   infoTextMobile: {
     fontSize: 13,
-    color: '#5c6f89',
-    fontWeight: '500',
+    color: "#5c6f89",
+    fontWeight: "500",
     marginTop: 4,
     paddingHorizontal: 2,
   },
   infoTextMobileCompact: {
-    color: '#2f64e6',
+    color: "#2f64e6",
   },
   actionButton: {
     borderRadius: 10,
@@ -228,12 +244,12 @@ navbar: {
     paddingHorizontal: 14,
   },
   actionButtonSolid: {
-    backgroundColor: '#1a73e8',
-    borderColor: '#1a73e8',
+    backgroundColor: "#1a73e8",
+    borderColor: "#1a73e8",
   },
   actionButtonOutline: {
-    backgroundColor: 'transparent',
-    borderColor: '#1a73e8',
+    backgroundColor: "transparent",
+    borderColor: "#1a73e8",
   },
   actionButtonPressed: {
     opacity: 0.88,
@@ -241,16 +257,16 @@ navbar: {
   },
   actionText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   actionTextCompact: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   actionTextSolid: {
-    color: '#ffffff',
+    color: "#ffffff",
   },
   actionTextOutline: {
-    color: '#1a73e8',
+    color: "#1a73e8",
   },
 });

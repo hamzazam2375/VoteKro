@@ -2,22 +2,24 @@ import type { ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
 import DateTimePicker, {
-  type DateTimePickerEvent,
+    type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
-export default function AdminCreateElectionScreen({ isEmbedded }: { isEmbedded?: boolean } = {}) {
+export default function AdminCreateElectionScreen({
+  isEmbedded,
+}: { isEmbedded?: boolean } = {}) {
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
@@ -237,14 +239,23 @@ export default function AdminCreateElectionScreen({ isEmbedded }: { isEmbedded?:
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Start Date</Text>
-                        <TextInput
-                          style={styles.input}
-                          value={startDate}
-                          onChangeText={setStartDate}
-                          placeholder="YYYY-MM-DD"
-                          placeholderTextColor="#9ca3af"
-                          editable={!isSubmitting}
-                        />
+            <View style={styles.dateInputRow}>
+              <TextInput
+                style={[styles.input, styles.dateInputFlex]}
+                value={startDate}
+                onChangeText={setStartDate}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#9ca3af"
+                editable={!isSubmitting}
+              />
+              <Pressable
+                style={styles.datePickerButton}
+                onPress={() => setShowStartDatePicker(true)}
+                disabled={isSubmitting}
+              >
+                <Text style={styles.datePickerButtonText}>📅</Text>
+              </Pressable>
+            </View>
             {showStartDatePicker ? (
               <DateTimePicker
                 value={toDateFromInput(startDate)}
@@ -257,14 +268,23 @@ export default function AdminCreateElectionScreen({ isEmbedded }: { isEmbedded?:
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>End Date</Text>
-                        <TextInput
-                          style={styles.input}
-                          value={endDate}
-                          onChangeText={setEndDate}
-                          placeholder="YYYY-MM-DD"
-                          placeholderTextColor="#9ca3af"
-                          editable={!isSubmitting}
-                        />
+            <View style={styles.dateInputRow}>
+              <TextInput
+                style={[styles.input, styles.dateInputFlex]}
+                value={endDate}
+                onChangeText={setEndDate}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#9ca3af"
+                editable={!isSubmitting}
+              />
+              <Pressable
+                style={styles.datePickerButton}
+                onPress={() => setShowEndDatePicker(true)}
+                disabled={isSubmitting}
+              >
+                <Text style={styles.datePickerButtonText}>📅</Text>
+              </Pressable>
+            </View>
             {showEndDatePicker ? (
               <DateTimePicker
                 value={toDateFromInput(endDate)}
@@ -343,7 +363,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+  dateInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   inputFlex: {
+    flex: 1,
+  },
+  dateInputFlex: {
     flex: 1,
   },
   inputGroup: {

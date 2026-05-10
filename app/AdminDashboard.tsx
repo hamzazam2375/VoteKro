@@ -12,8 +12,9 @@ import {
     StyleSheet,
     Text,
     useWindowDimensions,
-    View
+    View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AdminCreateElection from "./AdminCreateElection";
 import AdminManageCandidates from "./AdminManageCandidates";
 import AdminManageElections from "./AdminManageElections";
@@ -24,6 +25,7 @@ import VoterSignup from "./VoterSignup";
 export default function AdminDashboard() {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isMobile = width < 600;
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,7 +36,15 @@ export default function AdminDashboard() {
     Record<string, number>
   >({});
   const [voteCounts, setVoteCounts] = useState<Record<string, number>>({});
-  const [currentPage, setCurrentPage] = useState<'overview' | 'create-election' | 'manage-elections' | 'manage-candidates' | 'view-results' | 'register-voter' | 'register-auditor'>('overview');
+  const [currentPage, setCurrentPage] = useState<
+    | "overview"
+    | "create-election"
+    | "manage-elections"
+    | "manage-candidates"
+    | "view-results"
+    | "register-voter"
+    | "register-auditor"
+  >("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const loadDashboardOverview = useCallback(async () => {
@@ -147,20 +157,20 @@ export default function AdminDashboard() {
     <View style={styles.container}>
       {/* Custom Header for Mobile with Hamburger */}
       {isMobile ? (
-        <View style={styles.mobileHeader}>
+        <View style={[styles.mobileHeader, { paddingTop: insets.top + 10 }]}>
           <Pressable
             style={styles.mobileHamburger}
             onPress={() => setSidebarOpen(!sidebarOpen)}
           >
             <Text style={styles.mobileHamburgerIcon}>☰</Text>
           </Pressable>
-          <Pressable style={styles.mobileLogoButton} onPress={() => router.replace('/AdminDashboard')}>
+          <Pressable
+            style={styles.mobileLogoButton}
+            onPress={() => router.replace("/AdminDashboard")}
+          >
             <Text style={styles.mobileLogo}>VoteKro</Text>
           </Pressable>
-          <Pressable
-            style={styles.mobileLogoutButton}
-            onPress={handleLogout}
-          >
+          <Pressable style={styles.mobileLogoutButton} onPress={handleLogout}>
             <Text style={styles.mobileLogoutText}>Logout</Text>
           </Pressable>
         </View>
@@ -189,109 +199,205 @@ export default function AdminDashboard() {
             <View style={styles.sidebarMenu}>
               {/* Overview */}
               <Pressable
-                style={[styles.sidebarButton, currentPage === 'overview' && styles.sidebarButtonActive]}
+                style={[
+                  styles.sidebarButton,
+                  currentPage === "overview" && styles.sidebarButtonActive,
+                ]}
                 onPress={() => {
-                  setCurrentPage('overview');
+                  setCurrentPage("overview");
                   if (isMobile) setSidebarOpen(false);
                 }}
               >
-                <Text style={[styles.sidebarButtonText, currentPage === 'overview' && styles.sidebarButtonTextActive]}>
+                <Text
+                  style={[
+                    styles.sidebarButtonText,
+                    currentPage === "overview" &&
+                      styles.sidebarButtonTextActive,
+                  ]}
+                >
                   📊 Dashboard
                 </Text>
               </Pressable>
 
               {/* Create Election */}
               <Pressable
-                style={[styles.sidebarButton, currentPage === 'create-election' && styles.sidebarButtonActive]}
+                style={[
+                  styles.sidebarButton,
+                  currentPage === "create-election" &&
+                    styles.sidebarButtonActive,
+                ]}
                 onPress={() => {
-                  setCurrentPage('create-election');
+                  setCurrentPage("create-election");
                   if (isMobile) setSidebarOpen(false);
                 }}
               >
-                <Text style={[styles.sidebarButtonText, currentPage === 'create-election' && styles.sidebarButtonTextActive]}>
+                <Text
+                  style={[
+                    styles.sidebarButtonText,
+                    currentPage === "create-election" &&
+                      styles.sidebarButtonTextActive,
+                  ]}
+                >
                   📋 Create Election
                 </Text>
               </Pressable>
 
               {/* Manage Elections */}
               <Pressable
-                style={[styles.sidebarButton, currentPage === 'manage-elections' && styles.sidebarButtonActive]}
+                style={[
+                  styles.sidebarButton,
+                  currentPage === "manage-elections" &&
+                    styles.sidebarButtonActive,
+                ]}
                 onPress={() => {
-                  setCurrentPage('manage-elections');
+                  setCurrentPage("manage-elections");
                   if (isMobile) setSidebarOpen(false);
                 }}
               >
-                <Text style={[styles.sidebarButtonText, currentPage === 'manage-elections' && styles.sidebarButtonTextActive]}>
+                <Text
+                  style={[
+                    styles.sidebarButtonText,
+                    currentPage === "manage-elections" &&
+                      styles.sidebarButtonTextActive,
+                  ]}
+                >
                   ✏️ Manage Elections
                 </Text>
               </Pressable>
 
               {/* Manage Candidates */}
               <Pressable
-                style={[styles.sidebarButton, currentPage === 'manage-candidates' && styles.sidebarButtonActive]}
+                style={[
+                  styles.sidebarButton,
+                  currentPage === "manage-candidates" &&
+                    styles.sidebarButtonActive,
+                ]}
                 onPress={() => {
-                  setCurrentPage('manage-candidates');
+                  setCurrentPage("manage-candidates");
                   if (isMobile) setSidebarOpen(false);
                 }}
               >
-                <Text style={[styles.sidebarButtonText, currentPage === 'manage-candidates' && styles.sidebarButtonTextActive]}>
+                <Text
+                  style={[
+                    styles.sidebarButtonText,
+                    currentPage === "manage-candidates" &&
+                      styles.sidebarButtonTextActive,
+                  ]}
+                >
                   👤 Manage Candidates
                 </Text>
               </Pressable>
 
               {/* View Results */}
               <Pressable
-                style={[styles.sidebarButton, currentPage === 'view-results' && styles.sidebarButtonActive]}
+                style={[
+                  styles.sidebarButton,
+                  currentPage === "view-results" && styles.sidebarButtonActive,
+                ]}
                 onPress={() => {
-                  setCurrentPage('view-results');
+                  setCurrentPage("view-results");
                   if (isMobile) setSidebarOpen(false);
                 }}
               >
-                <Text style={[styles.sidebarButtonText, currentPage === 'view-results' && styles.sidebarButtonTextActive]}>
+                <Text
+                  style={[
+                    styles.sidebarButtonText,
+                    currentPage === "view-results" &&
+                      styles.sidebarButtonTextActive,
+                  ]}
+                >
                   📈 View Results
                 </Text>
               </Pressable>
 
               {/* Register Voter */}
               <Pressable
-                style={[styles.sidebarButton, currentPage === 'register-voter' && styles.sidebarButtonActive]}
+                style={[
+                  styles.sidebarButton,
+                  currentPage === "register-voter" &&
+                    styles.sidebarButtonActive,
+                ]}
                 onPress={() => {
-                  setCurrentPage('register-voter');
+                  setCurrentPage("register-voter");
                   if (isMobile) setSidebarOpen(false);
                 }}
               >
-                <Text style={[styles.sidebarButtonText, currentPage === 'register-voter' && styles.sidebarButtonTextActive]}>
+                <Text
+                  style={[
+                    styles.sidebarButtonText,
+                    currentPage === "register-voter" &&
+                      styles.sidebarButtonTextActive,
+                  ]}
+                >
                   ✅ Register Voter
                 </Text>
               </Pressable>
 
               {/* Register Auditor - Admin Only */}
-              {profile?.role === 'admin' && (
+              {profile?.role === "admin" && (
                 <Pressable
-                  style={[styles.sidebarButton, currentPage === 'register-auditor' && styles.sidebarButtonActive]}
+                  style={[
+                    styles.sidebarButton,
+                    currentPage === "register-auditor" &&
+                      styles.sidebarButtonActive,
+                  ]}
                   onPress={() => {
-                    setCurrentPage('register-auditor');
+                    setCurrentPage("register-auditor");
                     if (isMobile) setSidebarOpen(false);
                   }}
                 >
-                  <Text style={[styles.sidebarButtonText, currentPage === 'register-auditor' && styles.sidebarButtonTextActive]}>
+                  <Text
+                    style={[
+                      styles.sidebarButtonText,
+                      currentPage === "register-auditor" &&
+                        styles.sidebarButtonTextActive,
+                    ]}
+                  >
                     🔍 Register Auditor
                   </Text>
                 </Pressable>
               )}
             </View>
 
-                      </View>
+            {/* Sidebar Footer - Profile Button */}
+            <View style={styles.sidebarFooter}>
+              <Pressable
+                style={[styles.sidebarButton]}
+                onPress={() => {
+                  router.push("/AdminEditProfile");
+                  if (isMobile) setSidebarOpen(false);
+                }}
+              >
+                <Text style={styles.sidebarButtonText}>👤 Edit Profile</Text>
+              </Pressable>
+            </View>
+          </View>
         )}
 
         {/* Content Area */}
         <ScrollView
           style={styles.content}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={[
+            styles.contentContainer,
+            currentPage === "create-election" ||
+            currentPage === "register-voter" ||
+            currentPage === "register-auditor"
+              ? styles.contentContainerCentered
+              : null,
+          ]}
         >
-          <View style={styles.innerWrapper}>
+          <View
+            style={[
+              styles.innerWrapper,
+              currentPage === "create-election" ||
+              currentPage === "register-voter" ||
+              currentPage === "register-auditor"
+                ? styles.innerWrapperCentered
+                : null,
+            ]}
+          >
             {/* Page Content Based on Selection */}
-            {currentPage === 'overview' && (
+            {currentPage === "overview" && (
               <>
                 {/* Dashboard Title */}
                 <View style={styles.titleSection}>
@@ -324,7 +430,9 @@ export default function AdminDashboard() {
                     ]}
                   >
                     <Text style={styles.statLabel}>Registered Voters</Text>
-                    <Text style={styles.statNumber}>{registeredVotersCount}</Text>
+                    <Text style={styles.statNumber}>
+                      {registeredVotersCount}
+                    </Text>
                   </View>
                   <View
                     style={[
@@ -341,7 +449,10 @@ export default function AdminDashboard() {
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>📊 Active Elections</Text>
                   {isMobile ? (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                    >
                       <View style={[styles.tableContainer, { minWidth: 600 }]}>
                         {/* Table Header */}
                         <View style={styles.tableHeader}>
@@ -401,11 +512,14 @@ export default function AdminDashboard() {
                         </View>
                         {activeElections.length === 0 ? (
                           <View style={styles.emptyState}>
-                            <Text style={styles.emptyText}>No active elections</Text>
+                            <Text style={styles.emptyText}>
+                              No active elections
+                            </Text>
                             {upcomingElectionsCount > 0 ? (
                               <Text style={styles.emptyHintText}>
-                                {upcomingElectionsCount} election(s) are scheduled and
-                                will appear here once the start date is reached.
+                                {upcomingElectionsCount} election(s) are
+                                scheduled and will appear here once the start
+                                date is reached.
                               </Text>
                             ) : null}
                           </View>
@@ -435,7 +549,9 @@ export default function AdminDashboard() {
                                   { flex: 1, minWidth: 90 },
                                 ]}
                               >
-                                {new Date(election.starts_at).toLocaleDateString()}
+                                {new Date(
+                                  election.starts_at,
+                                ).toLocaleDateString()}
                               </Text>
                               <Text
                                 style={[
@@ -443,7 +559,9 @@ export default function AdminDashboard() {
                                   { flex: 1, minWidth: 90 },
                                 ]}
                               >
-                                {new Date(election.ends_at).toLocaleDateString()}
+                                {new Date(
+                                  election.ends_at,
+                                ).toLocaleDateString()}
                               </Text>
                               <Text
                                 style={[
@@ -496,11 +614,14 @@ export default function AdminDashboard() {
                       </View>
                       {activeElections.length === 0 ? (
                         <View style={styles.emptyState}>
-                          <Text style={styles.emptyText}>No active elections</Text>
+                          <Text style={styles.emptyText}>
+                            No active elections
+                          </Text>
                           {upcomingElectionsCount > 0 ? (
                             <Text style={styles.emptyHintText}>
-                              {upcomingElectionsCount} election(s) are scheduled and
-                              will appear here once the start date is reached.
+                              {upcomingElectionsCount} election(s) are scheduled
+                              and will appear here once the start date is
+                              reached.
                             </Text>
                           ) : null}
                         </View>
@@ -517,7 +638,9 @@ export default function AdminDashboard() {
                               active
                             </Text>
                             <Text style={[styles.tableRowCell, { flex: 1 }]}>
-                              {new Date(election.starts_at).toLocaleDateString()}
+                              {new Date(
+                                election.starts_at,
+                              ).toLocaleDateString()}
                             </Text>
                             <Text style={[styles.tableRowCell, { flex: 1 }]}>
                               {new Date(election.ends_at).toLocaleDateString()}
@@ -538,12 +661,30 @@ export default function AdminDashboard() {
             )}
 
             {/* Other Pages - Display Components */}
-            {currentPage === 'create-election' && <AdminCreateElection isEmbedded={true} />}
-            {currentPage === 'manage-elections' && <AdminManageElections isEmbedded={true} />}
-            {currentPage === 'manage-candidates' && <AdminManageCandidates isEmbedded={true} />}
-            {currentPage === 'view-results' && <AdminViewResults isEmbedded={true} />}
-            {currentPage === 'register-voter' && <VoterSignup isEmbedded={true} />}
-            {currentPage === 'register-auditor' && <AuditorSignup isEmbedded={true} />}
+            {currentPage === "create-election" && (
+              <View style={styles.embeddedPageCenter}>
+                <AdminCreateElection isEmbedded={true} />
+              </View>
+            )}
+            {currentPage === "manage-elections" && (
+              <AdminManageElections isEmbedded={true} />
+            )}
+            {currentPage === "manage-candidates" && (
+              <AdminManageCandidates isEmbedded={true} />
+            )}
+            {currentPage === "view-results" && (
+              <AdminViewResults isEmbedded={true} />
+            )}
+            {currentPage === "register-voter" && (
+              <View style={styles.embeddedPageCenter}>
+                <VoterSignup isEmbedded={true} />
+              </View>
+            )}
+            {currentPage === "register-auditor" && (
+              <View style={styles.embeddedPageCenter}>
+                <AuditorSignup isEmbedded={true} />
+              </View>
+            )}
           </View>
         </ScrollView>
       </View>
@@ -630,9 +771,23 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: "center",
   },
+  contentContainerCentered: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
   innerWrapper: {
     width: "100%",
     maxWidth: 1100,
+  },
+  innerWrapperCentered: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  embeddedPageCenter: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 420,
   },
   titleSection: {
     marginBottom: 20,
@@ -885,33 +1040,33 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     backgroundColor: "#ffffff",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#e0e0e0",
   },
   mobileHamburger: {
-    padding: 8,
-    marginRight: 12,
+    padding: 6,
+    marginRight: 8,
   },
   mobileHamburgerIcon: {
-    fontSize: 28,
+    fontSize: 26,
     color: "#1a73e8",
     fontWeight: "700",
   },
   mobileLogoButton: {
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 10,
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   mobileLogo: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800",
     color: "#1a73e8",
   },
   mobileLogoutButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
     borderRadius: 8,
     borderWidth: 1.5,
     borderColor: "#1a73e8",
@@ -947,4 +1102,3 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 });
-

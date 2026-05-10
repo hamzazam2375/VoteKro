@@ -1,46 +1,55 @@
 import type {
-  AuditLogRow,
-  CandidateRow,
-  ElectionRow,
-  ProfileRow,
-  VerifyChainResultRow,
-  VoteBlockRow,
-  VoterRegistryRow,
-} from '@/class/database-types';
-import { DataAccessError } from '@/class/errors';
+    AuditLogRow,
+    CandidateRow,
+    ElectionRow,
+    ProfileRow,
+    VerifyChainResultRow,
+    VoteBlockRow,
+    VoterRegistryRow,
+} from "@/class/database-types";
+import { DataAccessError } from "@/class/errors";
 import type {
-  AddCandidateInput,
-  CreateElectionInput,
-  IAuditLogRepository,
-  IAuthRepository,
-  ICandidateRepository,
-  IElectionRepository,
-  IProfileRepository,
-  IVoteLedgerRepository,
-  IVoterRegistryRepository,
-  UpdateCandidateInput,
-  UpdateElectionInput,
-} from '@/class/service-contracts';
-import { supabase } from '@/class/supabase-client';
+    AddCandidateInput,
+    CreateElectionInput,
+    IAuditLogRepository,
+    IAuthRepository,
+    ICandidateRepository,
+    IElectionRepository,
+    IProfileRepository,
+    IVoteLedgerRepository,
+    IVoterRegistryRepository,
+    UpdateCandidateInput,
+    UpdateElectionInput,
+} from "@/class/service-contracts";
+import { supabase } from "@/class/supabase-client";
 
 class RepositoryBase {
   protected throwOnError(context: string, error: unknown): never {
-    console.error('Supabase Error Details:', error);
+    console.error("Supabase Error Details:", error);
     const message =
       error instanceof Error
         ? error.message
-        : typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
+        : typeof error === "object" &&
+            error !== null &&
+            "message" in error &&
+            typeof error.message === "string"
           ? error.message
-          : 'Unknown data access error';
+          : "Unknown data access error";
     throw new DataAccessError(`${context}: ${message}`, error);
   }
 }
 
-export class SupabaseAuthRepository extends RepositoryBase implements IAuthRepository {
+export class SupabaseAuthRepository
+  extends RepositoryBase
+  implements IAuthRepository
+{
   async signIn(email: string, password: string): Promise<void> {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     if (error) {
-      this.throwOnError('Failed to sign in', error);
+      this.throwOnError("Failed to sign in", error);
     }
   }
 
@@ -51,15 +60,18 @@ export class SupabaseAuthRepository extends RepositoryBase implements IAuthRepos
     } = await supabase.auth.getSession();
 
     if (sessionError) {
-      this.throwOnError('Failed to read current session before sign up', sessionError);
+      this.throwOnError(
+        "Failed to read current session before sign up",
+        sessionError,
+      );
     }
 
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
-      this.throwOnError('Failed to sign up', error);
+      this.throwOnError("Failed to sign up", error);
     }
     if (!data.user) {
-      this.throwOnError('Failed to sign up', new Error('No user returned'));
+      this.throwOnError("Failed to sign up", new Error("No user returned"));
     }
 
     if (previousSession?.access_token && previousSession.refresh_token) {
@@ -69,7 +81,10 @@ export class SupabaseAuthRepository extends RepositoryBase implements IAuthRepos
       });
 
       if (restoreError) {
-        this.throwOnError('Failed to restore previous session after sign up', restoreError);
+        this.throwOnError(
+          "Failed to restore previous session after sign up",
+          restoreError,
+        );
       }
     }
 
@@ -79,7 +94,21 @@ export class SupabaseAuthRepository extends RepositoryBase implements IAuthRepos
   async signOut(): Promise<void> {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      this.throwOnError('Failed to sign out', error);
+      this.throwOnError("Failed to sign out", error);
+    }
+  }
+
+  async updateUser(input: {
+    email?: string;
+    password?: string;
+  }): Promise<void> {
+    const { error } = await supabase.auth.updateUser({
+      email: input.email,
+      password: input.password,
+    });
+
+    if (error) {
+      this.throwOnError("Failed to update auth user", error);
     }
   }
 
@@ -93,114 +122,191 @@ export class SupabaseAuthRepository extends RepositoryBase implements IAuthRepos
       // Supabase may return an AuthSessionMissingError when no session is available.
       // Treat that as unauthenticated rather than throwing to callers, so UI flows
       // can handle re-authentication gracefully.
-      const msg = typeof error === 'object' && error !== null && 'message' in error ? (error as any).message : String(error);
-      if (msg && (msg.includes('AuthSessionMissing') || msg.toLowerCase().includes('auth session missing') || (error as any)?.status === 403)) {
+      const msg =
+        typeof error === "object" && error !== null && "message" in error
+          ? (error as any).message
+          : String(error);
+      if (
+        msg &&
+        (msg.includes("AuthSessionMissing") ||
+          msg.toLowerCase().includes("auth session missing") ||
+          (error as any)?.status === 403)
+      ) {
         return null;
       }
 
-      this.throwOnError('Failed to fetch current user', error);
+      this.throwOnError("Failed to fetch current user", error);
     }
 
     return user?.id ?? null;
   }
+
+  async getCurrentUserEmail(): Promise<string | null> {
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
+    if (error) {
+      const msg =
+        typeof error === "object" && error !== null && "message" in error
+          ? (error as any).message
+          : String(error);
+      if (
+        msg &&
+        (msg.includes("AuthSessionMissing") ||
+          msg.toLowerCase().includes("auth session missing") ||
+          (error as any)?.status === 403)
+      ) {
+        return null;
+      }
+
+      this.throwOnError("Failed to fetch current user email", error);
+    }
+
+    return user?.email ?? null;
+  }
 }
 
-export class SupabaseProfileRepository extends RepositoryBase implements IProfileRepository {
+export class SupabaseProfileRepository
+  extends RepositoryBase
+  implements IProfileRepository
+{
   async getByUserId(userId: string): Promise<ProfileRow | null> {
     const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
+      .from("profiles")
+      .select("*")
+      .eq("user_id", userId)
       .maybeSingle();
 
     if (error) {
-      this.throwOnError('Failed to fetch profile', error);
+      this.throwOnError("Failed to fetch profile", error);
     }
 
     return (data as ProfileRow | null) ?? null;
   }
 
-  async getByRole(role: ProfileRow['role']): Promise<ProfileRow | null> {
+  async getByRole(role: ProfileRow["role"]): Promise<ProfileRow | null> {
     const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('role', role)
+      .from("profiles")
+      .select("*")
+      .eq("role", role)
       .limit(1)
       .maybeSingle();
 
     if (error) {
-      this.throwOnError('Failed to fetch profile by role', error);
+      this.throwOnError("Failed to fetch profile by role", error);
     }
 
     return (data as ProfileRow | null) ?? null;
   }
 
-  async countByRole(role: ProfileRow['role']): Promise<number> {
+  async countByRole(role: ProfileRow["role"]): Promise<number> {
     const { count, error } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('role', role);
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .eq("role", role);
 
     if (error) {
-      this.throwOnError('Failed to count profiles by role', error);
+      this.throwOnError("Failed to count profiles by role", error);
     }
 
     return count ?? 0;
   }
 
-  async create(userId: string, fullName: string, role: ProfileRow['role']): Promise<ProfileRow> {
+  async create(
+    userId: string,
+    fullName: string,
+    role: ProfileRow["role"],
+  ): Promise<ProfileRow> {
     const { data, error } = await supabase
-      .from('profiles')
+      .from("profiles")
       .insert({
         user_id: userId,
         full_name: fullName,
         role: role,
         is_verified: false,
       })
-      .select('*')
+      .select("*")
       .single();
 
     if (error) {
-      console.error('Profile creation failed:', error.message);
-      this.throwOnError('Failed to create profile', error);
+      console.error("Profile creation failed:", error.message);
+      this.throwOnError("Failed to create profile", error);
+    }
+
+    return data as ProfileRow;
+  }
+
+  async update(
+    userId: string,
+    updates: Partial<
+      Pick<ProfileRow, "full_name" | "voter_code_hash" | "is_verified">
+    >,
+  ): Promise<ProfileRow> {
+    const payload: Record<string, unknown> = {};
+    if (updates.full_name !== undefined) payload.full_name = updates.full_name;
+    if (updates.voter_code_hash !== undefined)
+      payload.voter_code_hash = updates.voter_code_hash;
+    if (updates.is_verified !== undefined)
+      payload.is_verified = updates.is_verified;
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .update(payload)
+      .eq("user_id", userId)
+      .select("*")
+      .single();
+
+    if (error) {
+      this.throwOnError("Failed to update profile", error);
     }
 
     return data as ProfileRow;
   }
 }
 
-export class SupabaseElectionRepository extends RepositoryBase implements IElectionRepository {
-  async create(input: CreateElectionInput, createdBy: string): Promise<ElectionRow> {
+export class SupabaseElectionRepository
+  extends RepositoryBase
+  implements IElectionRepository
+{
+  async create(
+    input: CreateElectionInput,
+    createdBy: string,
+  ): Promise<ElectionRow> {
     const { data, error } = await supabase
-      .from('elections')
+      .from("elections")
       .insert({
         title: input.title,
         description: input.description ?? null,
         starts_at: input.startsAtIso,
         ends_at: input.endsAtIso,
-        status: 'draft',
+        status: "draft",
         created_by: createdBy,
       })
-      .select('*')
+      .select("*")
       .single();
 
     if (error) {
-      this.throwOnError('Failed to create election', error);
+      this.throwOnError("Failed to create election", error);
     }
 
     return data as ElectionRow;
   }
 
-  async updateStatus(electionId: string, status: ElectionRow['status']): Promise<ElectionRow> {
+  async updateStatus(
+    electionId: string,
+    status: ElectionRow["status"],
+  ): Promise<ElectionRow> {
     const { data, error } = await supabase
-      .from('elections')
+      .from("elections")
       .update({ status })
-      .eq('id', electionId)
-      .select('*')
+      .eq("id", electionId)
+      .select("*")
       .single();
 
     if (error) {
-      this.throwOnError('Failed to update election status', error);
+      this.throwOnError("Failed to update election status", error);
     }
 
     return data as ElectionRow;
@@ -208,7 +314,7 @@ export class SupabaseElectionRepository extends RepositoryBase implements IElect
 
   async update(input: UpdateElectionInput): Promise<ElectionRow> {
     const { data, error } = await supabase
-      .from('elections')
+      .from("elections")
       .update({
         title: input.title,
         description: input.description ?? null,
@@ -216,61 +322,74 @@ export class SupabaseElectionRepository extends RepositoryBase implements IElect
         ends_at: input.endsAtIso,
         status: input.status,
       })
-      .eq('id', input.electionId)
-      .select('*')
+      .eq("id", input.electionId)
+      .select("*")
       .single();
 
     if (error) {
-      this.throwOnError('Failed to update election', error);
+      this.throwOnError("Failed to update election", error);
     }
 
     return data as ElectionRow;
   }
 
   async delete(electionId: string): Promise<void> {
-    const { error } = await supabase.from('elections').delete().eq('id', electionId);
+    const { error } = await supabase
+      .from("elections")
+      .delete()
+      .eq("id", electionId);
 
     if (error) {
-      this.throwOnError('Failed to delete election', error);
+      this.throwOnError("Failed to delete election", error);
     }
   }
 
   async findById(electionId: string): Promise<ElectionRow | null> {
-    const { data, error } = await supabase.from('elections').select('*').eq('id', electionId).maybeSingle();
+    const { data, error } = await supabase
+      .from("elections")
+      .select("*")
+      .eq("id", electionId)
+      .maybeSingle();
 
     if (error) {
-      this.throwOnError('Failed to fetch election', error);
+      this.throwOnError("Failed to fetch election", error);
     }
 
     return (data as ElectionRow | null) ?? null;
   }
 
   async listAll(): Promise<ElectionRow[]> {
-    const { data, error } = await supabase.from('elections').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from("elections")
+      .select("*")
+      .order("created_at", { ascending: false });
 
     if (error) {
-      this.throwOnError('Failed to list elections', error);
+      this.throwOnError("Failed to list elections", error);
     }
 
     return (data ?? []) as ElectionRow[];
   }
 }
 
-export class SupabaseCandidateRepository extends RepositoryBase implements ICandidateRepository {
+export class SupabaseCandidateRepository
+  extends RepositoryBase
+  implements ICandidateRepository
+{
   async create(input: AddCandidateInput): Promise<CandidateRow> {
     const { data, error } = await supabase
-      .from('candidates')
+      .from("candidates")
       .insert({
         election_id: input.electionId,
         display_name: input.displayName,
         party_name: input.partyName ?? null,
         candidate_number: input.candidateNumber,
       })
-      .select('*')
+      .select("*")
       .single();
 
     if (error) {
-      this.throwOnError('Failed to add candidate', error);
+      this.throwOnError("Failed to add candidate", error);
     }
 
     return data as CandidateRow;
@@ -278,13 +397,13 @@ export class SupabaseCandidateRepository extends RepositoryBase implements ICand
 
   async listByElection(electionId: string): Promise<CandidateRow[]> {
     const { data, error } = await supabase
-      .from('candidates')
-      .select('*')
-      .eq('election_id', electionId)
-      .order('candidate_number', { ascending: true });
+      .from("candidates")
+      .select("*")
+      .eq("election_id", electionId)
+      .order("candidate_number", { ascending: true });
 
     if (error) {
-      this.throwOnError('Failed to list candidates', error);
+      this.throwOnError("Failed to list candidates", error);
     }
 
     return (data ?? []) as CandidateRow[];
@@ -292,94 +411,117 @@ export class SupabaseCandidateRepository extends RepositoryBase implements ICand
 
   async update(input: UpdateCandidateInput): Promise<CandidateRow> {
     const { data, error } = await supabase
-      .from('candidates')
+      .from("candidates")
       .update({
         display_name: input.displayName,
         party_name: input.partyName ?? null,
       })
-      .eq('id', input.candidateId)
-      .select('*')
+      .eq("id", input.candidateId)
+      .select("*")
       .single();
 
     if (error) {
-      this.throwOnError('Failed to update candidate', error);
+      this.throwOnError("Failed to update candidate", error);
     }
 
     return data as CandidateRow;
   }
 
   async delete(candidateId: string): Promise<void> {
-    const { error } = await supabase.from('candidates').delete().eq('id', candidateId);
+    const { error } = await supabase
+      .from("candidates")
+      .delete()
+      .eq("id", candidateId);
 
     if (error) {
-      this.throwOnError('Failed to delete candidate', error);
+      this.throwOnError("Failed to delete candidate", error);
     }
   }
 }
 
-export class SupabaseVoterRegistryRepository extends RepositoryBase implements IVoterRegistryRepository {
-  async registerEligible(electionId: string, voterId: string): Promise<VoterRegistryRow> {
+export class SupabaseVoterRegistryRepository
+  extends RepositoryBase
+  implements IVoterRegistryRepository
+{
+  async registerEligible(
+    electionId: string,
+    voterId: string,
+  ): Promise<VoterRegistryRow> {
     const { data, error } = await supabase
-      .from('voter_registry')
+      .from("voter_registry")
       .upsert(
         {
           election_id: electionId,
           voter_id: voterId,
           is_eligible: true,
         },
-        { onConflict: 'election_id,voter_id' }
+        { onConflict: "election_id,voter_id" },
       )
-      .select('*')
+      .select("*")
       .single();
 
     if (error) {
-      this.throwOnError('Failed to register voter', error);
+      this.throwOnError("Failed to register voter", error);
     }
 
     return data as VoterRegistryRow;
   }
 
-  async getByElectionAndVoter(electionId: string, voterId: string): Promise<VoterRegistryRow | null> {
+  async getByElectionAndVoter(
+    electionId: string,
+    voterId: string,
+  ): Promise<VoterRegistryRow | null> {
     const { data, error } = await supabase
-      .from('voter_registry')
-      .select('*')
-      .eq('election_id', electionId)
-      .eq('voter_id', voterId)
+      .from("voter_registry")
+      .select("*")
+      .eq("election_id", electionId)
+      .eq("voter_id", voterId)
       .maybeSingle();
 
     if (error) {
-      this.throwOnError('Failed to fetch voter registry status', error);
+      this.throwOnError("Failed to fetch voter registry status", error);
     }
 
     return (data as VoterRegistryRow | null) ?? null;
   }
 
-  async markAsVoted(electionId: string, voterId: string): Promise<VoterRegistryRow> {
+  async markAsVoted(
+    electionId: string,
+    voterId: string,
+  ): Promise<VoterRegistryRow> {
     const { data, error } = await supabase
-      .from('voter_registry')
+      .from("voter_registry")
       .update({
         has_voted: true,
         voted_at: new Date().toISOString(),
       })
-      .eq('election_id', electionId)
-      .eq('voter_id', voterId)
-      .select('*')
+      .eq("election_id", electionId)
+      .eq("voter_id", voterId)
+      .select("*")
       .single();
 
     if (error) {
-      this.throwOnError('Failed to mark voter as voted', error);
+      this.throwOnError("Failed to mark voter as voted", error);
     }
 
     return data as VoterRegistryRow;
   }
 }
 
-export class SupabaseVoteLedgerRepository extends RepositoryBase implements IVoteLedgerRepository {
-  async castVoteSecure(electionId: string, candidateId: string, nonce?: string, _voterId?: string): Promise<VoteBlockRow> {
+export class SupabaseVoteLedgerRepository
+  extends RepositoryBase
+  implements IVoteLedgerRepository
+{
+  async castVoteSecure(
+    electionId: string,
+    candidateId: string,
+    nonce?: string,
+    _voterId?: string,
+  ): Promise<VoteBlockRow> {
     // Import encryption key from environment
-    const { env } = await import('@/class/env');
-    
-    const { data, error } = await supabase.rpc('cast_vote_secure', {
+    const { env } = await import("@/class/env");
+
+    const { data, error } = await supabase.rpc("cast_vote_secure", {
       p_election_id: electionId,
       p_candidate_id: candidateId,
       p_nonce: nonce ?? null,
@@ -387,19 +529,19 @@ export class SupabaseVoteLedgerRepository extends RepositoryBase implements IVot
     });
 
     if (error) {
-      this.throwOnError('Failed to cast vote', error);
+      this.throwOnError("Failed to cast vote", error);
     }
 
     return data as VoteBlockRow;
   }
 
   async verifyChain(electionId: string): Promise<VerifyChainResultRow> {
-    const { data, error } = await supabase.rpc('verify_chain', {
+    const { data, error } = await supabase.rpc("verify_chain", {
       p_election_id: electionId,
     });
 
     if (error) {
-      this.throwOnError('Failed to verify blockchain', error);
+      this.throwOnError("Failed to verify blockchain", error);
     }
 
     const rows = (data ?? []) as VerifyChainResultRow[];
@@ -407,36 +549,39 @@ export class SupabaseVoteLedgerRepository extends RepositoryBase implements IVot
       rows[0] ?? {
         is_valid: false,
         invalid_block_index: null,
-        reason: 'No verification result returned',
+        reason: "No verification result returned",
       }
     );
   }
 
   async listLedger(electionId: string): Promise<VoteBlockRow[]> {
     const { data, error } = await supabase
-      .from('vote_blocks')
-      .select('*')
-      .eq('election_id', electionId)
-      .order('block_index', { ascending: true });
+      .from("vote_blocks")
+      .select("*")
+      .eq("election_id", electionId)
+      .order("block_index", { ascending: true });
 
     if (error) {
-      this.throwOnError('Failed to fetch ledger', error);
+      this.throwOnError("Failed to fetch ledger", error);
     }
 
     return (data ?? []) as VoteBlockRow[];
   }
 }
 
-export class SupabaseAuditLogRepository extends RepositoryBase implements IAuditLogRepository {
+export class SupabaseAuditLogRepository
+  extends RepositoryBase
+  implements IAuditLogRepository
+{
   async listRecent(limit = 100): Promise<AuditLogRow[]> {
     const { data, error } = await supabase
-      .from('audit_logs')
-      .select('*')
-      .order('created_at', { ascending: false })
+      .from("audit_logs")
+      .select("*")
+      .order("created_at", { ascending: false })
       .limit(limit);
 
     if (error) {
-      this.throwOnError('Failed to fetch audit logs', error);
+      this.throwOnError("Failed to fetch audit logs", error);
     }
 
     return (data ?? []) as AuditLogRow[];

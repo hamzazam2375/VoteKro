@@ -6,7 +6,7 @@ import type {
     VerifyChainResultRow,
     VoteBlockRow,
     VoterRegistryRow,
-} from '@/class/database-types';
+} from "@/class/database-types";
 
 export interface CreateElectionInput {
   title: string;
@@ -21,7 +21,7 @@ export interface UpdateElectionInput {
   description?: string;
   startsAtIso: string;
   endsAtIso: string;
-  status: ElectionRow['status'];
+  status: ElectionRow["status"];
 }
 
 export interface AddCandidateInput {
@@ -47,7 +47,7 @@ export interface SignUpInput {
   email: string;
   password: string;
   fullName: string;
-  role: 'admin' | 'auditor' | 'voter';
+  role: "admin" | "auditor" | "voter";
   adminId?: string;
 }
 
@@ -56,20 +56,35 @@ export interface IAuthRepository {
   signUp(email: string, password: string): Promise<string>;
   signOut(): Promise<void>;
   getCurrentUserId(): Promise<string | null>;
+  getCurrentUserEmail(): Promise<string | null>;
+  updateUser(input: { email?: string; password?: string }): Promise<void>;
 }
 
 export interface IProfileRepository {
   getByUserId(userId: string): Promise<ProfileRow | null>;
-  getByRole(role: ProfileRow['role']): Promise<ProfileRow | null>;
-  countByRole(role: ProfileRow['role']): Promise<number>;
-  create(userId: string, fullName: string, role: ProfileRow['role']): Promise<ProfileRow>;
+  getByRole(role: ProfileRow["role"]): Promise<ProfileRow | null>;
+  countByRole(role: ProfileRow["role"]): Promise<number>;
+  create(
+    userId: string,
+    fullName: string,
+    role: ProfileRow["role"],
+  ): Promise<ProfileRow>;
+  update(
+    userId: string,
+    updates: Partial<
+      Pick<ProfileRow, "full_name" | "voter_code_hash" | "is_verified">
+    >,
+  ): Promise<ProfileRow>;
 }
 
 export interface IElectionRepository {
   create(input: CreateElectionInput, createdBy: string): Promise<ElectionRow>;
   update(input: UpdateElectionInput): Promise<ElectionRow>;
   delete(electionId: string): Promise<void>;
-  updateStatus(electionId: string, status: ElectionRow['status']): Promise<ElectionRow>;
+  updateStatus(
+    electionId: string,
+    status: ElectionRow["status"],
+  ): Promise<ElectionRow>;
   findById(electionId: string): Promise<ElectionRow | null>;
   listAll(): Promise<ElectionRow[]>;
 }
@@ -82,13 +97,24 @@ export interface ICandidateRepository {
 }
 
 export interface IVoterRegistryRepository {
-  registerEligible(electionId: string, voterId: string): Promise<VoterRegistryRow>;
-  getByElectionAndVoter(electionId: string, voterId: string): Promise<VoterRegistryRow | null>;
+  registerEligible(
+    electionId: string,
+    voterId: string,
+  ): Promise<VoterRegistryRow>;
+  getByElectionAndVoter(
+    electionId: string,
+    voterId: string,
+  ): Promise<VoterRegistryRow | null>;
   markAsVoted(electionId: string, voterId: string): Promise<VoterRegistryRow>;
 }
 
 export interface IVoteLedgerRepository {
-  castVoteSecure(electionId: string, candidateId: string, nonce?: string, voterId?: string): Promise<VoteBlockRow>;
+  castVoteSecure(
+    electionId: string,
+    candidateId: string,
+    nonce?: string,
+    voterId?: string,
+  ): Promise<VoteBlockRow>;
   verifyChain(electionId: string): Promise<VerifyChainResultRow>;
   listLedger(electionId: string): Promise<VoteBlockRow[]>;
 }
