@@ -123,6 +123,38 @@ export class AdminService extends BaseService {
     );
   }
 
+  async initiateVoterRegistrationWithFace(input: {
+    fullName: string;
+    email: string;
+    faceData: { imageData: string; timestamp: number; numFaces: number };
+  }): Promise<void> {
+    const fullName = input.fullName.trim();
+    const email = input.email.trim();
+
+    await this.authService.getRequiredProfile("admin");
+
+    this.requireNonEmpty(fullName, "Full name");
+    this.requireNonEmpty(email, "Email");
+    this.requireValidEmail(email);
+    this.requireNonEmpty(input.faceData.imageData, "Face image data");
+
+    // Store face data with email for later linking
+    // The face will be associated with the voter after email verification
+    try {
+      await this.emailService.initiateVoterRegistrationWithFace(
+        fullName,
+        email,
+        input.faceData.imageData,
+      );
+    } catch (error) {
+      throw new Error(
+        `Failed to initiate voter registration with face: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      );
+    }
+  }
+
   async initiateAuditorRegistrationAuthorization(
     input: RegisterUserInput,
   ): Promise<void> {

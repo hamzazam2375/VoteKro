@@ -82,6 +82,29 @@ If you did not request this account or have any questions, please contact suppor
     });
   }
 
+  async initiateVoterRegistrationWithFace(
+    fullName: string,
+    email: string,
+    faceImageBase64: string,
+  ): Promise<void> {
+    const { error } = await supabase.functions.invoke(
+      "start-voter-registration",
+      {
+        body: {
+          fullName,
+          email,
+          faceImage: faceImageBase64,
+        },
+      },
+    );
+
+    if (error) {
+      throw new Error(
+        `Failed to initiate voter registration with face: ${error.message}`,
+      );
+    }
+  }
+
   async initiateVoterRegistrationAuthorization(
     fullName: string,
     email: string,
