@@ -24,7 +24,7 @@ type CandidateResult = {
   percentage: number;
 };
 
-export default function AdminViewResults() {
+export default function AdminViewResults({ isEmbedded }: { isEmbedded?: boolean } = {}) {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isMobile = width < 760;
@@ -160,19 +160,23 @@ export default function AdminViewResults() {
 
   return (
     <View style={styles.container}>
-      <Navbar
-        infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
-        actions={[
-          { label: "Logout", onPress: handleLogout, variant: "outline" },
-        ]}
-      />
+      {!isEmbedded && (
+        <Navbar
+          infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
+          actions={[
+            { label: "Logout", onPress: handleLogout, variant: "outline" },
+          ]}
+        />
+      )}
 
-      <Pressable
-        style={styles.backButton}
-        onPress={() => router.replace("/AdminDashboard")}
-      >
-        <Text style={styles.backButtonText}>← Back</Text>
-      </Pressable>
+      {!isEmbedded && (
+        <Pressable
+          style={styles.backButton}
+          onPress={() => router.replace("/AdminDashboard")}
+        >
+          <Text style={styles.backButtonText}>← Back</Text>
+        </Pressable>
+      )}
 
       <ScrollView
         style={styles.content}

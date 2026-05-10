@@ -1,23 +1,23 @@
 import type {
-  CandidateRow,
-  ElectionRow,
-  ProfileRow,
+    CandidateRow,
+    ElectionRow,
+    ProfileRow,
 } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  useWindowDimensions,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+    useWindowDimensions,
 } from "react-native";
 
 function blurActiveElementOnWeb() {
@@ -28,7 +28,7 @@ function blurActiveElementOnWeb() {
   activeElement?.blur?.();
 }
 
-export default function AdminManageCandidates() {
+export default function AdminManageCandidates({ isEmbedded }: { isEmbedded?: boolean } = {}) {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isMobile = width < 760;
@@ -589,23 +589,27 @@ export default function AdminManageCandidates() {
         </View>
       </Modal>
 
-      <Navbar
-        infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
-        actions={[
-          { label: "Logout", onPress: handleLogout, variant: "outline" },
-        ]}
-      />
+      {!isEmbedded && (
+        <Navbar
+          infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
+          actions={[
+            { label: "Logout", onPress: handleLogout, variant: "outline" },
+          ]}
+        />
+      )}
 
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
       >
-        <Pressable
-          style={styles.backButton}
-          onPress={() => router.replace("/AdminDashboard")}
-        >
-          <Text style={styles.backButtonText}>← Back</Text>
-        </Pressable>
+        {!isEmbedded && (
+          <Pressable
+            style={styles.backButton}
+            onPress={() => router.replace("/AdminDashboard")}
+          >
+            <Text style={styles.backButtonText}>← Back</Text>
+          </Pressable>
+        )}
 
         <View style={styles.innerWrapper}>
           <View style={styles.titleSection}>

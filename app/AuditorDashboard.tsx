@@ -1,7 +1,7 @@
 import type { AuditLogRow, ProfileRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
 import { AuditLogsViewer } from '@/components/audit-logs-viewer';
-import { Navbar } from '@/components/navbar';
+import { DashboardShell } from '@/components/dashboard-shell';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -85,7 +85,34 @@ export default function AuditorDashboard() {
     }
 
     return (
-        <View style={styles.container}>
+        <DashboardShell
+            compactNavbar
+            infoText={`Welcome, ${profile?.full_name?.split(' ')[0] || 'Auditor'}!`}
+            userName={profile?.full_name ?? 'Auditor'}
+            userRole="Auditor"
+            onLogout={handleLogout}
+            sidebarItems={[
+                {
+                    key: 'dashboard',
+                    label: 'Dashboard',
+                    icon: '📊',
+                    active: true,
+                    onPress: () => undefined,
+                },
+                {
+                    key: 'ledger',
+                    label: 'Blockchain Ledger',
+                    icon: '🔐',
+                    onPress: () => router.push('/AuditorBlockchainLedger'),
+                },
+                {
+                    key: 'verify-votes',
+                    label: 'Verify Votes',
+                    icon: '✓',
+                    onPress: () => router.push('/AuditorVerifyVotes'),
+                },
+            ]}
+        >
             {/* Logout confirmation modal (web) */}
             <Modal transparent visible={showLogoutModal} animationType="fade" onRequestClose={() => setShowLogoutModal(false)}>
                 <View style={styles.modalOverlay}>
@@ -104,14 +131,6 @@ export default function AuditorDashboard() {
                 </View>
             </Modal>
 
-            <Navbar
-                infoText={`Welcome, ${profile?.full_name?.split(' ')[0] || 'Auditor'}!`}
-                actions={[
-                    { label: 'Logout', onPress: handleLogout, variant: 'outline' },
-                ]}
-            />
-
-            {/* Main Content */}
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                 <View style={styles.innerWrapper}>
                     {/* Dashboard Title */}
@@ -192,7 +211,7 @@ export default function AuditorDashboard() {
 
                 </View>
             </ScrollView>
-        </View>
+        </DashboardShell>
     );
 }
 

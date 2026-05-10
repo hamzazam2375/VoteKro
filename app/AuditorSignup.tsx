@@ -14,7 +14,7 @@ import {
   View
 } from "react-native";
 
-export default function AuditorSignupScreen() {
+export default function AuditorSignupScreen({ isEmbedded }: { isEmbedded?: boolean } = {}) {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -101,12 +101,14 @@ export default function AuditorSignupScreen() {
 
   return (
     <View style={styles.container}>
-      <Navbar
-        infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
-        actions={[
-          { label: "Logout", onPress: handleLogout, variant: "outline" },
-        ]}
-      />
+      {!isEmbedded && (
+        <Navbar
+          infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
+          actions={[
+            { label: "Logout", onPress: handleLogout, variant: "outline" },
+          ]}
+        />
+      )}
 
       {/* Main Content */}
       <ScrollView
@@ -177,12 +179,14 @@ export default function AuditorSignupScreen() {
             </Pressable>
 
             {/* Back Button */}
-            <Pressable
-              style={styles.backButton}
-              onPress={() => router.replace("/AdminDashboard")}
-            >
-              <Text style={styles.backButtonText}>← Back</Text>
-            </Pressable>
+            {!isEmbedded && (
+              <Pressable
+                style={styles.backButton}
+                onPress={() => router.replace("/AdminDashboard")}
+              >
+                <Text style={styles.backButtonText}>← Back</Text>
+              </Pressable>
+            )}
           </View>
         </View>
       </ScrollView>

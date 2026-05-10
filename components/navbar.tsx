@@ -115,6 +115,7 @@ export function Navbar({
 }
 
 const styles = StyleSheet.create({
+<<<<<<< Updated upstream
   navbar: {
     paddingHorizontal: 24,
     paddingBottom: 12,
@@ -225,4 +226,110 @@ const styles = StyleSheet.create({
   actionTextOutline: {
     color: "#2e63e3",
   },
+=======
+    navbar: {
+        paddingHorizontal: 24,
+        paddingBottom: 12,
+        backgroundColor: '#ffffff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#d9e0ec',
+        zIndex: 2,
+        boxShadow: '0px 2px 8px rgba(36, 59, 99, 0.06)',
+        elevation: 2,
+    },
+    navbarCompact: {
+        paddingHorizontal: 16,
+        paddingBottom: 10,
+        backgroundColor: '#ffffff',
+    },
+    topRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        minHeight: 48,
+    },
+    topRowCompact: {
+        minHeight: 40,
+    },
+    brandWrap: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    brandWrapPressed: {
+        opacity: 0.82,
+    },
+    brandName: {
+        color: '#1a73e8',
+        fontSize: 26,
+        fontWeight: '800',
+        letterSpacing: 0.2,
+    },
+    brandNameCompact: {
+        fontSize: 26,
+    },
+    actionsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    infoText: {
+        fontSize: 14,
+        color: '#5c6f89',
+        fontWeight: '500',
+        marginRight: 8,
+    },
+    infoTextCompact: {
+        fontSize: 14,
+        color: '#5c6f89',
+        marginRight: 8,
+    },
+    infoTextMobile: {
+        fontSize: 13,
+        color: '#5c6f89',
+        fontWeight: '500',
+        marginTop: 4,
+        paddingHorizontal: 2,
+    },
+    infoTextMobileCompact: {
+        color: '#2f64e6',
+    },
+    actionButton: {
+        borderRadius: 10,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderWidth: 1.5,
+    },
+    actionButtonCompact: {
+        borderRadius: 10,
+        paddingVertical: 6,
+        paddingHorizontal: 14,
+    },
+    actionButtonSolid: {
+        backgroundColor: '#1a73e8',
+        borderColor: '#1a73e8',
+    },
+    actionButtonOutline: {
+        backgroundColor: 'transparent',
+        borderColor: '#1a73e8',
+    },
+    actionButtonPressed: {
+        opacity: 0.88,
+        transform: [{ scale: 0.98 }],
+    },
+    actionText: {
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    actionTextCompact: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    actionTextSolid: {
+        color: '#ffffff',
+    },
+    actionTextOutline: {
+        color: '#1a73e8',
+    },
+>>>>>>> Stashed changes
 });
