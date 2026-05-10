@@ -278,14 +278,7 @@ export default function AdminDashboard() {
               )}
             </View>
 
-            {/* Welcome Message at Bottom */}
-            <View style={styles.sidebarFooter}>
-              <View style={styles.welcomeCard}>
-                <Text style={styles.welcomeText}>{profile?.full_name ?? 'Administrator'}</Text>
-                <Text style={styles.welcomeSubtext}>{profile?.role === 'admin' ? 'Admin' : 'Moderator'}</Text>
-              </View>
-            </View>
-          </View>
+                      </View>
         )}
 
         {/* Content Area */}

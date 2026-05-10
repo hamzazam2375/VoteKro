@@ -87,7 +87,7 @@ export default function AuditorDashboard() {
     return (
         <DashboardShell
             compactNavbar
-            infoText={`Welcome, ${profile?.full_name?.split(' ')[0] || 'Auditor'}!`}
+            infoText={profile?.full_name || 'Auditor'}
             userName={profile?.full_name ?? 'Auditor'}
             userRole="Auditor"
             onLogout={handleLogout}

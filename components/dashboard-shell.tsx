@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { ReactNode, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,6 +45,11 @@ export function DashboardShell({
         }
     };
 
+    const router = useRouter();
+    const handleLogoPress = () => {
+        router.replace('/');
+    };
+
     return (
         <View style={styles.container}>
             {isMobile ? (
@@ -54,7 +60,9 @@ export function DashboardShell({
                     >
                         <Text style={styles.mobileHamburgerIcon}>☰</Text>
                     </Pressable>
-                    <Text style={styles.mobileLogo}>VoteKro</Text>
+                    <Pressable style={styles.mobileLogo} onPress={handleLogoPress}>
+    <Text style={styles.mobileLogoText}>VoteKro</Text>
+</Pressable>
                     <Pressable style={styles.mobileLogoutButton} onPress={onLogout}>
                         <Text style={styles.mobileLogoutText}>Logout</Text>
                     </Pressable>
@@ -148,8 +156,12 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     mobileLogo: {
-        fontSize: 20,
-        fontWeight: '800',
+        padding: 8,
+        marginRight: 12,
+    },
+    mobileLogoText: {
+        fontSize: 24,
+        fontWeight: '700',
         color: '#1a73e8',
         flex: 1,
     },
