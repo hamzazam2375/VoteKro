@@ -5,14 +5,14 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View
+    ActivityIndicator,
+    Alert,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    useWindowDimensions,
+    View
 } from "react-native";
 import AdminCreateElection from "./AdminCreateElection";
 import AdminManageCandidates from "./AdminManageCandidates";
@@ -154,7 +154,9 @@ export default function AdminDashboard() {
           >
             <Text style={styles.mobileHamburgerIcon}>☰</Text>
           </Pressable>
-          <Text style={styles.mobileLogo}>VoteKro</Text>
+          <Pressable style={styles.mobileLogoButton} onPress={() => router.replace('/AdminDashboard')}>
+            <Text style={styles.mobileLogo}>VoteKro</Text>
+          </Pressable>
           <Pressable
             style={styles.mobileLogoutButton}
             onPress={handleLogout}
@@ -164,6 +166,7 @@ export default function AdminDashboard() {
         </View>
       ) : (
         <Navbar
+          homeRoute="/AdminDashboard"
           actions={[
             { label: "Logout", onPress: handleLogout, variant: "outline" },
           ]}
@@ -895,11 +898,16 @@ const styles = StyleSheet.create({
     color: "#1a73e8",
     fontWeight: "700",
   },
+  mobileLogoButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    flex: 1,
+    alignItems: 'center',
+  },
   mobileLogo: {
     fontSize: 20,
     fontWeight: "800",
     color: "#1a73e8",
-    flex: 1,
   },
   mobileLogoutButton: {
     paddingVertical: 8,

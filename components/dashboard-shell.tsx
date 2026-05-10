@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { ReactNode, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Navbar, type NavbarAction } from './navbar';
+import { Navbar, type DashboardHomeRoute, type NavbarAction } from './navbar';
 
 export type DashboardSidebarItem = {
     key: string;
@@ -21,6 +21,7 @@ type DashboardShellProps = {
     children: ReactNode;
     actions?: NavbarAction[];
     compactNavbar?: boolean;
+    homeRoute?: DashboardHomeRoute;
 };
 
 export function DashboardShell({
@@ -32,7 +33,11 @@ export function DashboardShell({
     children,
     actions,
     compactNavbar = false,
+    homeRoute = '/',
 }: DashboardShellProps) {
+    void userName;
+    void userRole;
+
     const { width } = useWindowDimensions();
     const isMobile = width < 600;
     const insets = useSafeAreaInsets();
@@ -71,6 +76,7 @@ export function DashboardShell({
                 <Navbar
                     compact={compactNavbar}
                     infoText={infoText}
+                    homeRoute={homeRoute}
                     actions={actions ?? [{ label: 'Logout', onPress: onLogout, variant: 'outline' }]}
                 />
             )}
@@ -107,12 +113,6 @@ export function DashboardShell({
                             ))}
                         </View>
 
-                        <View style={styles.sidebarFooter}>
-                            <View style={styles.welcomeCard}>
-                                <Text style={styles.welcomeText}>{userName}</Text>
-                                <Text style={styles.welcomeSubtext}>{userRole}</Text>
-                            </View>
-                        </View>
                     </View>
                 )}
 
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
         paddingVertical: 20,
         paddingHorizontal: 12,
         flexDirection: 'column',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start',
     },
     sidebarMobile: {
         position: 'absolute',
@@ -229,30 +229,6 @@ const styles = StyleSheet.create({
     },
     sidebarButtonTextActive: {
         color: '#ffffff',
-    },
-    sidebarFooter: {
-        paddingTop: 12,
-        borderTopWidth: 1,
-        borderTopColor: '#e0e0e0',
-    },
-    welcomeCard: {
-        backgroundColor: '#f0f4ff',
-        borderRadius: 10,
-        paddingVertical: 14,
-        paddingHorizontal: 12,
-        borderLeftWidth: 3,
-        borderLeftColor: '#1a73e8',
-    },
-    welcomeText: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#1a73e8',
-        marginBottom: 4,
-    },
-    welcomeSubtext: {
-        fontSize: 12,
-        color: '#677b94',
-        fontWeight: '500',
     },
     content: {
         flex: 1,
