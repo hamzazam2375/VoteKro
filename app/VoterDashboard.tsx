@@ -3,7 +3,7 @@ import { serviceFactory } from '@/class/service-factory';
 import { DashboardShell } from '@/components/dashboard-shell';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 
 export default function VoterDashboard() {
     const router = useRouter();
@@ -25,6 +25,9 @@ export default function VoterDashboard() {
     const [votedElectionIds, setVotedElectionIds] = useState<Set<string>>(new Set());
     const [currentView, setCurrentView] = useState<'home' | 'history'>('home');
     const [voteDetails, setVoteDetails] = useState<Map<string, { hash: string; date: string; candidate: string }>>(new Map());
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showSearchBar, setShowSearchBar] = useState(false);
+    const searchInputRef = useRef<TextInput | null>(null);
 
     const displayName = profile?.full_name?.trim() || 'Voter';
     const electionCardWidth = Math.min(330, Math.max(250, width - 48));
@@ -320,6 +323,18 @@ export default function VoterDashboard() {
     };
 
     const displayedElections = currentView === 'home' ? getActiveElections() : getHistoryElections();
+    const filteredElections = displayedElections.filter((election) => {
+        const query = searchQuery.trim().toLowerCase();
+
+        if (!query) {
+            return true;
+        }
+
+        return [election.title, election.description ?? '']
+            .join(' ')
+            .toLowerCase()
+            .includes(query);
+    });
 
     if (isLoading) {
         return (
@@ -599,6 +614,52 @@ export default function VoterDashboard() {
                             <Text style={styles.pageSubtitle}>View your voting history and closed elections</Text>
                         )}
 
+                        <View style={styles.searchBarSection}>
+                            <Pressable
+                                style={({ pressed }) => [styles.searchButton, pressed && styles.buttonPressed]}
+                                accessibilityRole="button"
+                                onPress={() => {
+                                    setShowSearchBar((previous) => {
+                                        const next = !previous;
+
+                                        if (next) {
+                                            setTimeout(() => searchInputRef.current?.focus?.(), 50);
+                                        } else {
+                                            setSearchQuery('');
+                                        }
+
+                                        return next;
+                                    });
+                                }}
+                            >
+                                <Text style={styles.searchButtonText}>🔍 Search Elections</Text>
+                            </Pressable>
+
+                            {showSearchBar ? (
+                                <View style={styles.searchInputWrap}>
+                                    <TextInput
+                                        ref={searchInputRef}
+                                        value={searchQuery}
+                                        onChangeText={setSearchQuery}
+                                        placeholder="Search by election title or description"
+                                        placeholderTextColor="#8b97a8"
+                                        style={styles.searchInput}
+                                        autoCorrect={false}
+                                        autoCapitalize="none"
+                                        returnKeyType="search"
+                                    />
+                                    <Pressable
+                                        style={({ pressed }) => [styles.clearSearchButton, pressed && styles.buttonPressed]}
+                                        accessibilityRole="button"
+                                        onPress={() => setSearchQuery('')}
+                                        disabled={!searchQuery}
+                                    >
+                                        <Text style={styles.clearSearchButtonText}>Clear</Text>
+                                    </Pressable>
+                                </View>
+                            ) : null}
+                        </View>
+
                         <View style={styles.sectionHeaderRow}>
                             <Text style={styles.sectionIcon}>{currentView === 'home' ? '🗳️' : '📚'}</Text>
                             <Text style={styles.sectionTitle}>
@@ -606,9 +667,9 @@ export default function VoterDashboard() {
                             </Text>
                         </View>
 
-                        {displayedElections.length > 0 ? (
+                        {filteredElections.length > 0 ? (
                             <View style={styles.electionsList}>
-                                {displayedElections.map((election) => {
+                                {filteredElections.map((election) => {
                                     const isSelected = election.id === selectedElection?.id;
                                     const effectiveStatus = getEffectiveElectionStatus(election);
                                     return (
@@ -642,12 +703,14 @@ export default function VoterDashboard() {
                         ) : (
                             <View style={[styles.electionCard, { width: electionCardWidth }]}>
                                 <Text style={styles.electionTitle}>
-                                    {currentView === 'home' ? 'No Active Elections' : 'No Voting History'}
+                                    {searchQuery.trim() ? 'No Elections Found' : currentView === 'home' ? 'No Active Elections' : 'No Voting History'}
                                 </Text>
                                 <Text style={styles.electionDescription}>
-                                    {currentView === 'home'
-                                        ? 'There are no active elections right now. Check back soon!'
-                                        : 'You have not voted in any closed elections yet.'}
+                                    {searchQuery.trim()
+                                        ? 'Try a different search term or clear the search box to see all elections.'
+                                        : currentView === 'home'
+                                            ? 'There are no active elections right now. Check back soon!'
+                                            : 'You have not voted in any closed elections yet.'}
                                 </Text>
                             </View>
                         )}
@@ -735,6 +798,57 @@ const styles = StyleSheet.create({
         lineHeight: 30,
         color: '#677b94',
         marginBottom: 46,
+    },
+    searchBarSection: {
+        marginBottom: 18,
+        gap: 10,
+    },
+    searchButton: {
+        alignSelf: 'flex-start',
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ffffff',
+        borderWidth: 1,
+        borderColor: '#cfd8ea',
+        borderRadius: 999,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        boxShadow: '0px 4px 10px rgba(36, 59, 99, 0.06)',
+        elevation: 2,
+    },
+    searchButtonText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#2f64e6',
+    },
+    searchInputWrap: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    searchInput: {
+        flex: 1,
+        backgroundColor: '#ffffff',
+        borderWidth: 1,
+        borderColor: '#cfd8ea',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        fontSize: 15,
+        color: '#14203a',
+    },
+    clearSearchButton: {
+        backgroundColor: '#eef4ff',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderWidth: 1,
+        borderColor: '#d7e4ff',
+    },
+    clearSearchButtonText: {
+        color: '#2f64e6',
+        fontWeight: '700',
+        fontSize: 14,
     },
     tabBar: {
         flexDirection: 'row',
