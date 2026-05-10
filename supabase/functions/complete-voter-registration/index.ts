@@ -25,7 +25,11 @@ const htmlPage = (title: string, message: string, success: boolean) => `
 `;
 
 serve(async (req) => {
-  if (req.method !== "GET") {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204 });
+  }
+
+  if (req.method !== "GET" && req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
 
@@ -45,8 +49,25 @@ serve(async (req) => {
       },
     );
   }
-
-  const token = new URL(req.url).searchParams.get("token")?.trim();
+  // Read token from query string (GET) or JSON body (POST)
+  let token: string | null | undefined = null;
+  try {
+    if (req.method === "GET") {
+      token = new URL(req.url).searchParams.get("token")?.trim();
+    } else {
+      // POST: prefer JSON body token, fall back to query param
+      try {
+        const body = await req.json();
+        token =
+          (body && typeof body.token === "string" ? body.token.trim() : null) ||
+          new URL(req.url).searchParams.get("token")?.trim();
+      } catch (_) {
+        token = new URL(req.url).searchParams.get("token")?.trim();
+      }
+    }
+  } catch (e) {
+    token = new URL(req.url).searchParams.get("token")?.trim();
+  }
   if (!token) {
     return new Response(
       htmlPage("Invalid Link", "Registration link is invalid.", false),

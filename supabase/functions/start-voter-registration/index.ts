@@ -177,13 +177,13 @@ serve(async (req) => {
             </div>
 
             <p style="margin: 24px 0;">
-              <a href="${approveUrl}" style="display: inline-block; background: #2563eb; color: #fff; text-decoration: none; padding: 12px 18px; border-radius: 8px; font-weight: 600;">
+              <a href="${approveUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background: #2563eb; color: #fff; text-decoration: none; padding: 12px 18px; border-radius: 8px; font-weight: 600;">
                 Authorize And Complete Registration
               </a>
             </p>
 
             <p>If the button does not work, use this link:</p>
-            <p><a href="${approveUrl}">${approveUrl}</a></p>
+            <p><a href="${approveUrl}" target="_blank" rel="noopener noreferrer">${approveUrl}</a></p>
 
             <p><strong>Note:</strong> This link expires in 24 hours.</p>
             <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;" />
