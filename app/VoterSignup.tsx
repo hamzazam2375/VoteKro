@@ -1,6 +1,6 @@
 import type { ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
-import { FaceCapture } from "@/components/face-capture";
+import { FaceCapture, type FaceCaptureResult } from "@/components/face-capture";
 import { Navbar } from "@/components/navbar";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -27,6 +27,7 @@ export default function VoterSignupScreen({ isEmbedded }: { isEmbedded?: boolean
   const [capturedFaceBase64, setCapturedFaceBase64] = useState<string | null>(
     null,
   );
+  const [faceEmbedding, setFaceEmbedding] = useState<number[]>([]);
   const [isFaceVerified, setIsFaceVerified] = useState(false);
 
   useEffect(() => {
@@ -85,25 +86,24 @@ export default function VoterSignupScreen({ isEmbedded }: { isEmbedded?: boolean
     }
 
     try {
-      // Create a temporary voter profile for face storage
-      // The face will be stored with email as identifier until voter completes email verification
+      // Store face data with embedding for biometric verification
       const faceData = {
         imageData: capturedFaceBase64,
         timestamp: Date.now(),
         numFaces: 1,
       };
 
-      // Store face image temporarily with email metadata
-      // This will be linked to the voter after email verification
       await serviceFactory.adminService.initiateVoterRegistrationWithFace({
         fullName: normalizedFullName,
         email: normalizedEmail,
         faceData: faceData,
+        faceEmbedding: faceEmbedding,
       });
 
       setFullName("");
       setEmail("");
       setCapturedFaceBase64(null);
+      setFaceEmbedding([]);
       setIsFaceVerified(false);
       setShowFaceCapture(false);
 
@@ -122,11 +122,15 @@ export default function VoterSignupScreen({ isEmbedded }: { isEmbedded?: boolean
     }
   };
 
-  const handleFaceCapture = (base64Image: string) => {
-    setCapturedFaceBase64(base64Image);
+  const handleFaceCapture = (result: FaceCaptureResult) => {
+    setCapturedFaceBase64(result.imageData);
+    setFaceEmbedding(result.embedding);
     setIsFaceVerified(true);
     setShowFaceCapture(false);
-    Alert.alert("✓ Face Captured", "Face successfully captured and verified!");
+    const embeddingInfo = result.embedding.length > 0
+      ? `\nEmbedding: ${result.embedding.length}-dimensional vector generated`
+      : "";
+    Alert.alert("✓ Face Captured", `Face detected and processed!${embeddingInfo}`);
   };
 
   const handleCancelFaceCapture = () => {
@@ -135,6 +139,7 @@ export default function VoterSignupScreen({ isEmbedded }: { isEmbedded?: boolean
 
   const handleRetakeFace = () => {
     setCapturedFaceBase64(null);
+    setFaceEmbedding([]);
     setIsFaceVerified(false);
     setShowFaceCapture(true);
   };

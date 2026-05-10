@@ -127,6 +127,7 @@ export class AdminService extends BaseService {
     fullName: string;
     email: string;
     faceData: { imageData: string; timestamp: number; numFaces: number };
+    faceEmbedding?: number[];
   }): Promise<void> {
     const fullName = input.fullName.trim();
     const email = input.email.trim();
@@ -145,6 +146,7 @@ export class AdminService extends BaseService {
         fullName,
         email,
         input.faceData.imageData,
+        input.faceEmbedding,
       );
     } catch (error) {
       throw new Error(

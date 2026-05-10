@@ -1,8 +1,8 @@
-import { faceDetectionService } from "@/class/face-detection";
+import { faceRecognitionService } from "@/class/face-recognition";
 import { faceRepository } from "@/class/face-repository";
 import { serviceFactory } from "@/class/service-factory";
 import { supabase } from "@/class/supabase-client";
-import { FaceCapture } from "@/components/face-capture";
+import { FaceCapture, type FaceCaptureResult } from "@/components/face-capture";
 import { Navbar } from "@/components/navbar";
 import { PasswordField } from "@/components/password-field";
 import { useRouter } from "expo-router";
@@ -25,7 +25,7 @@ export default function VoterLoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [step, setStep] = useState<"login" | "face-verification">("login");
-  const [storedFaceBase64, setStoredFaceBase64] = useState<string | null>(null);
+  const [storedEmbedding, setStoredEmbedding] = useState<number[]>([]);
   const [userIdForVerification, setUserIdForVerification] = useState<
     string | null
   >(null);
@@ -48,23 +48,52 @@ export default function VoterLoginScreen() {
         "voter",
       );
 
-      // Check if voter has registered face
-      const hasFace = await faceRepository.hasFaceRegistered(profile.user_id);
+      // Check if voter has a stored face embedding
+      const embeddingRow = await faceRepository.getEmbeddingByEmail(email);
 
+      if (embeddingRow && embeddingRow.embedding.length > 0) {
+        // Has embedding — require face verification
+        setStoredEmbedding(embeddingRow.embedding);
+        setUserIdForVerification(profile.user_id);
+        setFaceAttempts(0);
+        setStep("face-verification");
+        setIsLoading(false);
+        return;
+      }
+
+      // Fallback: check old voter_faces table
+      const hasFace = await faceRepository.hasFaceRegistered(profile.user_id);
       if (hasFace) {
-        // Load the stored face and move to verification step
+        // Has face image but no embedding — generate embedding from stored image
         const storedFace = await faceRepository.getPrimaryFace(profile.user_id);
-        if (storedFace) {
-          setStoredFaceBase64(storedFace.face_image_base64);
-          setUserIdForVerification(profile.user_id);
-          setFaceAttempts(0);
-          setStep("face-verification");
-          setIsLoading(false);
-          return;
+        if (storedFace?.face_image_base64) {
+          console.log("Legacy face found. Generating embedding from stored image...");
+          const { faceRecognitionService } = await import("@/class/face-recognition");
+          await faceRecognitionService.initialize();
+          const embResult = await faceRecognitionService.generateEmbedding(
+            storedFace.face_image_base64.startsWith("data:")
+              ? storedFace.face_image_base64
+              : `data:image/jpeg;base64,${storedFace.face_image_base64}`,
+          );
+          if (embResult.detected && embResult.embedding.length > 0) {
+            // Store the generated embedding for future logins
+            await faceRepository.storeEmbedding(
+              email,
+              embResult.embedding,
+              storedFace.face_image_base64,
+              profile.user_id,
+            );
+            setStoredEmbedding(embResult.embedding);
+            setUserIdForVerification(profile.user_id);
+            setFaceAttempts(0);
+            setStep("face-verification");
+            setIsLoading(false);
+            return;
+          }
         }
       }
 
-      // No face required, proceed to dashboard
+      // No face or legacy face, proceed to dashboard
       router.push(serviceFactory.authService.getDashboardRoute(profile.role));
     } catch (error) {
       const alertContent = serviceFactory.authService.getLoginErrorAlert(error);
@@ -75,24 +104,38 @@ export default function VoterLoginScreen() {
     }
   };
 
-  const handleFaceVerification = async (capturedBase64: string) => {
-    if (!storedFaceBase64) return;
+  const handleFaceVerification = async (result: FaceCaptureResult) => {
+    if (storedEmbedding.length === 0) return;
 
     setFaceAttempts((prev) => prev + 1);
 
     try {
-      // Initialize face detection if not already
-      await faceDetectionService.initialize();
+      // Generate embedding from captured face
+      if (result.embedding.length === 0) {
+        Alert.alert(
+          "Face Detection Failed",
+          "Could not generate face embedding. Please try again.",
+        );
+        return;
+      }
 
-      // Compare captured face with stored face
-      const comparison = await faceDetectionService.compareFaces(
-        storedFaceBase64,
-        capturedBase64,
+      // Compare embeddings using cosine similarity
+      const comparison = faceRecognitionService.compareEmbeddings(
+        storedEmbedding,
+        result.embedding,
         0.6, // threshold
       );
 
-      if (comparison.isSamePerson) {
-        Alert.alert("✓ Verified", "Face verification successful!");
+      if (comparison.isMatch) {
+        // Close camera before navigating
+        setStep("login");
+        setStoredEmbedding([]);
+        setUserIdForVerification(null);
+
+        Alert.alert(
+          "✓ Verified",
+          `Face verification successful! (${(comparison.similarity * 100).toFixed(1)}% match)`,
+        );
         router.push(serviceFactory.authService.getDashboardRoute("voter"));
       } else {
         const remaining = maxFaceAttempts - faceAttempts;
@@ -101,15 +144,14 @@ export default function VoterLoginScreen() {
             "Verification Failed",
             "Maximum face verification attempts exceeded. Please try logging in again.",
           );
-          // Reset to login
           setStep("login");
-          setStoredFaceBase64(null);
+          setStoredEmbedding([]);
           setUserIdForVerification(null);
           setFaceAttempts(0);
         } else {
           Alert.alert(
             "Face Mismatch",
-            `Face does not match the registered photo. ${remaining} attempt(s) remaining. Please try again.`,
+            `Face does not match (${(comparison.similarity * 100).toFixed(1)}% similarity). ${remaining} attempt(s) remaining.`,
           );
         }
       }
@@ -126,14 +168,14 @@ export default function VoterLoginScreen() {
     <View style={styles.container}>
       <Navbar />
 
-      {step === "face-verification" && storedFaceBase64 && (
+      {step === "face-verification" && storedEmbedding.length > 0 && (
         <FaceCapture
-          onFaceCapture={(base64Image) => {
-            void handleFaceVerification(base64Image);
+          onFaceCapture={(captureResult) => {
+            void handleFaceVerification(captureResult);
           }}
           onCancel={() => {
             setStep("login");
-            setStoredFaceBase64(null);
+            setStoredEmbedding([]);
             setUserIdForVerification(null);
             setFaceAttempts(0);
           }}
