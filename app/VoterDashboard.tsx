@@ -3,7 +3,16 @@ import { serviceFactory } from '@/class/service-factory';
 import { DashboardShell } from '@/components/dashboard-shell';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+
+type DashboardElectionStatus = 'active' | 'draft' | 'closed';
+
+type ElectionResultRow = {
+    candidateId: string;
+    candidateName: string;
+    partyName: string | null;
+    votes: number;
+};
 
 export default function VoterDashboard() {
     const router = useRouter();
@@ -24,7 +33,11 @@ export default function VoterDashboard() {
     const [isSubmittingVote, setIsSubmittingVote] = useState(false);
     const [votedElectionIds, setVotedElectionIds] = useState<Set<string>>(new Set());
     const [currentView, setCurrentView] = useState<'home' | 'history'>('home');
+    const [showSearchBar, setShowSearchBar] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [electionResults, setElectionResults] = useState<Map<string, ElectionResultRow[]>>(new Map());
     const [voteDetails, setVoteDetails] = useState<Map<string, { hash: string; date: string; candidate: string }>>(new Map());
+    const searchInputRef = useRef<any>(null);
 
     const displayName = profile?.full_name?.trim() || 'Voter';
     const electionCardWidth = Math.min(330, Math.max(250, width - 48));
@@ -352,6 +365,18 @@ export default function VoterDashboard() {
     };
 
     const displayedElections = currentView === 'home' ? getActiveElections() : getHistoryElections();
+    const filteredElections = displayedElections.filter((election) => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) {
+            return true;
+        }
+
+        const title = election.title?.toLowerCase() ?? '';
+        const description = election.description?.toLowerCase() ?? '';
+        return title.includes(query) || description.includes(query);
+    });
+    const selectedElectionResults = selectedElection ? (electionResults.get(selectedElection.id) ?? []) : [];
+    const selectedVoteDetails = selectedElection ? voteDetails.get(selectedElection.id) : undefined;
 
     if (isLoading) {
         return (
