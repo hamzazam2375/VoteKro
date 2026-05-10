@@ -87,6 +87,7 @@ export default function AuditorDashboard() {
     return (
         <DashboardShell
             compactNavbar
+            homeRoute="/AuditorDashboard"
             infoText={profile?.full_name || 'Auditor'}
             userName={profile?.full_name ?? 'Auditor'}
             userRole="Auditor"

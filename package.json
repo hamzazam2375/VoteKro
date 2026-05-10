@@ -23,6 +23,7 @@
     "@supabase/supabase-js": "^2.57.4",
     "@tensorflow-models/blazeface": "^0.0.7",
     "@tensorflow/tfjs": "^4.11.0",
+    "@vladmandic/face-api": "^1.7.15",
     "antd": "^6.3.6",
     "axios": "^1.15.2",
     "crypto-js": "^4.2.0",

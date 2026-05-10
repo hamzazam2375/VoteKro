@@ -3,7 +3,7 @@ import { serviceFactory } from '@/class/service-factory';
 import { DashboardShell } from '@/components/dashboard-shell';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 export default function VoterDashboard() {
     const router = useRouter();
@@ -25,36 +25,37 @@ export default function VoterDashboard() {
     const [votedElectionIds, setVotedElectionIds] = useState<Set<string>>(new Set());
     const [currentView, setCurrentView] = useState<'home' | 'history'>('home');
     const [voteDetails, setVoteDetails] = useState<Map<string, { hash: string; date: string; candidate: string }>>(new Map());
-    const [searchQuery, setSearchQuery] = useState('');
-    const [showSearchBar, setShowSearchBar] = useState(false);
-    const searchInputRef = useRef<TextInput | null>(null);
 
     const displayName = profile?.full_name?.trim() || 'Voter';
     const electionCardWidth = Math.min(330, Math.max(250, width - 48));
-    const getEffectiveElectionStatus = (election: ElectionRow): ElectionRow['status'] => {
-        if (election.status !== 'open') {
-            return election.status;
+    const getEffectiveElectionStatus = (election: ElectionRow): DashboardElectionStatus => {
+        if (election.status === 'draft') {
+            return 'draft';
         }
 
         const now = Date.now();
         const startsAt = new Date(election.starts_at).getTime();
         const endsAt = new Date(election.ends_at).getTime();
 
-        return now >= startsAt && now <= endsAt ? 'open' : 'closed';
+        if (election.status === 'closed' || now > endsAt) {
+            return 'closed';
+        }
+
+        if (election.status === 'published') {
+            return 'draft';
+        }
+
+        return now >= startsAt && now <= endsAt ? 'active' : 'draft';
     };
 
-    const getStatusStyle = (status: ElectionRow['status']) => {
+    const getStatusStyle = (status: DashboardElectionStatus) => {
         switch (status) {
             case 'active':
                 return styles.statusActive;
-            case 'open':
-                return styles.statusOpen;
             case 'draft':
                 return styles.statusDraft;
             case 'closed':
                 return styles.statusClosed;
-            case 'published':
-                return styles.statusPublished;
             default:
                 return styles.statusDraft;
         }
@@ -176,6 +177,8 @@ export default function VoterDashboard() {
             validationError = { title: 'No Election', message: 'There is no active election available right now.' };
         } else if (getEffectiveElectionStatus(selectedElection) !== 'active') {
             validationError = { title: 'Election Closed', message: 'Only open elections can accept votes.' };
+        } else if (!registryStatus) {
+            validationError = { title: 'Not Registered', message: 'You are not registered for this election.' };
         } else if (!selectedCandidateId) {
             validationError = { title: 'Select Candidate', message: 'Please select a candidate before voting.' };
         } else if (registryStatus && !registryStatus.is_eligible) {
@@ -204,12 +207,23 @@ export default function VoterDashboard() {
 
         try {
             console.log('[Vote] Calling castVote for election:', selectedElection.id, 'candidate:', selectedCandidateId);
-            await serviceFactory.votingService.castVote({
+            const voteBlock = await serviceFactory.votingService.castVote({
                 electionId: selectedElection.id,
                 candidateId: selectedCandidateId,
             });
 
             console.log('[Vote] castVote succeeded');
+            const votedCandidate = candidates.find((candidate) => candidate.id === selectedCandidateId);
+            if (votedCandidate) {
+                const voteReceipt = {
+                    hash: voteBlock.current_hash,
+                    date: voteBlock.created_at,
+                    candidate: votedCandidate.display_name,
+                };
+
+                setVoteDetails((previous) => new Map(previous).set(selectedElection.id, voteReceipt));
+            }
+
             // Optimistically update registry so UI reflects the vote immediately
             setRegistryStatus((prev) => {
                 if (!prev) {
@@ -304,6 +318,21 @@ export default function VoterDashboard() {
         try {
             const ledger = await serviceFactory.auditorService.getLedger(electionId);
             const candidates = await serviceFactory.votingService.getElectionCandidates(electionId);
+
+            const resultCounts = new Map<string, number>();
+            for (const vote of ledger) {
+                resultCounts.set(vote.encrypted_vote, (resultCounts.get(vote.encrypted_vote) ?? 0) + 1);
+            }
+
+            setElectionResults((previous) => new Map(previous).set(
+                electionId,
+                candidates.map((candidate) => ({
+                    candidateId: candidate.id,
+                    candidateName: candidate.display_name,
+                    partyName: candidate.party_name,
+                    votes: resultCounts.get(candidate.id) ?? 0,
+                })).sort((left, right) => right.votes - left.votes),
+            ));
             
             // Find user's vote in the ledger
             const userVote = ledger.find(vote => vote.voter_id === profile?.user_id);
@@ -323,18 +352,6 @@ export default function VoterDashboard() {
     };
 
     const displayedElections = currentView === 'home' ? getActiveElections() : getHistoryElections();
-    const filteredElections = displayedElections.filter((election) => {
-        const query = searchQuery.trim().toLowerCase();
-
-        if (!query) {
-            return true;
-        }
-
-        return [election.title, election.description ?? '']
-            .join(' ')
-            .toLowerCase()
-            .includes(query);
-    });
 
     if (isLoading) {
         return (
@@ -374,112 +391,9 @@ export default function VoterDashboard() {
                 </View>
             </Modal>
 
-            <Modal
-                visible={showElectionDialog}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setShowElectionDialog(false)}
-            >
-                <View style={styles.dialogOverlay}>
-                    <View style={[styles.dialogBox, { maxWidth: Math.min(720, width - 32) }]}>
-                        <View style={styles.dialogHeader}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.dialogTitle}>{selectedElection?.title ?? 'Election'}</Text>
-                                <Text style={styles.dialogSubtitle}>{selectedElection?.description ?? ''}</Text>
-                            </View>
-                            <Pressable
-                                accessibilityLabel="Close election dialog"
-                                accessibilityRole="button"
-                                style={styles.dialogClose}
-                                onPress={() => setShowElectionDialog(false)}
-                            >
-                                <Text style={styles.dialogCloseText}>✕</Text>
-                            </Pressable>
-                        </View>
-
-                        <ScrollView style={styles.dialogContent} contentContainerStyle={{ paddingBottom: 18 }}>
-                            <View style={styles.dialogMetaRow}>
-                                <View style={[styles.statusPill, getStatusStyle(selectedElection ? getEffectiveElectionStatus(selectedElection) : 'draft')]}>
-                                    <Text style={styles.statusPillText}>{(selectedElection ? getEffectiveElectionStatus(selectedElection) : 'DRAFT').toString().toUpperCase()}</Text>
-                                </View>
-                                <Text style={styles.dialogDates}>📅 {selectedElection ? `${formatDate(selectedElection.starts_at)} — ${formatDate(selectedElection.ends_at)}` : ''}</Text>
-                            </View>
-
-                            {currentView === 'history' && selectedElection && voteDetails.has(selectedElection.id) ? (
-                                <View style={styles.voteDetailsContainer}>
-                                    <Text style={styles.sectionHeading}>Vote Details</Text>
-                                    <View style={styles.voteDetailRow}>
-                                        <Text style={styles.voteDetailLabel}>Hash ID:</Text>
-                                        <Text style={styles.voteDetailValue}>{selectedElection ? voteDetails.get(selectedElection.id)?.hash || 'N/A' : 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.voteDetailRow}>
-                                        <Text style={styles.voteDetailLabel}>Vote Date:</Text>
-                                        <Text style={styles.voteDetailValue}>{selectedElection && voteDetails.get(selectedElection.id) ? new Date(voteDetails.get(selectedElection.id).date).toLocaleDateString() : 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.voteDetailRow}>
-                                        <Text style={styles.voteDetailLabel}>Voted For:</Text>
-                                        <Text style={styles.voteDetailValue}>{selectedElection && voteDetails.get(selectedElection.id) ? voteDetails.get(selectedElection.id).candidate : 'N/A'}</Text>
-                                    </View>
-                                </View>
-                            ) : getEffectiveElectionStatus(selectedElection || { id: '', title: '', description: '', starts_at: '', ends_at: '', status: 'draft', created_by: '', created_at: '', updated_at: '' }) === 'active' ? (
-                                <>
-                                    <Text style={styles.sectionHeading}>Candidates</Text>
-                                    {candidates.length > 0 ? (
-                                        candidates.map((candidate) => {
-                                            const isSelected = candidate.id === selectedCandidateId;
-                                            return (
-                                                <Pressable
-                                                    key={candidate.id}
-                                                    style={({ pressed }) => [styles.dialogCandidate, isSelected && styles.candidateItemSelected, pressed && styles.candidatePressed]}
-                                                    accessibilityRole="button"
-                                                    accessibilityState={{ selected: isSelected }}
-                                                    onPress={() => setSelectedCandidateId(candidate.id)}
-                                                >
-                                                    <Text style={styles.candidateLabel}>{candidate.candidate_number}. {candidate.display_name}</Text>
-                                                    {candidate.party_name ? <Text style={styles.candidateParty}>{candidate.party_name}</Text> : null}
-                                                </Pressable>
-                                            );
-                                        })
-                                    ) : (
-                                        <Text style={styles.infoText}>No candidates available for this election.</Text>
-                                    )}
-                                </>
-                            ) : (
-                                <View style={styles.voteDetailsContainer}>
-                                    <Text style={styles.sectionHeading}>Election Details</Text>
-                                    <Text style={styles.infoText}>This election is {getEffectiveElectionStatus(selectedElection || { id: '', title: '', description: '', starts_at: '', ends_at: '', status: 'draft', created_by: '', created_at: '', updated_at: '' })?.toUpperCase()}. Voting is not available.</Text>
-                                </View>
-                            )}
-
-                            <View style={styles.dialogActionsRow}>
-                                <Pressable
-                                    style={({ pressed }) => [styles.dialogPrimaryButton, pressed && styles.buttonPressed]}
-                                    accessibilityRole="button"
-                                    onPress={async () => {
-                                        if (isSubmittingVote) return;
-                                        // handleVote will show a modal; modal dismissal will close the dialog
-                                        await handleVote();
-                                    }}
-                                    disabled={!selectedElection || getEffectiveElectionStatus(selectedElection) !== 'active' || isSubmittingVote || !!registryStatus?.has_voted || (registryStatus ? !registryStatus.is_eligible : false) || votedElectionIds.has(selectedElection.id)}
-                                >
-                                    <Text style={styles.dialogPrimaryText}>{selectedElection && getEffectiveElectionStatus(selectedElection) === 'active' ? (isSubmittingVote ? 'Submitting...' : 'Vote Now') : 'Not Open'}</Text>
-                                </Pressable>
-
-                                <Pressable
-                                    style={({ pressed }) => [styles.dialogSecondaryButton, pressed && styles.buttonPressed]}
-                                    accessibilityRole="button"
-                                    onPress={() => setShowElectionDialog(false)}
-                                >
-                                    <Text style={styles.dialogSecondaryText}>Close</Text>
-                                </Pressable>
-                            </View>
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
-
             <DashboardShell
                 compactNavbar
+                homeRoute="/VoterDashboard"
                 userName={displayName}
                 userRole="Voter"
                 onLogout={handleLogout}
@@ -557,48 +471,121 @@ export default function VoterDashboard() {
                                     <Text style={styles.dialogDates}>📅 {selectedElection ? `${formatDate(selectedElection.starts_at)} — ${formatDate(selectedElection.ends_at)}` : ''}</Text>
                                 </View>
 
-                                <Text style={styles.sectionHeading}>Candidates</Text>
-                                {candidates.length > 0 ? (
-                                    candidates.map((candidate) => {
-                                        const isSelected = candidate.id === selectedCandidateId;
-                                        return (
+                                {selectedElection && getEffectiveElectionStatus(selectedElection) === 'active' ? (
+                                    <>
+                                        <Text style={styles.sectionHeading}>Candidates</Text>
+                                        {!registryStatus ? (
+                                            <Text style={styles.infoText}>You are not registered for this election, so voting is disabled.</Text>
+                                        ) : null}
+                                        {candidates.length > 0 ? (
+                                            candidates.map((candidate) => {
+                                                const isSelected = candidate.id === selectedCandidateId;
+                                                return (
+                                                    <Pressable
+                                                        key={candidate.id}
+                                                        style={({ pressed }) => [styles.dialogCandidate, isSelected && styles.candidateItemSelected, pressed && styles.candidatePressed]}
+                                                        accessibilityRole="button"
+                                                        accessibilityState={{ selected: isSelected }}
+                                                        onPress={() => setSelectedCandidateId(candidate.id)}
+                                                    >
+                                                        <Text style={styles.candidateLabel}>{candidate.candidate_number}. {candidate.display_name}</Text>
+                                                        {candidate.party_name ? <Text style={styles.candidateParty}>{candidate.party_name}</Text> : null}
+                                                    </Pressable>
+                                                );
+                                            })
+                                        ) : (
+                                            <Text style={styles.infoText}>No candidates available for this election.</Text>
+                                        )}
+
+                                        <View style={styles.dialogActionsRow}>
                                             <Pressable
-                                                key={candidate.id}
-                                                style={({ pressed }) => [styles.dialogCandidate, isSelected && styles.candidateItemSelected, pressed && styles.candidatePressed]}
+                                                style={({ pressed }) => [styles.dialogPrimaryButton, pressed && styles.buttonPressed]}
                                                 accessibilityRole="button"
-                                                accessibilityState={{ selected: isSelected }}
-                                                onPress={() => setSelectedCandidateId(candidate.id)}
+                                                onPress={async () => {
+                                                    if (isSubmittingVote) return;
+                                                    await handleVote();
+                                                }}
+                                                disabled={!selectedElection || isSubmittingVote || !registryStatus || !!registryStatus?.has_voted || (registryStatus ? !registryStatus.is_eligible : false) || votedElectionIds.has(selectedElection.id)}
                                             >
-                                                <Text style={styles.candidateLabel}>{candidate.candidate_number}. {candidate.display_name}</Text>
-                                                {candidate.party_name ? <Text style={styles.candidateParty}>{candidate.party_name}</Text> : null}
+                                                <Text style={styles.dialogPrimaryText}>
+                                                    {isSubmittingVote
+                                                        ? 'Submitting...'
+                                                        : !registryStatus
+                                                            ? 'Not Registered'
+                                                            : registryStatus.has_voted
+                                                                ? 'Already Voted'
+                                                                : registryStatus.is_eligible
+                                                                    ? 'Vote Now'
+                                                                    : 'Not Eligible'}
+                                                </Text>
                                             </Pressable>
-                                        );
-                                    })
+
+                                            <Pressable
+                                                style={({ pressed }) => [styles.dialogSecondaryButton, pressed && styles.buttonPressed]}
+                                                accessibilityRole="button"
+                                                onPress={() => setShowElectionDialog(false)}
+                                            >
+                                                <Text style={styles.dialogSecondaryText}>Close</Text>
+                                            </Pressable>
+                                        </View>
+                                    </>
+                                ) : selectedElection && getEffectiveElectionStatus(selectedElection) === 'closed' ? (
+                                    <>
+                                        <View style={styles.voteDetailsContainer}>
+                                            <Text style={styles.sectionHeading}>Results</Text>
+                                            {selectedElectionResults && selectedElectionResults.length > 0 ? (
+                                                selectedElectionResults.map((result) => (
+                                                    <View key={result.candidateId} style={styles.voteDetailRow}>
+                                                        <View style={{ flex: 1 }}>
+                                                            <Text style={styles.voteDetailLabel}>{result.candidateName}</Text>
+                                                            {result.partyName ? <Text style={styles.candidateParty}>{result.partyName}</Text> : null}
+                                                        </View>
+                                                        <Text style={styles.voteDetailValue}>{result.votes} vote{result.votes === 1 ? '' : 's'}</Text>
+                                                    </View>
+                                                ))
+                                            ) : (
+                                                <Text style={styles.infoText}>No votes were recorded for this election.</Text>
+                                            )}
+                                        </View>
+
+                                        <View style={styles.voteDetailsContainer}>
+                                            <Text style={styles.sectionHeading}>Your Vote Receipt</Text>
+                                            {selectedVoteDetails ? (
+                                                <>
+                                                    <View style={styles.voteDetailRow}>
+                                                        <Text style={styles.voteDetailLabel}>Vote Hash:</Text>
+                                                        <Text style={styles.voteDetailValue}>{selectedVoteDetails.hash}</Text>
+                                                    </View>
+                                                    <View style={styles.voteDetailRow}>
+                                                        <Text style={styles.voteDetailLabel}>Date & Time:</Text>
+                                                        <Text style={styles.voteDetailValue}>{new Date(selectedVoteDetails.date).toLocaleString()}</Text>
+                                                    </View>
+                                                    <View style={styles.voteDetailRow}>
+                                                        <Text style={styles.voteDetailLabel}>Voted For:</Text>
+                                                        <Text style={styles.voteDetailValue}>{selectedVoteDetails.candidate}</Text>
+                                                    </View>
+                                                </>
+                                            ) : (
+                                                <Text style={styles.infoText}>Your vote receipt is not available in this session.</Text>
+                                            )}
+                                        </View>
+
+                                        <View style={styles.dialogActionsRow}>
+                                            <Pressable
+                                                style={({ pressed }) => [styles.dialogSecondaryButton, pressed && styles.buttonPressed]}
+                                                accessibilityRole="button"
+                                                onPress={() => setShowElectionDialog(false)}
+                                            >
+                                                <Text style={styles.dialogSecondaryText}>Close</Text>
+                                            </Pressable>
+                                        </View>
+                                    </>
                                 ) : (
-                                    <Text style={styles.infoText}>No candidates available for this election.</Text>
+                                    <View style={styles.voteDetailsContainer}>
+                                        <Text style={styles.sectionHeading}>Election Details</Text>
+                                        <Text style={styles.infoText}>This election is {getEffectiveElectionStatus(selectedElection || { id: '', title: '', description: '', starts_at: '', ends_at: '', status: 'draft', created_by: '', created_at: '', updated_at: '' })?.toUpperCase()}. Voting is not available.</Text>
+                                    </View>
                                 )}
-
-                                <View style={styles.dialogActionsRow}>
-                                    <Pressable
-                                        style={({ pressed }) => [styles.dialogPrimaryButton, pressed && styles.buttonPressed]}
-                                        accessibilityRole="button"
-                                        onPress={async () => {
-                                            if (isSubmittingVote) return;
-                                            await handleVote();
-                                        }}
-                                        disabled={!selectedElection || getEffectiveElectionStatus(selectedElection) !== 'active' || isSubmittingVote || !!registryStatus?.has_voted || (registryStatus ? !registryStatus.is_eligible : false) || votedElectionIds.has(selectedElection.id)}
-                                    >
-                                        <Text style={styles.dialogPrimaryText}>{selectedElection && getEffectiveElectionStatus(selectedElection) === 'active' ? (isSubmittingVote ? 'Submitting...' : 'Vote Now') : 'Not Open'}</Text>
-                                    </Pressable>
-
-                                    <Pressable
-                                        style={({ pressed }) => [styles.dialogSecondaryButton, pressed && styles.buttonPressed]}
-                                        accessibilityRole="button"
-                                        onPress={() => setShowElectionDialog(false)}
-                                    >
-                                        <Text style={styles.dialogSecondaryText}>Close</Text>
-                                    </Pressable>
-                                </View>
                             </ScrollView>
                         </View>
                     </View>
@@ -979,17 +966,11 @@ const styles = StyleSheet.create({
     statusActive: {
         backgroundColor: '#1f9d55',
     },
-    statusOpen: {
-        backgroundColor: '#1f9d55',
-    },
     statusDraft: {
         backgroundColor: '#6b7280',
     },
     statusClosed: {
         backgroundColor: '#b45309',
-    },
-    statusPublished: {
-        backgroundColor: '#2563eb',
     },
     electionCard: {
         borderRadius: 18,

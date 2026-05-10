@@ -15,16 +15,20 @@ export type NavbarAction = {
   variant?: "solid" | "outline";
 };
 
+export type DashboardHomeRoute = '/' | '/AdminDashboard' | '/VoterDashboard' | '/AuditorDashboard';
+
 type NavbarProps = {
   actions?: NavbarAction[];
   infoText?: string;
   compact?: boolean;
+  homeRoute?: DashboardHomeRoute;
 };
 
 export function Navbar({
   actions = [],
   infoText,
   compact = false,
+  homeRoute = '/',
 }: NavbarProps) {
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -32,7 +36,7 @@ export function Navbar({
   const insets = useSafeAreaInsets();
 
   const handleBrandPress = () => {
-    router.replace("/");
+    router.replace(homeRoute);
   };
 
   return (
