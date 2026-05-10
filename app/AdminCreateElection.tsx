@@ -2,19 +2,19 @@ import type { ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
 import DateTimePicker, {
-    type DateTimePickerEvent,
+  type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 export default function AdminCreateElectionScreen({ isEmbedded }: { isEmbedded?: boolean } = {}) {
@@ -188,7 +188,6 @@ export default function AdminCreateElectionScreen({ isEmbedded }: { isEmbedded?:
     <View style={styles.container}>
       {!isEmbedded && (
         <Navbar
-          infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
           actions={[
             {
               label: "Logout",

@@ -465,7 +465,6 @@ export default function VoterDashboard() {
 
             <DashboardShell
                 compactNavbar
-                infoText={`Welcome, ${displayName}!`}
                 userName={displayName}
                 userRole="Voter"
                 onLogout={handleLogout}
