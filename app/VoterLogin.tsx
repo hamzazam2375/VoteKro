@@ -67,7 +67,9 @@ export default function VoterLoginScreen() {
         // Has face image but no embedding yet
         // Store the user info and show face capture
         // We'll generate the stored face's embedding when the live capture comes back
-        console.log("Legacy face found. Will generate embedding during verification.");
+        console.log(
+          "Legacy face found. Will generate embedding during verification.",
+        );
         setStoredEmbedding([]); // Empty — will generate on-the-fly
         setUserIdForVerification(profile.user_id);
         setFaceAttempts(0);
@@ -105,13 +107,16 @@ export default function VoterLoginScreen() {
       // If no stored embedding yet (legacy face), generate it now from stored image
       if (referenceEmbedding.length === 0 && userIdForVerification) {
         try {
-          const storedFace = await faceRepository.getPrimaryFace(userIdForVerification);
+          const storedFace = await faceRepository.getPrimaryFace(
+            userIdForVerification,
+          );
           if (storedFace?.face_image_base64) {
             console.log("Generating embedding from stored legacy face...");
             const imageData = storedFace.face_image_base64.startsWith("data:")
               ? storedFace.face_image_base64
               : `data:image/jpeg;base64,${storedFace.face_image_base64}`;
-            const embResult = await faceRecognitionService.generateEmbedding(imageData);
+            const embResult =
+              await faceRecognitionService.generateEmbedding(imageData);
             if (embResult.detected && embResult.embedding.length > 0) {
               referenceEmbedding = embResult.embedding;
               setStoredEmbedding(referenceEmbedding);
@@ -141,7 +146,7 @@ export default function VoterLoginScreen() {
       const comparison = faceRecognitionService.compareEmbeddings(
         referenceEmbedding,
         result.embedding,
-        0.6, // threshold
+        0.6, // maximum Euclidean distance for a match
       );
 
       if (comparison.isMatch) {

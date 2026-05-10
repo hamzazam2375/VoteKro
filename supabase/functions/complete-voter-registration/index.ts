@@ -61,7 +61,9 @@ serve(async (req) => {
 
   const { data: requestRow, error: requestError } = await adminClient
     .from("voter_registration_requests")
-    .select("id, full_name, email, generated_password, expires_at, status, face_image_base64")
+    .select(
+      "id, full_name, email, generated_password, expires_at, status, face_image_base64, face_embedding",
+    )
     .eq("approval_token", token)
     .maybeSingle();
 
@@ -131,7 +133,8 @@ serve(async (req) => {
 
     // Detect duplicate user and show a friendly message
     const errMsg = createUserError?.message ?? "Unknown error";
-    const isDuplicate = errMsg.toLowerCase().includes("already been registered") ||
+    const isDuplicate =
+      errMsg.toLowerCase().includes("already been registered") ||
       errMsg.toLowerCase().includes("already exists") ||
       errMsg.toLowerCase().includes("duplicate");
 
@@ -140,8 +143,8 @@ serve(async (req) => {
         htmlPage(
           "Already Registered",
           `A voter account with the email <strong>${requestRow.email}</strong> already exists.<br><br>` +
-          `You can log in directly using the credentials that were sent to your email. ` +
-          `If you forgot your password, please contact the election administrator.`,
+            `You can log in directly using the credentials that were sent to your email. ` +
+            `If you forgot your password, please contact the election administrator.`,
           false,
         ),
         {
@@ -206,6 +209,26 @@ serve(async (req) => {
     } catch (faceErr) {
       console.error("Failed to transfer face image:", faceErr);
       // Non-fatal: voter account is still created
+    }
+  }
+
+  if (
+    Array.isArray(requestRow.face_embedding) &&
+    requestRow.face_embedding.length > 0
+  ) {
+    try {
+      await adminClient.from("voter_face_embeddings").upsert(
+        {
+          voter_id: createdUserData.user.id,
+          email: requestRow.email.toLowerCase(),
+          embedding: requestRow.face_embedding,
+          face_image_base64: requestRow.face_image_base64 ?? null,
+        },
+        { onConflict: "email" },
+      );
+    } catch (embeddingErr) {
+      console.error("Failed to transfer face embedding:", embeddingErr);
+      // Non-fatal: account creation still succeeds, but login verification may require re-enrollment.
     }
   }
 

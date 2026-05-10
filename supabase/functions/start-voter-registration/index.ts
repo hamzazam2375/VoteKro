@@ -108,11 +108,15 @@ serve(async (req) => {
       fullName: string;
       email: string;
       faceImageBase64?: string; // optional base64-encoded face image
+      faceEmbedding?: number[];
       faceMetadata?: Record<string, unknown>;
     }>;
     const fullName = body.fullName?.trim();
     const email = body.email?.trim().toLowerCase();
     const faceImageBase64 = body.faceImageBase64;
+    const faceEmbedding = Array.isArray(body.faceEmbedding)
+      ? body.faceEmbedding
+      : null;
 
     if (!fullName || !email) {
       return new Response(
@@ -142,6 +146,7 @@ serve(async (req) => {
         expires_at: expiresAt,
         status: "pending",
         face_image_base64: faceImageBase64 ?? null,
+        face_embedding: faceEmbedding,
       });
 
     if (insertError) {

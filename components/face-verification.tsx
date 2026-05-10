@@ -1,6 +1,4 @@
-import {
-    faceRecognitionService
-} from "@/class/face-recognition";
+import { faceDetectionService } from "@/class/face-detection";
 import { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -65,7 +63,7 @@ export function FaceVerification({
       const comparison = await faceDetectionService.compareFaces(
         storedFaceBase64,
         capturedFaceBase64,
-        0.75,
+        0.6,
       );
 
       if (comparison.isSamePerson) {

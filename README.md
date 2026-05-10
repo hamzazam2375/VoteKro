@@ -76,6 +76,23 @@ supabase functions deploy start-voter-registration
 supabase functions deploy complete-voter-registration --no-verify-jwt
 ```
 
+## Face verification checklist
+
+- Enrollment must capture a clean, single-face image and store a real embedding.
+- Login compares the live capture against the stored embedding, not just face presence.
+- If verification is too permissive, lower the distance threshold in `app/VoterLogin.tsx`.
+- Recommended starting threshold: `0.6` maximum Euclidean distance.
+- If you see false accepts, re-enroll the voter with better lighting and a front-facing capture.
+- Legacy users with only stored face images should be migrated to embeddings on first successful login.
+
+## Quick manual test
+
+1. Register one voter with a clean front-facing capture.
+2. Log in with the same voter and confirm the app reports a high similarity match.
+3. Try logging in with a different person using those credentials.
+4. Confirm the login is rejected with a mismatch message.
+5. If a wrong person still passes, increase the threshold a little and re-enroll the voter.
+
 Optional (free local RocksDB blockchain ledger):
 
 1. Start the RocksDB service in `rocksdb-ledger/`.

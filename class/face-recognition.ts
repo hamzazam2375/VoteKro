@@ -83,9 +83,7 @@ class FaceRecognitionService {
    * @param imageSource  Data URI (data:image/jpeg;base64,...) or blob URL
    * @returns            Embedding vector, face count, and detection status
    */
-  async generateEmbedding(
-    imageSource: string,
-  ): Promise<FaceEmbeddingResult> {
+  async generateEmbedding(imageSource: string): Promise<FaceEmbeddingResult> {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -93,14 +91,17 @@ class FaceRecognitionService {
     if (!isWeb || !this.faceapi) {
       // Native: use hidden WebView to run face-api.js
       try {
-        const { generateEmbeddingViaWebView } = require("@/components/face-recognition-webview");
+        const {
+          generateEmbeddingViaWebView,
+        } = require("@/components/face-recognition-webview");
         const embedding = await generateEmbeddingViaWebView(imageSource);
         if (embedding.length === 0) {
           return {
             embedding: [],
             faceCount: 0,
             detected: false,
-            message: "❌ No face detected on native. Position your face clearly.",
+            message:
+              "❌ No face detected on native. Position your face clearly.",
           };
         }
         return {
@@ -121,11 +122,16 @@ class FaceRecognitionService {
     }
 
     try {
-      console.log("FaceRecognition: Loading image...", imageSource.substring(0, 30));
+      console.log(
+        "FaceRecognition: Loading image...",
+        imageSource.substring(0, 30),
+      );
 
       // Load and resize image to canvas
       const canvas = await this.loadAndResizeImage(imageSource);
-      console.log(`FaceRecognition: Image loaded (${canvas.width}x${canvas.height})`);
+      console.log(
+        `FaceRecognition: Image loaded (${canvas.width}x${canvas.height})`,
+      );
 
       // Use TinyFaceDetector — much faster than SSD MobileNet
       const options = new this.faceapi.TinyFaceDetectorOptions({
@@ -148,7 +154,8 @@ class FaceRecognitionService {
           embedding: [],
           faceCount: 0,
           detected: false,
-          message: "❌ No face detected. Position your face clearly in the camera.",
+          message:
+            "❌ No face detected. Position your face clearly in the camera.",
         };
       }
 
@@ -187,7 +194,10 @@ class FaceRecognitionService {
   }
 
   /**
-   * Compare two face embeddings using cosine similarity.
+   * Compare two face embeddings using Euclidean distance.
+   *
+   * Lower distance means a better match. The returned `similarity` is a
+   * display-oriented score derived from the distance.
    */
   compareEmbeddings(
     embedding1: number[],
@@ -210,40 +220,35 @@ class FaceRecognitionService {
       };
     }
 
-    const similarity = this.cosineSimilarity(embedding1, embedding2);
-    const isMatch = similarity >= threshold;
+    const distance = this.euclideanDistance(embedding1, embedding2);
+    const isMatch = distance <= threshold;
+    const similarity = Math.max(0, 1 - distance);
 
     console.log(
-      `FaceRecognition: Cosine similarity = ${similarity.toFixed(4)}, threshold = ${threshold}, match = ${isMatch}`,
+      `FaceRecognition: Euclidean distance = ${distance.toFixed(4)}, threshold = ${threshold}, match = ${isMatch}`,
     );
 
     return {
       similarity,
       isMatch,
       message: isMatch
-        ? `✓ Face matches! (similarity: ${(similarity * 100).toFixed(1)}%)`
-        : `❌ Face does not match (similarity: ${(similarity * 100).toFixed(1)}%)`,
+        ? `✓ Face matches! (distance: ${distance.toFixed(3)}, similarity: ${(similarity * 100).toFixed(1)}%)`
+        : `❌ Face does not match (distance: ${distance.toFixed(3)}, similarity: ${(similarity * 100).toFixed(1)}%)`,
     };
   }
 
   /**
-   * Cosine similarity between two vectors.
+   * Euclidean distance between two vectors.
    */
-  private cosineSimilarity(a: number[], b: number[]): number {
-    let dotProduct = 0;
-    let normA = 0;
-    let normB = 0;
+  private euclideanDistance(a: number[], b: number[]): number {
+    let sum = 0;
 
     for (let i = 0; i < a.length; i++) {
-      dotProduct += a[i] * b[i];
-      normA += a[i] * a[i];
-      normB += b[i] * b[i];
+      const diff = a[i] - b[i];
+      sum += diff * diff;
     }
 
-    const denominator = Math.sqrt(normA) * Math.sqrt(normB);
-    if (denominator === 0) return 0;
-
-    return dotProduct / denominator;
+    return Math.sqrt(sum);
   }
 
   /**
@@ -257,7 +262,12 @@ class FaceRecognitionService {
       // No crossOrigin for blob/data URIs (it causes failures)
       el.onload = () => resolve(el);
       el.onerror = (e) => {
-        console.error("Image load error:", e, "src starts with:", src.substring(0, 50));
+        console.error(
+          "Image load error:",
+          e,
+          "src starts with:",
+          src.substring(0, 50),
+        );
         reject(new Error("Failed to load image"));
       };
       el.src = src;
