@@ -334,10 +334,17 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   formTitle: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: "800",
     color: "#111827",
     marginBottom: 18,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  inputFlex: {
+    flex: 1,
   },
   inputGroup: {
     marginBottom: 12,
@@ -366,6 +373,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: "#f8fafc",
     justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 8,
+    minWidth: 44,
   },
   datePickerButtonText: {
     color: "#111827",

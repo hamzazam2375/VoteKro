@@ -1,21 +1,21 @@
 import type {
-    CandidateRow,
-    ElectionRow,
-    ProfileRow,
+  CandidateRow,
+  ElectionRow,
+  ProfileRow,
 } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
-    useWindowDimensions
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions
 } from "react-native";
 
 type CandidateResult = {
@@ -23,6 +23,53 @@ type CandidateResult = {
   votes: number;
   percentage: number;
 };
+
+const palette = [
+  "#3b82f6",
+  "#ec4899",
+  "#10b981",
+  "#f59e0b",
+  "#8b5cf6",
+  "#ef4444",
+  "#06b6d4",
+];
+
+function ElectionChart({
+  results,
+}: {
+  results: CandidateResult[];
+}) {
+  const total = results.reduce((s, r) => s + r.votes, 0) || 1;
+
+  return (
+    <View style={styles.chartContainer}>
+      <View style={styles.stackedBar}>
+        {results.map((r, idx) => (
+          <View
+            key={r.candidate.id}
+            style={[
+              styles.barSegment,
+              { flex: r.votes / total, backgroundColor: palette[idx % palette.length] },
+            ]}
+          />
+        ))}
+      </View>
+
+      <View style={styles.legendWrap}>
+        {results.map((r, idx) => (
+          <View key={r.candidate.id} style={styles.legendItem}>
+            <View
+              style={[styles.legendColor, { backgroundColor: palette[idx % palette.length] }]}
+            />
+            <Text style={styles.legendText} numberOfLines={1}>
+              {r.candidate.display_name} • {r.percentage.toFixed(1)}%
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export default function AdminViewResults({ isEmbedded }: { isEmbedded?: boolean } = {}) {
   const router = useRouter();
@@ -93,6 +140,23 @@ export default function AdminViewResults({ isEmbedded }: { isEmbedded?: boolean 
     }
 
     return 60 + (hash % 170);
+  };
+
+  const getElectionStatus = (election: ElectionRow) => {
+    const now = new Date().getTime();
+    const startTime = new Date(election.starts_at).getTime();
+    const endTime = new Date(election.ends_at).getTime();
+
+    if (endTime < now) return { label: "Closed", color: "#9ca3af" };
+    if (startTime > now) return { label: "Upcoming", color: "#f59e0b" };
+    return { label: "Live", color: "#10b981" };
+  };
+
+  const getCandidatePosition = (index: number) => {
+    if (index === 0) return { label: "👑 Winner", color: "#3b82f6" };
+    if (index === 1) return { label: "🥈 Runner-up", color: "#ec4899" };
+    if (index === 2) return { label: "🥉 3rd Place", color: "#10b981" };
+    return null;
   };
 
   const visibleElections = useMemo(() => {
@@ -233,46 +297,105 @@ export default function AdminViewResults({ isEmbedded }: { isEmbedded?: boolean 
             </View>
           </View>
 
-          {electionResults.map(({ election, results }) => (
-            <View key={election.id} style={styles.electionSection}>
-              <Text style={styles.electionTitle}>{election.title}</Text>
-              <Text style={styles.electionDescription}>
-                {election.description ??
-                  "Vote for the presidential candidate of your choice"}
-              </Text>
+          {electionResults.map(({ election, results }) => {
+            const totalVotes = results.reduce((s, r) => s + r.votes, 0);
+            const statusInfo = getElectionStatus(election);
+            const winner = results[0];
+            const runnerUp = results[1];
+            const margin = winner && runnerUp ? 
+              (((winner.votes - runnerUp.votes) / totalVotes) * 100).toFixed(1) : "0";
 
-              <View style={styles.resultsGrid}>
-                {results.map((entry) => (
-                  <View
-                    key={entry.candidate.id}
-                    style={[
-                      styles.resultCard,
-                      isMobile && styles.resultCardMobile,
-                    ]}
-                  >
-                    <Text style={styles.candidateName}>
-                      {entry.candidate.display_name}
+            return (
+              <View key={election.id} style={styles.electionCard}>
+                {/* Header with status badge */}
+                <View style={styles.electionHeader}>
+                  <View>
+                    <Text style={styles.electionTitle}>{election.title}</Text>
+                    <Text style={styles.electionMeta}>
+                      ID: {election.id} • {election.description || "Election"}
                     </Text>
-                    <Text style={styles.candidateParty}>
-                      {entry.candidate.party_name ?? "Independent"}
-                    </Text>
-                    <Text style={styles.voteNumber}>{entry.votes}</Text>
-                    <Text style={styles.votePercent}>
-                      {entry.percentage.toFixed(1)}%
-                    </Text>
-                    <View style={styles.progressTrack}>
-                      <View
-                        style={[
-                          styles.progressFill,
-                          { width: `${Math.max(entry.percentage, 4)}%` },
-                        ]}
-                      />
-                    </View>
                   </View>
-                ))}
+                  <View style={[styles.statusBadge, { backgroundColor: statusInfo.color }]}>
+                    <Text style={styles.statusBadgeText}>{statusInfo.label}</Text>
+                  </View>
+                </View>
+
+                {/* Stat cards */}
+                <View style={[styles.statsGrid, isMobile && styles.statsGridMobile]}>
+                  <View style={styles.statCard}>
+                    <Text style={styles.statLabel}>TOTAL VOTES</Text>
+                    <Text style={styles.statValue}>{totalVotes}</Text>
+                  </View>
+                  <View style={styles.statCard}>
+                    <Text style={styles.statLabel}>CANDIDATES</Text>
+                    <Text style={styles.statValue}>{results.length}</Text>
+                  </View>
+                  <View style={styles.statCard}>
+                    <Text style={styles.statLabel}>LEADING</Text>
+                    <Text style={styles.statValueBlue}>{winner?.candidate.display_name || "—"}</Text>
+                  </View>
+                  <View style={styles.statCard}>
+                    <Text style={styles.statLabel}>MARGIN</Text>
+                    <Text style={styles.statValueGreen}>+{margin}%</Text>
+                  </View>
+                </View>
+
+                {/* Stacked bar chart */}
+                <ElectionChart results={results} />
+
+                {/* Candidate cards */}
+                <View style={[styles.resultsGrid, isMobile && styles.resultsGridMobile]}>
+                  {results.map((entry, idx) => {
+                    const position = getCandidatePosition(idx);
+                    const initials = entry.candidate.display_name
+                      .split(" ")
+                      .map((n: string) => n[0])
+                      .join("")
+                      .toUpperCase()
+                      .slice(0, 2);
+
+                    return (
+                      <View
+                        key={entry.candidate.id}
+                        style={[
+                          styles.resultCard,
+                          isMobile && styles.resultCardMobile,
+                          position && { borderTopColor: position.color, borderTopWidth: 3 },
+                        ]}
+                      >
+                        {position && (
+                          <View style={[styles.positionBadge, { backgroundColor: position.color }]}>
+                            <Text style={styles.positionBadgeText}>{position.label}</Text>
+                          </View>
+                        )}
+
+                        <Text style={styles.candidateInitials}>{initials}</Text>
+
+                        <Text style={styles.candidateName}>
+                          {entry.candidate.display_name}
+                        </Text>
+                        <Text style={styles.candidateParty}>
+                          {entry.candidate.party_name ?? "Independent"}
+                        </Text>
+                        <Text style={styles.voteNumber}>{entry.votes}</Text>
+                        <Text style={styles.votePercent}>
+                          {entry.percentage.toFixed(1)}% of total votes
+                        </Text>
+                        <View style={styles.progressTrack}>
+                          <View
+                            style={[
+                              styles.progressFill,
+                              { width: `${Math.max(entry.percentage, 4)}%` },
+                            ]}
+                          />
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
 
           {electionResults.length === 0 ? (
             <View style={styles.emptyState}>
@@ -385,66 +508,193 @@ const styles = StyleSheet.create({
   mobileFilterTextActive: {
     color: "#1d4ed8",
   },
-  electionSection: {
-    marginBottom: 20,
+  electionCard: {
+    marginBottom: 24,
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    padding: 16,
+  },
+  electionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 14,
+    gap: 12,
   },
   electionTitle: {
-    fontSize: 40,
+    fontSize: 24,
     fontWeight: "700",
-    color: "#2563eb",
-    marginBottom: 4,
+    color: "#111827",
+    marginBottom: 2,
   },
-  electionDescription: {
+  electionMeta: {
     fontSize: 12,
     color: "#6b7280",
+  },
+  statusBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    minWidth: 70,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#ffffff",
+    textAlign: "center",
+  },
+  statsGrid: {
+    flexDirection: "row",
+    gap: 12,
     marginBottom: 14,
+  },
+  statsGridMobile: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: "#f3f4f6",
+    borderRadius: 8,
+    padding: 12,
+    minWidth: 120,
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#9ca3af",
+    marginBottom: 6,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  statValueBlue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#2563eb",
+  },
+  statValueGreen: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#10b981",
+  },
+  chartContainer: {
+    marginBottom: 14,
+    backgroundColor: "#ffffff",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    padding: 12,
+  },
+  stackedBar: {
+    height: 20,
+    borderRadius: 10,
+    overflow: "hidden",
+    flexDirection: "row",
+    marginBottom: 12,
+    backgroundColor: "#e5e7eb",
+  },
+  barSegment: {
+    height: "100%",
+  },
+  legendWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    minWidth: 120,
+    maxWidth: 240,
+    marginRight: 12,
+    marginBottom: 4,
+  },
+  legendColor: {
+    width: 12,
+    height: 12,
+    borderRadius: 3,
+    marginRight: 8,
+  },
+  legendText: {
+    fontSize: 12,
+    color: "#374151",
   },
   resultsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 14,
   },
+  resultsGridMobile: {
+    gap: 12,
+  },
   resultCard: {
-    width: "31.8%",
-    minWidth: 250,
+    flex: 1,
+    minWidth: 200,
     backgroundColor: "#ffffff",
     borderWidth: 1,
     borderColor: "#e5e7eb",
     borderRadius: 8,
-    padding: 12,
+    padding: 14,
+    alignItems: "center",
   },
   resultCardMobile: {
-    width: "100%",
+    flex: 1,
     minWidth: 0,
+  },
+  positionBadge: {
+    alignSelf: "flex-start",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  positionBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#ffffff",
+  },
+  candidateInitials: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#2563eb",
+    marginBottom: 6,
   },
   candidateName: {
     textAlign: "center",
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#2563eb",
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#111827",
     marginBottom: 2,
   },
   candidateParty: {
     textAlign: "center",
-    fontSize: 10,
+    fontSize: 11,
     color: "#6b7280",
     marginBottom: 10,
   },
   voteNumber: {
     textAlign: "center",
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: "700",
     color: "#ec4899",
     marginBottom: 4,
-    lineHeight: 40,
+    lineHeight: 36,
   },
   votePercent: {
     textAlign: "center",
-    fontSize: 10,
+    fontSize: 11,
     color: "#6b7280",
     marginBottom: 8,
   },
   progressTrack: {
+    width: "100%",
     height: 6,
     borderRadius: 4,
     backgroundColor: "#e5e7eb",
@@ -454,6 +704,15 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 4,
     backgroundColor: "#3b82f6",
+  },
+  electionSection: {
+    marginBottom: 20,
+  },
+  electionTitleMobile: {
+    fontSize: 28,
+  },
+  electionDescriptionMobile: {
+    fontSize: 13,
   },
   emptyState: {
     marginTop: 16,
