@@ -19,12 +19,14 @@ type NavbarProps = {
   actions?: NavbarAction[];
   infoText?: string;
   compact?: boolean;
+  auditorName?: string;
 };
 
 export function Navbar({
   actions = [],
   infoText,
   compact = false,
+  auditorName,
 }: NavbarProps) {
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -57,9 +59,16 @@ export function Navbar({
             resizeMode="contain"
             style={[styles.brandLogo, compact && styles.brandLogoCompact]}
           />
-          <Text style={[styles.brandName, compact && styles.brandNameCompact]}>
-            VoteKro
-          </Text>
+          <View style={styles.brandTextContainer}>
+            <Text style={[styles.brandName, compact && styles.brandNameCompact]}>
+              VoteKro
+            </Text>
+            {auditorName && (
+              <Text style={[styles.auditorNameBrand, compact && styles.auditorNameBrandCompact]}>
+                {auditorName}
+              </Text>
+            )}
+          </View>
         </Pressable>
 
         <View style={styles.actionsRow}>
@@ -145,6 +154,10 @@ const styles = StyleSheet.create({
   brandWrapPressed: {
     opacity: 0.82,
   },
+  brandTextContainer: {
+    marginLeft: 8,
+    flexDirection: 'column',
+  },
   brandName: {
     color: "#2c63dd",
     fontSize: 28,
@@ -153,6 +166,15 @@ const styles = StyleSheet.create({
   },
   brandNameCompact: {
     fontSize: 30,
+  },
+  auditorNameBrand: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "#666",
+    marginTop: 2,
+  },
+  auditorNameBrandCompact: {
+    fontSize: 9,
   },
   brandLogo: {
     width: 32,
