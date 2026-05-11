@@ -2,13 +2,13 @@ import { faceRecognitionService } from "@/class/face-recognition";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 
 export interface FaceCaptureResult {
@@ -245,21 +245,21 @@ const styles = StyleSheet.create({
     paddingTop: isWeb ? 16 : 20,
     paddingBottom: 8,
     paddingHorizontal: 20,
-    backgroundColor: isWeb ? "#fff" : "rgba(0,0,0,0.7)",
-    borderBottomWidth: isWeb ? 1 : 0,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
     borderBottomColor: "#e0e4ec",
     zIndex: 10,
-    alignItems: isWeb ? "center" : ("flex-start" as const),
+    alignItems: "center",
   },
   title: {
     fontSize: isWeb ? 20 : 24,
     fontWeight: "bold",
-    color: isWeb ? "#0d1b3f" : "#fff",
+    color: "#000",
     marginBottom: 2,
   },
   subtitle: {
     fontSize: 13,
-    color: isWeb ? "#4a607f" : "#ccc",
+    color: "#111",
     marginBottom: 2,
   },
   camera: {
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   footer: {
-    backgroundColor: "#f5f7fb",
+    backgroundColor: "#fff",
     padding: isWeb ? 16 : 20,
     paddingBottom: isWeb ? 20 : 30,
     zIndex: 10,
