@@ -13,15 +13,7 @@ begin
     create type public.user_role as enum ('admin', 'voter', 'auditor');
   end if;
 
-  if not exists (
-    select 1
-    from pg_type t
-    join pg_namespace n on n.oid = t.typnamespace
-    where n.nspname = 'public'
-      and t.typname = 'election_status'
-  ) then
-    create type public.election_status as enum ('draft', 'open', 'closed', 'published');
-  end if;
+
 end
 $$;
 
@@ -77,7 +69,6 @@ create table if not exists public.elections (
   description text,
   starts_at timestamptz not null,
   ends_at timestamptz not null,
-  status public.election_status not null default 'draft',
   created_by uuid not null references public.profiles (user_id),
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
@@ -294,8 +285,7 @@ begin
   end if;
 
   if v_election.status <> 'open'
-     or timezone('utc', now()) < v_election.starts_at
-     or timezone('utc', now()) > v_election.ends_at then
+     timezone('utc', now()) > v_election.ends_at then
     raise exception 'Election is not accepting votes right now';
   end if;
 

@@ -660,11 +660,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   electionTitle: {
-    fontSize: 26,
-    fontWeight: "600",
+    fontSize: 24,
+    fontWeight: "700",
     color: "#111827",
-    marginBottom: 10,
-    lineHeight: 31,
+    marginBottom: 12,
+    lineHeight: 32,
+    flexWrap: "wrap",
+    maxWidth: "100%",
   },
   statusBadge: {
     marginTop: 4,
