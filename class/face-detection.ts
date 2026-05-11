@@ -225,37 +225,51 @@ export class FaceDetectionService {
         };
       } catch (error) {
         console.error("Native face comparison error:", error);
-        // Fall back to permissive visual confirmation to avoid blocking users
+        // Do not auto-accept if embedding comparison fails. Return failure so
+        // callers can choose fallback authentication or surface an error.
         return {
-          similarity: 1.0,
-          isSamePerson: true,
-          message: "✓ Face verified (visual confirmation fallback)",
+          similarity: 0,
+          isSamePerson: false,
+          message: `❌ Native embedding comparison failed: ${
+            error instanceof Error ? error.message : "Unknown"
+          }`,
         };
       }
     }
-
-    // Web: client-side comparison using canvas
+    // Web: use real embeddings via faceRecognitionService (no color-histogram fallback)
     try {
-      const canvas1 = await this.stringToCanvas(image1Base64);
-      const canvas2 = await this.stringToCanvas(image2Base64);
+      const { faceRecognitionService } = require("@/class/face-recognition");
 
-      const similarity = this.compareCanvasRegions(canvas1, canvas2);
+      const emb1 = await faceRecognitionService.generateEmbedding(image1Base64);
+      const emb2 = await faceRecognitionService.generateEmbedding(image2Base64);
+
+      if (!emb1.detected || !emb2.detected) {
+        return {
+          similarity: 0,
+          isSamePerson: false,
+          message: "❌ Could not detect face in one or both images (web).",
+        };
+      }
+
+      const comparison = faceRecognitionService.compareEmbeddings(
+        emb1.embedding,
+        emb2.embedding,
+        threshold,
+      );
 
       return {
-        similarity,
-        isSamePerson: similarity > threshold,
-        message:
-          similarity > threshold
-            ? "✓ Face matches! Same person verified."
-            : "❌ Face does not match. Different person detected.",
+        similarity: comparison.similarity,
+        isSamePerson: comparison.isMatch,
+        message: comparison.message,
       };
     } catch (error) {
-      console.error("Face comparison error:", error);
-      // If comparison fails, accept the face to not block login
+      console.error("Face embedding comparison (web) error:", error);
       return {
-        similarity: 1.0,
-        isSamePerson: true,
-        message: "✓ Face accepted (comparison unavailable)",
+        similarity: 0,
+        isSamePerson: false,
+        message: `❌ Face comparison unavailable: ${
+          error instanceof Error ? error.message : "Unknown"
+        }`,
       };
     }
   }

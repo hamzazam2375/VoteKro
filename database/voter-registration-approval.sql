@@ -10,10 +10,18 @@ create table if not exists public.voter_registration_requests (
   completed_user_id uuid null,
   status text not null default 'pending' check (status in ('pending', 'completed', 'expired', 'failed')),
   expires_at timestamptz not null,
+  face_image_base64 text null,
+  face_embedding float8[] null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   completed_at timestamptz null
 );
+
+alter table public.voter_registration_requests
+  add column if not exists face_image_base64 text;
+
+alter table public.voter_registration_requests
+  add column if not exists face_embedding float8[];
 
 create index if not exists voter_registration_requests_email_idx
   on public.voter_registration_requests (email);

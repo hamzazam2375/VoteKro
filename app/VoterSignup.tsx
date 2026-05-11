@@ -5,18 +5,20 @@ import { Navbar } from "@/components/navbar";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
-export default function VoterSignupScreen({ isEmbedded }: { isEmbedded?: boolean } = {}) {
+export default function VoterSignupScreen({
+  isEmbedded,
+}: { isEmbedded?: boolean } = {}) {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -127,10 +129,7 @@ export default function VoterSignupScreen({ isEmbedded }: { isEmbedded?: boolean
     setFaceEmbedding(result.embedding);
     setIsFaceVerified(true);
     setShowFaceCapture(false);
-    const embeddingInfo = result.embedding.length > 0
-      ? `\nEmbedding: ${result.embedding.length}-dimensional vector generated`
-      : "";
-    Alert.alert("✓ Face Captured", `Face detected and processed!${embeddingInfo}`);
+    Alert.alert("✓ Face Captured", "Face detected and processed!");
   };
 
   const handleCancelFaceCapture = () => {

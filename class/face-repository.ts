@@ -201,19 +201,20 @@ export class FaceRepository extends BaseService {
     voterId?: string,
   ): Promise<void> {
     this.requireNonEmpty(email, "Email");
+    if (!Array.isArray(embedding) || embedding.length === 0) {
+      throw new Error("Embedding must be a non-empty array");
+    }
 
     try {
-      const { error } = await supabase
-        .from("voter_face_embeddings")
-        .upsert(
-          {
-            email: email.toLowerCase(),
-            embedding,
-            face_image_base64: faceImageBase64 ?? null,
-            voter_id: voterId ?? null,
-          },
-          { onConflict: "email" },
-        );
+      const { error } = await supabase.from("voter_face_embeddings").upsert(
+        {
+          email: email.toLowerCase(),
+          embedding,
+          face_image_base64: faceImageBase64 ?? null,
+          voter_id: voterId ?? null,
+        },
+        { onConflict: "email" },
+      );
 
       if (error) {
         throw new Error(`Failed to store embedding: ${error.message}`);
