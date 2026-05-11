@@ -1,8 +1,29 @@
 
 create extension if not exists pgcrypto;
 
-create type public.user_role as enum ('admin', 'voter', 'auditor');
-create type public.election_status as enum ('draft', 'open', 'closed', 'published');
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_type t
+    join pg_namespace n on n.oid = t.typnamespace
+    where n.nspname = 'public'
+      and t.typname = 'user_role'
+  ) then
+    create type public.user_role as enum ('admin', 'voter', 'auditor');
+  end if;
+
+  if not exists (
+    select 1
+    from pg_type t
+    join pg_namespace n on n.oid = t.typnamespace
+    where n.nspname = 'public'
+      and t.typname = 'election_status'
+  ) then
+    create type public.election_status as enum ('draft', 'open', 'closed', 'published');
+  end if;
+end
+$$;
 
 create table if not exists public.profiles (
   user_id uuid primary key references auth.users (id) on delete cascade,
@@ -14,6 +35,41 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default timezone('utc', now()),
   constraint voter_hash_length check (voter_code_hash is null or char_length(voter_code_hash) = 64)
 );
+
+create or replace function public.get_profile_by_user_id(p_user_id uuid)
+returns public.profiles
+language sql
+security definer
+set search_path = public
+as $$
+  select *
+  from public.profiles
+  where user_id = p_user_id
+  limit 1;
+$$;
+
+create or replace function public.get_first_profile_by_role(p_role public.user_role)
+returns public.profiles
+language sql
+security definer
+set search_path = public
+as $$
+  select *
+  from public.profiles
+  where role = p_role
+  limit 1;
+$$;
+
+create or replace function public.count_profiles_by_role(p_role public.user_role)
+returns bigint
+language sql
+security definer
+set search_path = public
+as $$
+  select count(*)::bigint
+  from public.profiles
+  where role = p_role;
+$$;
 
 create table if not exists public.elections (
   id uuid primary key default gen_random_uuid(),
@@ -348,104 +404,3 @@ begin
 end;
 $$;
 
-alter table public.profiles enable row level security;
-alter table public.elections enable row level security;
-alter table public.candidates enable row level security;
-alter table public.voter_registry enable row level security;
-alter table public.vote_blocks enable row level security;
-alter table public.audit_logs enable row level security;
-
-create policy profiles_select_own on public.profiles
-for select
-using (auth.uid() = user_id);
-
-create policy profiles_update_own on public.profiles
-for update
-using (auth.uid() = user_id);
-
-create policy elections_read_all_authenticated on public.elections
-for select
-using (auth.uid() is not null);
-
-create policy elections_admin_write on public.elections
-for all
-using (
-  exists (
-    select 1 from public.profiles p
-    where p.user_id = auth.uid() and p.role = 'admin'
-  )
-)
-with check (
-  exists (
-    select 1 from public.profiles p
-    where p.user_id = auth.uid() and p.role = 'admin'
-  )
-);
-
-create policy candidates_read_all_authenticated on public.candidates
-for select
-using (auth.uid() is not null);
-
-create policy candidates_admin_write on public.candidates
-for all
-using (
-  exists (
-    select 1 from public.profiles p
-    where p.user_id = auth.uid() and p.role = 'admin'
-  )
-)
-with check (
-  exists (
-    select 1 from public.profiles p
-    where p.user_id = auth.uid() and p.role = 'admin'
-  )
-);
-
-create policy voter_registry_read_self_or_admin on public.voter_registry
-for select
-using (
-  voter_id = auth.uid()
-  or exists (
-    select 1 from public.profiles p
-    where p.user_id = auth.uid() and p.role = 'admin'
-  )
-);
-
-create policy voter_registry_admin_manage on public.voter_registry
-for all
-using (
-  exists (
-    select 1 from public.profiles p
-    where p.user_id = auth.uid() and p.role = 'admin'
-  )
-)
-with check (
-  exists (
-    select 1 from public.profiles p
-    where p.user_id = auth.uid() and p.role = 'admin'
-  )
-);
-
-create policy vote_blocks_read_authenticated on public.vote_blocks
-for select
-using (auth.uid() is not null);
-
--- Prevent direct inserts from clients; use cast_vote_secure RPC only.
-create policy vote_blocks_no_direct_insert on public.vote_blocks
-for insert
-with check (false);
-
-create policy audit_logs_read_admin_or_auditor on public.audit_logs
-for select
-using (
-  exists (
-    select 1 from public.profiles p
-    where p.user_id = auth.uid() and p.role in ('admin', 'auditor')
-  )
-);
-
-grant usage on schema public to authenticated;
-grant select on public.elections, public.candidates, public.vote_blocks to authenticated;
-grant select on public.voter_registry, public.audit_logs to authenticated;
-grant execute on function public.cast_vote_secure(uuid, uuid, text) to authenticated;
-grant execute on function public.verify_chain(uuid) to authenticated;

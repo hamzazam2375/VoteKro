@@ -173,11 +173,9 @@ export class SupabaseProfileRepository
   implements IProfileRepository
 {
   async getByUserId(userId: string): Promise<ProfileRow | null> {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .maybeSingle();
+    const { data, error } = await supabase.rpc("get_profile_by_user_id", {
+      p_user_id: userId,
+    });
 
     if (error) {
       this.throwOnError("Failed to fetch profile", error);
@@ -187,12 +185,9 @@ export class SupabaseProfileRepository
   }
 
   async getByRole(role: ProfileRow["role"]): Promise<ProfileRow | null> {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("role", role)
-      .limit(1)
-      .maybeSingle();
+    const { data, error } = await supabase.rpc("get_first_profile_by_role", {
+      p_role: role,
+    });
 
     if (error) {
       this.throwOnError("Failed to fetch profile by role", error);
@@ -202,16 +197,15 @@ export class SupabaseProfileRepository
   }
 
   async countByRole(role: ProfileRow["role"]): Promise<number> {
-    const { count, error } = await supabase
-      .from("profiles")
-      .select("*", { count: "exact", head: true })
-      .eq("role", role);
+    const { data, error } = await supabase.rpc("count_profiles_by_role", {
+      p_role: role,
+    });
 
     if (error) {
       this.throwOnError("Failed to count profiles by role", error);
     }
 
-    return count ?? 0;
+    return (data as number | null) ?? 0;
   }
 
   async create(

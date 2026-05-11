@@ -52,11 +52,7 @@ function histogramSimilarity(h1: number[], h2: number[]): number {
 }
 
 /** Skin-tone presence check in the centre region. */
-function hasFacePresence(
-  data: Uint8Array,
-  w: number,
-  h: number,
-): boolean {
+function hasFacePresence(data: Uint8Array, w: number, h: number): boolean {
   const margin = Math.floor(Math.min(w, h) * 0.25);
   const endX = w - margin;
   const endY = h - margin;
@@ -73,10 +69,13 @@ function hasFacePresence(
       const min = Math.min(r, g, b);
 
       if (
-        r > 95 && g > 40 && b > 20 &&
+        r > 95 &&
+        g > 40 &&
+        b > 20 &&
         max - min > 15 &&
         Math.abs(r - g) > 15 &&
-        r > g && r > b
+        r > g &&
+        r > b
       ) {
         skinPixels++;
       }
@@ -93,10 +92,10 @@ serve(async (req) => {
   }
 
   if (req.method !== "POST") {
-    return new Response(
-      JSON.stringify({ error: "Method not allowed" }),
-      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -105,8 +104,13 @@ serve(async (req) => {
 
     if (!image1Base64 || !image2Base64) {
       return new Response(
-        JSON.stringify({ error: "Both image1Base64 and image2Base64 are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({
+          error: "Both image1Base64 and image2Base64 are required",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -118,9 +122,13 @@ serve(async (req) => {
         JSON.stringify({
           similarity: 0,
           isSamePerson: false,
-          message: "Failed to decode one or both images. Ensure they are valid JPEGs.",
+          message:
+            "Failed to decode one or both images. Ensure they are valid JPEGs.",
         }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -135,13 +143,17 @@ serve(async (req) => {
           isSamePerson: false,
           hasFace1: face1,
           hasFace2: face2,
-          message: !face1 && !face2
-            ? "No face detected in either image"
-            : !face1
-              ? "No face detected in the stored image"
-              : "No face detected in the captured image",
+          message:
+            !face1 && !face2
+              ? "No face detected in either image"
+              : !face1
+                ? "No face detected in the stored image"
+                : "No face detected in the captured image",
         }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -157,11 +169,15 @@ serve(async (req) => {
         isSamePerson: similarity > t,
         hasFace1: face1,
         hasFace2: face2,
-        message: similarity > t
-          ? "✓ Face matches! Same person verified."
-          : "❌ Face does not match. Different person detected.",
+        message:
+          similarity > t
+            ? "✓ Face matches! Same person verified."
+            : "❌ Face does not match. Different person detected.",
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   } catch (error) {
     console.error("verify-face error:", error);
@@ -169,7 +185,10 @@ serve(async (req) => {
       JSON.stringify({
         error: error instanceof Error ? error.message : "Unknown error",
       }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 });

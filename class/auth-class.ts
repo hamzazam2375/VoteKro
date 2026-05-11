@@ -100,35 +100,6 @@ export class AuthService extends BaseService {
     return profile;
   }
 
-  async registerAdmin(input: {
-    fullName: string;
-    email: string;
-    password: string;
-    confirmPassword: string;
-  }): Promise<ProfileRow> {
-    const fullName = input.fullName.trim();
-    const email = input.email.trim();
-
-    this.requireNonEmpty(fullName, "Full name");
-    this.requireNonEmpty(email, "Email");
-    this.requireNonEmpty(input.password, "Password");
-    this.requireNonEmpty(input.confirmPassword, "Confirm password");
-    this.requireMinimumLength(input.password, 8, "Password");
-
-    if (input.password !== input.confirmPassword) {
-      throw new ValidationError("Password and confirm password do not match");
-    }
-
-    this.requireEmailAddress(email);
-
-    return this.signUp({
-      email,
-      password: input.password,
-      fullName,
-      role: "admin",
-    });
-  }
-
   async signOut(): Promise<void> {
     await this.authRepository.signOut();
   }

@@ -62,6 +62,22 @@ if exists "Auditors and admins can read audit logs" on public.audit_logs;
 drop policy
 if exists audit_logs_read_admin_or_auditor on public.audit_logs;
 
+drop function if exists public.has_role(public.user_role);
+
+create or replace function public.has_role(required_role public.user_role)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.profiles p
+    where p.user_id = auth.uid()
+      and p.role = required_role
+  );
+$$;
+
 create policy profiles_insert_own on public.profiles
 for
 insert
@@ -75,16 +91,7 @@ for
 select
     to authenticated
 using
-(
-  auth.uid
-() = user_id
-  or exists
-(
-    select 1
-from public.profiles p
-where p.user_id = auth.uid() and p.role = 'admin'
-  )
-);
+(auth.uid() = user_id);
 
 create policy profiles_update_own on public.profiles
 for
@@ -108,21 +115,11 @@ for all
 to authenticated
 using
 (
-  exists
-(
-    select 1
-from public.profiles p
-where p.user_id = auth.uid() and p.role = 'admin'
-  )
+  public.has_role('admin')
 )
 with check
 (
-  exists
-(
-    select 1
-from public.profiles p
-where p.user_id = auth.uid() and p.role = 'admin'
-  )
+  public.has_role('admin')
 );
 
 create policy candidates_read_all_authenticated on public.candidates
@@ -138,21 +135,11 @@ for all
 to authenticated
 using
 (
-  exists
-(
-    select 1
-from public.profiles p
-where p.user_id = auth.uid() and p.role = 'admin'
-  )
+  public.has_role('admin')
 )
 with check
 (
-  exists
-(
-    select 1
-from public.profiles p
-where p.user_id = auth.uid() and p.role = 'admin'
-  )
+  public.has_role('admin')
 );
 
 create policy voter_registry_read_self_or_admin on public.voter_registry
@@ -163,12 +150,7 @@ using
 (
   voter_id = auth.uid
 ()
-  or exists
-(
-    select 1
-from public.profiles p
-where p.user_id = auth.uid() and p.role = 'admin'
-  )
+  or public.has_role('admin')
 );
 
 create policy voter_registry_admin_manage on public.voter_registry
@@ -176,21 +158,11 @@ for all
 to authenticated
 using
 (
-  exists
-(
-    select 1
-from public.profiles p
-where p.user_id = auth.uid() and p.role = 'admin'
-  )
+  public.has_role('admin')
 )
 with check
 (
-  exists
-(
-    select 1
-from public.profiles p
-where p.user_id = auth.uid() and p.role = 'admin'
-  )
+  public.has_role('admin')
 );
 
 create policy vote_blocks_read_authenticated on public.vote_blocks
@@ -214,18 +186,14 @@ select
     to authenticated
 using
 (
-  exists
-(
-    select 1
-from public.profiles p
-where p.user_id = auth.uid() and p.role in ('admin', 'auditor')
-  )
+  public.has_role('admin')
+  or public.has_role('auditor')
 );
 
 grant usage on schema public to authenticated;
 grant select on public.elections, public.candidates, public.vote_blocks to authenticated;
 grant select on public.voter_registry, public.audit_logs to authenticated;
 grant execute on function public.cast_vote_secure
-(uuid, uuid, text) to authenticated;
+(uuid, uuid, text, text) to authenticated;
 grant execute on function public.verify_chain
 (uuid) to authenticated;
