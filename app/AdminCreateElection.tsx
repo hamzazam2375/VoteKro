@@ -1,17 +1,22 @@
 import type { ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
+import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 export default function AdminCreateElectionScreen({
@@ -26,6 +31,10 @@ export default function AdminCreateElectionScreen({
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const startWebDateInputRef = useRef<HTMLInputElement | null>(null);
+  const endWebDateInputRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -94,6 +103,142 @@ export default function AdminCreateElectionScreen({
     return `${year}-${month}-${day}`;
   };
 
+  const toDateFromInput = (value: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return new Date();
+    }
+
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  const toDateStartTimestamp = (value: string) => {
+    const iso = toIsoDate(value, false);
+    if (!iso) {
+      return null;
+    }
+
+    return new Date(iso).getTime();
+  };
+
+  const openWebPickerFromRef = (input: HTMLInputElement | null) => {
+    if (Platform.OS !== "web" || !input) {
+      return false;
+    }
+
+    const pickerInput = input as HTMLInputElement & {
+      showPicker?: () => void;
+    };
+
+    input.focus();
+    if (typeof pickerInput.showPicker === "function") {
+      pickerInput.showPicker();
+    } else {
+      input.click();
+    }
+
+    return true;
+  };
+
+  const handleStartDateTextChange = (value: string) => {
+    const normalized = value.replace(/[^0-9-]/g, "").slice(0, 10);
+    setStartDate(normalized);
+  };
+
+  const handleEndDateTextChange = (value: string) => {
+    const normalized = value.replace(/[^0-9-]/g, "").slice(0, 10);
+    setEndDate(normalized);
+  };
+
+  const onStartWebDateChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedDateValue = event.target.value;
+    if (!selectedDateValue) {
+      return;
+    }
+
+    setStartDate(selectedDateValue);
+
+    const selectedStartTs = toDateStartTimestamp(selectedDateValue);
+    const currentEndTs = toDateStartTimestamp(endDate);
+
+    if (
+      selectedStartTs !== null &&
+      currentEndTs !== null &&
+      currentEndTs < selectedStartTs
+    ) {
+      setEndDate(selectedDateValue);
+    }
+  };
+
+  const onEndWebDateChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedDateValue = event.target.value;
+    if (!selectedDateValue) {
+      return;
+    }
+
+    setEndDate(selectedDateValue);
+  };
+
+  const handleStartDatePress = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    if (openWebPickerFromRef(startWebDateInputRef.current)) {
+      return;
+    }
+
+    setShowStartDatePicker(true);
+  };
+
+  const handleEndDatePress = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    if (openWebPickerFromRef(endWebDateInputRef.current)) {
+      return;
+    }
+
+    setShowEndDatePicker(true);
+  };
+
+  const onStartDateChange = (
+    event: DateTimePickerEvent,
+    selectedDate?: Date,
+  ) => {
+    setShowStartDatePicker(false);
+    if (event.type === "dismissed" || !selectedDate) {
+      return;
+    }
+
+    const selectedDateValue = toDateInputValue(selectedDate);
+    setStartDate(selectedDateValue);
+
+    const selectedStartTs = toDateStartTimestamp(selectedDateValue);
+    const currentEndTs = toDateStartTimestamp(endDate);
+
+    if (
+      selectedStartTs !== null &&
+      currentEndTs !== null &&
+      currentEndTs < selectedStartTs
+    ) {
+      setEndDate(selectedDateValue);
+    }
+  };
+
+  const onEndDateChange = (
+    event: DateTimePickerEvent,
+    selectedDate?: Date,
+  ) => {
+    setShowEndDatePicker(false);
+    if (event.type === "dismissed" || !selectedDate) {
+      return;
+    }
+
+    setEndDate(toDateInputValue(selectedDate));
+  };
+
   const handleCreateElection = async () => {
     setError(null);
 
@@ -113,8 +258,8 @@ export default function AdminCreateElectionScreen({
       return;
     }
 
-    if (new Date(endsAtIso).getTime() <= new Date(startsAtIso).getTime()) {
-      setError("End date must be after start date.");
+    if (new Date(endsAtIso).getTime() < new Date(startsAtIso).getTime()) {
+      setError("End date cannot be before start date.");
       return;
     }
 
@@ -155,6 +300,7 @@ export default function AdminCreateElectionScreen({
     <View style={styles.container}>
       {!isEmbedded && (
         <Navbar
+          infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
           actions={[
             {
               label: "Logout",
@@ -204,28 +350,84 @@ export default function AdminCreateElectionScreen({
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Start Date</Text>
-            <TextInput
-              style={styles.input}
-              value={startDate}
-              onChangeText={setStartDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#9ca3af"
-              editable={!isSubmitting}
-              inputMode="text"
-            />
+            <View style={styles.dateInputContainer}>
+              {Platform.OS === "web" ? (
+                <input
+                  ref={startWebDateInputRef}
+                  type="date"
+                  value={startDate}
+                  onChange={onStartWebDateChange}
+                  style={styles.webDateInput as unknown as object}
+                />
+              ) : null}
+              <TextInput
+                style={styles.dateInputText}
+                value={startDate}
+                onChangeText={handleStartDateTextChange}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#9ca3af"
+                editable={!isSubmitting}
+                inputMode="text"
+              />
+              <Pressable
+                style={styles.dateIconButton}
+                disabled={isSubmitting}
+                onPress={handleStartDatePress}
+              >
+                <Ionicons name="calendar-outline" size={18} color="#111827" />
+              </Pressable>
+            </View>
+            {Platform.OS !== "web" && showStartDatePicker ? (
+              <DateTimePicker
+                value={toDateFromInput(startDate)}
+                mode="date"
+                display="default"
+                onChange={onStartDateChange}
+              />
+            ) : null}
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>End Date</Text>
-            <TextInput
-              style={styles.input}
-              value={endDate}
-              onChangeText={setEndDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#9ca3af"
-              editable={!isSubmitting}
-              inputMode="text"
-            />
+            <View style={styles.dateInputContainer}>
+              {Platform.OS === "web" ? (
+                <input
+                  ref={endWebDateInputRef}
+                  type="date"
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={onEndWebDateChange}
+                  style={styles.webDateInput as unknown as object}
+                />
+              ) : null}
+              <TextInput
+                style={styles.dateInputText}
+                value={endDate}
+                onChangeText={handleEndDateTextChange}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#9ca3af"
+                editable={!isSubmitting}
+                inputMode="text"
+              />
+              <Pressable
+                style={styles.dateIconButton}
+                disabled={isSubmitting}
+                onPress={handleEndDatePress}
+              >
+                <Ionicons name="calendar-outline" size={18} color="#111827" />
+              </Pressable>
+            </View>
+            {Platform.OS !== "web" && showEndDatePicker ? (
+              <DateTimePicker
+                value={toDateFromInput(endDate)}
+                mode="date"
+                display="default"
+                minimumDate={
+                  startDate ? toDateFromInput(startDate) : undefined
+                }
+                onChange={onEndDateChange}
+              />
+            ) : null}
           </View>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -292,13 +494,6 @@ const styles = StyleSheet.create({
     color: "#111827",
     marginBottom: 18,
   },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  inputFlex: {
-    flex: 1,
-  },
   inputGroup: {
     marginBottom: 12,
   },
@@ -317,6 +512,40 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc",
     color: "#111827",
     fontSize: 13,
+  },
+  dateInputContainer: {
+    height: 42,
+    borderWidth: 1,
+    borderColor: "#d9dee7",
+    borderRadius: 8,
+    backgroundColor: "#f8fafc",
+    flexDirection: "row",
+    alignItems: "center",
+    position: "relative",
+  },
+  dateInputText: {
+    flex: 1,
+    height: "100%",
+    paddingHorizontal: 12,
+    color: "#111827",
+    fontSize: 13,
+  },
+  dateIconButton: {
+    width: 42,
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    borderLeftWidth: 1,
+    borderLeftColor: "#d9dee7",
+  },
+  webDateInput: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    width: 42,
+    height: "100%",
+    opacity: 0,
+    cursor: "pointer",
   },
   errorText: {
     marginTop: 4,
