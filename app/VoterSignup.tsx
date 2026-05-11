@@ -26,17 +26,14 @@ export default function VoterSignupScreen({
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [showFaceCapture, setShowFaceCapture] = useState(false);
-  const [capturedFaceBase64, setCapturedFaceBase64] = useState<string | null>(
-    null,
-  );
+  const [capturedFaceBase64, setCapturedFaceBase64] = useState<string | null>(null);
   const [faceEmbedding, setFaceEmbedding] = useState<number[]>([]);
   const [isFaceVerified, setIsFaceVerified] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const userProfile =
-          await serviceFactory.authService.getRequiredProfile("admin");
+        const userProfile = await serviceFactory.authService.getRequiredProfile("admin");
         setProfile(userProfile);
       } catch (loadError) {
         const errorMsg = serviceFactory.authService.getErrorMessage(
@@ -88,7 +85,6 @@ export default function VoterSignupScreen({
     }
 
     try {
-      // Store face data with embedding for biometric verification
       const faceData = {
         imageData: capturedFaceBase64,
         timestamp: Date.now(),
@@ -98,8 +94,8 @@ export default function VoterSignupScreen({
       await serviceFactory.adminService.initiateVoterRegistrationWithFace({
         fullName: normalizedFullName,
         email: normalizedEmail,
-        faceData: faceData,
-        faceEmbedding: faceEmbedding,
+        faceData,
+        faceEmbedding,
       });
 
       setFullName("");
@@ -109,9 +105,10 @@ export default function VoterSignupScreen({
       setIsFaceVerified(false);
       setShowFaceCapture(false);
 
-      const successMessage =
-        "✓ Face captured and saved!\n\nAuthorization email sent. Ask voter to click the button in email to complete registration.";
-      Alert.alert("Success", successMessage);
+      Alert.alert(
+        "Success",
+        "Face captured and saved! Authorization email sent. Ask voter to click the button in email to complete registration.",
+      );
     } catch (registerError) {
       const errorMessage = serviceFactory.authService.getErrorMessage(
         registerError,
@@ -129,7 +126,7 @@ export default function VoterSignupScreen({
     setFaceEmbedding(result.embedding);
     setIsFaceVerified(true);
     setShowFaceCapture(false);
-    Alert.alert("✓ Face Captured", "Face detected and processed!");
+    Alert.alert("Face Captured", "Face detected and processed!");
   };
 
   const handleCancelFaceCapture = () => {
@@ -164,13 +161,7 @@ export default function VoterSignupScreen({
       )}
 
       {!showFaceCapture && (
-        <ScrollView
-          contentContainerStyle={[
-            styles.scrollContent,
-            styles.mobileCenteredContent,
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {!isEmbedded && (
             <Pressable
               style={styles.backButton}
@@ -183,33 +174,25 @@ export default function VoterSignupScreen({
           <View style={styles.centerContainer}>
             <View style={styles.card}>
               <View style={styles.titleContainer}>
-                <Text style={styles.title}>👤 Register Voter</Text>
+                <Text style={styles.auditIcon}>👤</Text>
+                <Text style={styles.title}>Register Voter</Text>
               </View>
 
               <Text style={styles.description}>
-                1. Capture voter face • 2. Enter details • 3. Send authorization
-                email
+                Capture the voter face, enter the details, and send the authorization email.
               </Text>
 
-              {isFaceVerified && capturedFaceBase64 && (
+              {isFaceVerified && capturedFaceBase64 ? (
                 <View style={styles.facePreviewContainer}>
                   <Text style={styles.facePreviewLabel}>✓ Face Captured</Text>
-                  <Image
-                    source={{ uri: capturedFaceBase64 }}
-                    style={styles.facePreview}
-                  />
-                  <Pressable
-                    style={styles.retakeFaceButton}
-                    onPress={handleRetakeFace}
-                  >
-                    <Text style={styles.retakeFaceButtonText}>
-                      Retake Photo
-                    </Text>
+                  <Image source={{ uri: capturedFaceBase64 }} style={styles.facePreview} />
+                  <Pressable style={styles.retakeFaceButton} onPress={handleRetakeFace}>
+                    <Text style={styles.retakeFaceButtonText}>Retake Photo</Text>
                   </Pressable>
                 </View>
-              )}
+              ) : null}
 
-              {!isFaceVerified && (
+              {!isFaceVerified ? (
                 <Pressable
                   style={({ pressed }) => [
                     styles.captureFaceButton,
@@ -218,11 +201,9 @@ export default function VoterSignupScreen({
                   onPress={() => setShowFaceCapture(true)}
                   disabled={isLoading}
                 >
-                  <Text style={styles.captureFaceButtonText}>
-                    📸 Start Face Capture
-                  </Text>
+                  <Text style={styles.captureFaceButtonText}>📸 Start Face Capture</Text>
                 </Pressable>
-              )}
+              ) : null}
 
               {error ? (
                 <View style={styles.errorMessage}>
@@ -235,7 +216,7 @@ export default function VoterSignupScreen({
                 <TextInput
                   style={styles.input}
                   placeholder="Enter voter name"
-                  placeholderTextColor="#9aa3ad"
+                  placeholderTextColor="#999"
                   value={fullName}
                   onChangeText={setFullName}
                   editable={!isLoading && isFaceVerified}
@@ -247,7 +228,7 @@ export default function VoterSignupScreen({
                 <TextInput
                   style={styles.input}
                   placeholder="voter@gmail.com"
-                  placeholderTextColor="#9aa3ad"
+                  placeholderTextColor="#999"
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -260,8 +241,7 @@ export default function VoterSignupScreen({
                 style={({ pressed }) => [
                   styles.registerButton,
                   pressed && styles.registerButtonPressed,
-                  (!isFaceVerified || isLoading) &&
-                    styles.registerButtonDisabled,
+                  (!isFaceVerified || isLoading) && styles.registerButtonDisabled,
                 ]}
                 onPress={handleRegister}
                 disabled={!isFaceVerified || isLoading}
@@ -269,9 +249,7 @@ export default function VoterSignupScreen({
                 {isLoading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.registerButtonText}>
-                    ✉ Send Authorization Email
-                  </Text>
+                  <Text style={styles.registerButtonText}>✉ Send Authorization Email</Text>
                 )}
               </Pressable>
             </View>
@@ -285,91 +263,90 @@ export default function VoterSignupScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f4f6f8",
+    backgroundColor: "#fff",
   },
   scrollContent: {
     flexGrow: 1,
-    paddingTop: 10,
-    paddingBottom: 24,
-  },
-  mobileCenteredContent: {
     justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 20,
   },
   backButton: {
-    alignSelf: "flex-start",
-    marginLeft: 30,
-    marginTop: 6,
-    marginBottom: 24,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 7,
+    marginTop: 20,
+    marginBottom: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#2f63d5",
-    backgroundColor: "#fff",
+    borderColor: "#ddd",
+    alignSelf: "center",
   },
   backButtonText: {
-    color: "#2f63d5",
-    fontSize: 12,
-    fontWeight: "600",
+    color: "#1a73e8",
+    fontSize: 14,
+    fontWeight: "500",
   },
   centerContainer: {
     width: "100%",
+    maxWidth: 500,
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
   card: {
-    width: "100%",
-    maxWidth: 440,
     backgroundColor: "#fff",
-    borderRadius: 12,
+    borderRadius: 8,
+    padding: 32,
+    boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.08)",
+    elevation: 2,
+    width: "100%",
     borderWidth: 1,
-    borderColor: "#e3e7ec",
-    paddingHorizontal: 20,
-    paddingVertical: 22,
-    boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.09)",
-    elevation: 3,
+    borderColor: "#f0f0f0",
   },
   titleContainer: {
     alignItems: "center",
     marginBottom: 12,
+    justifyContent: "center",
+  },
+  auditIcon: {
+    fontSize: 36,
+    marginBottom: 8,
   },
   title: {
-    fontSize: 33,
+    fontSize: 26,
     fontWeight: "700",
-    color: "#1f2937",
+    color: "#1a1a1a",
     textAlign: "center",
   },
   description: {
+    fontSize: 13,
+    color: "#666",
     textAlign: "center",
-    fontSize: 12,
-    lineHeight: 18,
-    color: "#6b7280",
-    marginBottom: 18,
+    marginBottom: 28,
+    lineHeight: 19,
   },
   inputContainer: {
-    marginBottom: 14,
+    marginBottom: 20,
   },
   label: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#374151",
-    marginBottom: 7,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1a1a1a",
+    marginBottom: 8,
   },
   input: {
-    height: 41,
     borderWidth: 1,
-    borderColor: "#d7dce3",
-    borderRadius: 8,
-    backgroundColor: "#f9fbfc",
-    paddingHorizontal: 12,
-    color: "#1f2937",
+    borderColor: "#ddd",
+    borderRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
     fontSize: 13,
+    backgroundColor: "#fafafa",
+    color: "#1a1a1a",
   },
   registerButton: {
     marginTop: 6,
     height: 42,
-    borderRadius: 8,
+    borderRadius: 6,
     backgroundColor: "#0f9962",
     alignItems: "center",
     justifyContent: "center",
@@ -391,7 +368,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fee2e2",
     borderColor: "#dc2626",
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 6,
     paddingVertical: 10,
     paddingHorizontal: 12,
     marginBottom: 14,
@@ -405,7 +382,7 @@ const styles = StyleSheet.create({
   captureFaceButton: {
     marginBottom: 16,
     height: 48,
-    borderRadius: 8,
+    borderRadius: 6,
     backgroundColor: "#2563eb",
     alignItems: "center",
     justifyContent: "center",

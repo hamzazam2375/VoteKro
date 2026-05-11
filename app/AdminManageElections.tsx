@@ -175,6 +175,58 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
     }
   };
 
+  const handleEndElection = (election: ElectionRow) => {
+    if (election.status === "closed") {
+      Alert.alert("Info", "This election is already closed.");
+      return;
+    }
+
+    const now = Date.now();
+    const endsAt = new Date(election.ends_at).getTime();
+
+    if (now > endsAt) {
+      Alert.alert("Info", "This election has already ended.");
+      return;
+    }
+
+    Alert.alert(
+      "End Election",
+      `Are you sure you want to end \"${election.title}\"? Voters will no longer be able to cast votes once it is closed.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "End Election",
+          style: "destructive",
+          onPress: () => void confirmEndElection(election),
+        },
+      ],
+    );
+  };
+
+  const confirmEndElection = async (election: ElectionRow) => {
+    try {
+      await serviceFactory.adminService.updateElection({
+        electionId: election.id,
+        title: election.title,
+        description: election.description ?? undefined,
+        startsAtIso: election.starts_at,
+        endsAtIso: election.ends_at,
+        status: "closed",
+      });
+
+      Alert.alert("Success", "Election ended successfully");
+      void loadData();
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        serviceFactory.authService.getErrorMessage(
+          error,
+          "Failed to end election",
+        ),
+      );
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -265,6 +317,10 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
   };
 
   const getElectionStatus = (election: ElectionRow) => {
+    if (election.status === "closed") {
+      return { label: "Closed", color: "#6b7280" };
+    }
+
     const now = Date.now();
     const startsAt = new Date(election.starts_at).getTime();
     const endsAt = new Date(election.ends_at).getTime();
@@ -440,7 +496,7 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
           <View style={styles.titleSection}>
             <Text style={styles.dashboardTitle}>📋 Manage Elections</Text>
             <Text style={styles.dashboardSubtitle}>
-              Edit, delete, or manage election details
+              Edit, end, or delete election details
             </Text>
           </View>
 
@@ -473,6 +529,14 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
                         >
                           <Text style={styles.editBtnText}>Edit</Text>
                         </Pressable>
+                        {status.label === "Active" ? (
+                          <Pressable
+                            style={styles.endBtn}
+                            onPress={() => handleEndElection(election)}
+                          >
+                            <Text style={styles.endBtnText}>End</Text>
+                          </Pressable>
+                        ) : null}
                         <Pressable
                           style={styles.deleteBtn}
                           onPress={() => openDeleteModal(election)}
@@ -593,6 +657,17 @@ const styles = StyleSheet.create({
   createBtnText: {
     color: "#fff",
     fontSize: 16,
+    fontWeight: "600",
+  },
+  endBtn: {
+    backgroundColor: "#fef3c7",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  endBtnText: {
+    color: "#b45309",
+    fontSize: 14,
     fontWeight: "600",
   },
   electionsList: {
