@@ -35,7 +35,6 @@ export default function VoterDashboard() {
     const [votedElectionIds, setVotedElectionIds] = useState<Set<string>>(new Set());
     const [currentView, setCurrentView] = useState<'home' | 'history'>('home');
     const [searchQuery, setSearchQuery] = useState('');
-    const [userEmail, setUserEmail] = useState('');
     const [electionResults, setElectionResults] = useState<Map<string, ElectionResultRow[]>>(new Map());
     const [voteDetails, setVoteDetails] = useState<Map<string, { hash: string; date: string; candidate: string }>>(new Map());
     const searchInputRef = useRef<any>(null);
@@ -81,10 +80,7 @@ export default function VoterDashboard() {
                 const userProfile = await serviceFactory.authService.getRequiredProfile('voter');
                 setProfile(userProfile);
 
-                const {
-                    data: { user },
-                } = await supabase.auth.getUser();
-                setUserEmail(user?.email ?? '');
+                await supabase.auth.getUser();
 
                 const electionRows = await serviceFactory.votingService.listAllElections();
                 setElections(electionRows);
@@ -335,8 +331,14 @@ export default function VoterDashboard() {
         if (voteDetails.has(electionId)) return;
         
         try {
-            const ledger = await serviceFactory.auditorService.getLedger(electionId);
             const candidates = await serviceFactory.votingService.getElectionCandidates(electionId);
+            let ledger: Awaited<ReturnType<typeof serviceFactory.auditorService.getLedger>> = [];
+
+            try {
+                ledger = await serviceFactory.auditorService.getLedger(electionId);
+            } catch (ledgerError) {
+                console.warn('Ledger service unavailable while loading vote details:', ledgerError);
+            }
 
             const resultCounts = new Map<string, number>();
             for (const vote of ledger) {
@@ -712,7 +714,7 @@ export default function VoterDashboard() {
                                                 ) : null}
 
                                                 {effectiveStatus === 'closed' ? (
-                                                    <Pressable style={styles.electionSecondaryButton} onPress={() => router.push(`/ElectionResults/${election.id}`)}>
+                                                    <Pressable style={styles.electionSecondaryButton} onPress={() => void openElectionDialog(election)}>
                                                         <Text style={styles.electionSecondaryText}>See Results</Text>
                                                     </Pressable>
                                                 ) : null}

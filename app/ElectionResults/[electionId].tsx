@@ -35,9 +35,9 @@ export default function ElectionResultsPage() {
                 setCandidates(c);
                 setCounts(obj);
             } catch (err) {
-                console.error('Failed to load results', err);
-                Alert.alert('Error', 'Failed to load election results');
-                router.replace('/VoterDashboard');
+                console.warn('Failed to load election results:', err);
+                Alert.alert('Results unavailable', 'The vote ledger service is offline. Returning to the home screen.');
+                router.replace('/');
             } finally {
                 setLoading(false);
             }
