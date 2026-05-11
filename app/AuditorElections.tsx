@@ -793,6 +793,8 @@ function ElectionCard({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    height: "100%",
+    overflow: "hidden",
     backgroundColor: "#f5f7fa",
   },
   mainContent: {

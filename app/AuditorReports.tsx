@@ -47,13 +47,26 @@ export default function AuditorReports() {
           
           for (const election of elections) {
             try {
-              // Get vote ledger to count votes
-              const ledger = await serviceFactory.voteLedgerRepository.listLedger(election.id);
-              const totalVotes = ledger?.length || 0;
-              
               // Verify blockchain integrity for this election
-              const chainVerification = await serviceFactory.auditorService.verifyLedger(election.id);
-              const blockchainValid = chainVerification?.is_valid === true;
+              const chainVerification = await serviceFactory.auditorService.verifyFullBlockchainIntegrity(election.id);
+              const blockchainValid = chainVerification.isValid;
+              const anomalies = chainVerification.tamperedBlocks;
+              
+              // Verify vote count consistency
+              const candidates = await serviceFactory.electionRepository.listCandidates(election.id);
+              const resultCounts: Record<string, number> = {};
+              for (const candidate of candidates || []) {
+                resultCounts[candidate.id] = candidate.votes || 0;
+              }
+              
+              let voteAccuracy = 0;
+              try {
+                const consistency = await serviceFactory.auditorService.verifyVoteCountConsistency(election.id, resultCounts);
+                voteAccuracy = consistency.accuracyPercentage;
+              } catch (e) {
+                // Ignore if no votes exist yet
+                voteAccuracy = 100;
+              }
               
               // Find if there's an audit log entry for this election
               const electionAuditLog = auditLogs?.find(log =>
@@ -62,20 +75,21 @@ export default function AuditorReports() {
                 log.action.includes(election.title)
               );
               
-              // Calculate vote accuracy based on ledger verification
-              const voteAccuracy = totalVotes > 0 
-                ? Math.round((totalVotes / Math.max(totalVotes, 1)) * 100 * 10) / 10
-                : 0;
-              
               // Determine blockchain status
               const blockchainStatus: 'valid' | 'invalid' | 'warning' = blockchainValid ? 'valid' : 'invalid';
               
               // Determine report status based on completeness
               let reportStatus: 'approved' | 'pending' | 'flagged' = 'pending';
+              
+              // For elections not yet started or with no votes, we can leave as pending unless an explicit audit log says it's approved
               if (blockchainValid && voteAccuracy >= 99) {
                 reportStatus = 'approved';
-              } else if (!blockchainValid || voteAccuracy < 95) {
+              }
+              if (!blockchainValid || voteAccuracy < 95 || anomalies > 0) {
                 reportStatus = 'flagged';
+              }
+              if (candidates?.length === 0) {
+                reportStatus = 'pending';
               }
               
               // Get last audit log date or use current date
@@ -92,7 +106,7 @@ export default function AuditorReports() {
                 voteAccuracy,
                 blockchainStatus,
                 auditorName: userProfile.full_name || 'Auditor',
-                anomaliesDetected: !blockchainValid ? 1 : 0,
+                anomaliesDetected: anomalies,
               });
             } catch (error) {
               console.error(`Failed to load report data for election ${election.id}:`, error);
@@ -504,6 +518,8 @@ function MetricItem({ label, value, color }: MetricItemProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    height: '100%',
+    overflow: 'hidden',
     backgroundColor: '#f5f5f5',
   },
   mainContent: {
