@@ -169,16 +169,7 @@ const AuditorBlockchainLedger: React.FC = () => {
       try {
         console.log(`Fetching ledger for election: ${selectedElection}`);
         
-        const response = await fetch(
-          `${rocksDbUrl}/ledger/${encodeURIComponent(selectedElection)}`
-        );
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Failed to fetch ledger (${response.status}): ${errorText}`);
-        }
-        
-        const data = await response.json();
+        const data = await serviceFactory.auditorService.getLedger(selectedElection);
         console.log(`Received ${data?.length || 0} blocks`);
         
         // 🔐 Verify blockchain integrity
@@ -521,7 +512,7 @@ const AuditorBlockchainLedger: React.FC = () => {
       {/* Error Alert */}
       {error && (
         <Alert
-          message="⚠️ Alert"
+          title="⚠️ Alert"
           description={error}
           type={error.includes("compromised") ? "error" : "warning"}
           closable
@@ -533,7 +524,7 @@ const AuditorBlockchainLedger: React.FC = () => {
       {/* Chain Validity Alert */}
       {selectedElection && metrics.isValid === true && !error && (
         <Alert
-          message="✓ Blockchain is Valid and Tamper-Proof"
+          title="✓ Blockchain is Valid and Tamper-Proof"
           description="All blocks are properly linked with correct hash validation. No tampering detected."
           type="success"
           style={{ marginBottom: "20px" }}
@@ -544,7 +535,7 @@ const AuditorBlockchainLedger: React.FC = () => {
 
       {selectedElection && metrics.isValid === false && (
         <Alert
-          message="✗ Blockchain Integrity Check Failed"
+          title="✗ Blockchain Integrity Check Failed"
           description={`Detected ${metrics.tamperedCount} tampered block(s). First tampering at Block #${metrics.invalidAt}. Hash chain validation failed.`}
           type="error"
           style={{ marginBottom: "20px" }}
@@ -615,13 +606,13 @@ const AuditorBlockchainLedger: React.FC = () => {
         onCancel={handleModalClose}
         footer={null}
         width={900}
-        bodyStyle={{ maxHeight: "80vh", overflowY: "auto" }}
+        styles={{ body: { maxHeight: "80vh", overflowY: "auto" } }}
       >
         {selectedBlock && (
           <div>
             {selectedBlock.isValid === false && (
               <Alert
-                message="⚠️ Blockchain Tampering Detected"
+                title="⚠️ Blockchain Tampering Detected"
                 description={selectedBlock.validationError || "Hash mismatch detected in this block"}
                 type="error"
                 showIcon

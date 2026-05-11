@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 interface AuditProcessModalProps {
   visible: boolean;
-  election: ElectionRow | null;
+  election: any | null;
   onClose: () => void;
   onComplete?: () => void;
 }
@@ -217,6 +217,7 @@ export function ElectionAuditProcessModal({
           >
             {currentStep === 'voter' && (
               <VoterVerificationStep
+                election={election}
                 notes={notes}
                 setNotes={setNotes}
                 checkedItems={checkedItems}
@@ -227,29 +228,33 @@ export function ElectionAuditProcessModal({
             )}
             {currentStep === 'blockchain' && (
               <BlockchainCheckStep
+                election={election}
                 blockchainData={blockchainData}
                 setBlockchainData={setBlockchainData}
               />
             )}
             {currentStep === 'count' && (
               <VoteCountStep
+                election={election}
                 voteCountData={voteCountData}
                 setVoteCountData={setVoteCountData}
               />
             )}
             {currentStep === 'anomaly' && (
               <AnomalyReviewStep
+                election={election}
                 anomalyData={anomalyData}
                 setAnomalyData={setAnomalyData}
               />
             )}
             {currentStep === 'report' && (
               <ReportGenerationStep
+                election={election}
                 reportData={reportData}
                 setReportData={setReportData}
               />
             )}
-            {currentStep === 'submit' && <SubmitStep />}
+            {currentStep === 'submit' && <SubmitStep election={election} />}
           </ScrollView>
 
           {/* Footer Buttons */}
@@ -310,6 +315,7 @@ export function ElectionAuditProcessModal({
 }
 
 interface VoterVerificationStepProps {
+  election: any;
   notes: string;
   setNotes: (notes: string) => void;
   checkedItems: Record<string, boolean>;
@@ -319,6 +325,7 @@ interface VoterVerificationStepProps {
 }
 
 function VoterVerificationStep({
+  election,
   notes,
   setNotes,
   checkedItems,
@@ -372,10 +379,10 @@ function VoterVerificationStep({
 
       {expandedStats && (
         <View style={styles.statisticsContainer}>
-          <StatItem label="Total Registered Voters" value="847" />
-          <StatItem label="Verified Voters" value="845" />
-          <StatItem label="Pending Verification" value="2" />
-          <StatItem label="Verification Rate" value="99.8%" />
+          <StatItem label="Total Registered Voters" value={(election?.totalVotes || 0).toString()} />
+          <StatItem label="Verified Voters" value={(election?.verifiedVotes || 0).toString()} />
+          <StatItem label="Pending Verification" value={(Math.max((election?.totalVotes || 0) - (election?.verifiedVotes || 0), 0)).toString()} />
+          <StatItem label="Verification Rate" value={election?.totalVotes ? (((election.verifiedVotes || 0) / election.totalVotes) * 100).toFixed(1) + "%" : "100%"} />
         </View>
       )}
 
@@ -435,11 +442,13 @@ function StatItem({ label, value }: StatItemProps) {
 }
 
 interface BlockchainCheckStepProps {
+  election: any;
   blockchainData: string;
   setBlockchainData: (data: string) => void;
 }
 
 function BlockchainCheckStep({
+  election,
   blockchainData,
   setBlockchainData,
 }: BlockchainCheckStepProps) {
@@ -504,10 +513,10 @@ function BlockchainCheckStep({
 
       {expandedStats && (
         <View style={styles.statisticsContainer}>
-          <StatItem label="Total Blocks" value="847" />
-          <StatItem label="Verified Blocks" value="847" />
-          <StatItem label="Invalid Hashes" value="0" />
-          <StatItem label="Chain Integrity" value="100%" />
+          <StatItem label="Total Blocks" value={(election?.totalVotes || 0).toString()} />
+          <StatItem label="Verified Blocks" value={(election?.verifiedVotes || 0).toString()} />
+          <StatItem label="Invalid Hashes" value={(election?.anomalies || 0).toString()} />
+          <StatItem label="Chain Integrity" value={election?.totalVotes ? (((election.totalVotes - (election?.anomalies || 0)) / election.totalVotes) * 100).toFixed(1) + "%" : "100%"} />
         </View>
       )}
 
@@ -528,11 +537,13 @@ function BlockchainCheckStep({
 }
 
 interface VoteCountStepProps {
+  election: any;
   voteCountData: string;
   setVoteCountData: (data: string) => void;
 }
 
 function VoteCountStep({
+  election,
   voteCountData,
   setVoteCountData,
 }: VoteCountStepProps) {
@@ -597,10 +608,10 @@ function VoteCountStep({
 
       {expandedStats && (
         <View style={styles.statisticsContainer}>
-          <StatItem label="Total Votes Counted" value="845" />
-          <StatItem label="Votes Verified" value="845" />
-          <StatItem label="Discrepancies Found" value="0" />
-          <StatItem label="Verification Accuracy" value="100%" />
+          <StatItem label="Total Votes Counted" value={(election?.totalVotes || 0).toString()} />
+          <StatItem label="Votes Verified" value={(election?.verifiedVotes || 0).toString()} />
+          <StatItem label="Discrepancies Found" value={(election?.anomalies || 0).toString()} />
+          <StatItem label="Verification Accuracy" value={election?.totalVotes ? (((election.verifiedVotes || 0) / election.totalVotes) * 100).toFixed(1) + "%" : "100%"} />
         </View>
       )}
 
@@ -621,11 +632,13 @@ function VoteCountStep({
 }
 
 interface AnomalyReviewStepProps {
+  election: any;
   anomalyData: string;
   setAnomalyData: (data: string) => void;
 }
 
 function AnomalyReviewStep({
+  election,
   anomalyData,
   setAnomalyData,
 }: AnomalyReviewStepProps) {
@@ -651,11 +664,11 @@ function AnomalyReviewStep({
 
       <View style={styles.anomalyAlertContainer}>
         <View style={styles.anomalyAlertHeader}>
-          <Text style={styles.anomalyAlertIcon}>⚠️</Text>
-          <Text style={styles.anomalyAlertTitle}>2 Anomalies Detected</Text>
+          <Text style={styles.anomalyAlertIcon}>{election?.anomalies > 0 ? "⚠️" : "✅"}</Text>
+          <Text style={styles.anomalyAlertTitle}>{election?.anomalies || 0} Anomalies Detected</Text>
         </View>
         <Text style={styles.anomalyAlertMessage}>
-          Review each anomaly carefully and document your findings.
+          {election?.anomalies > 0 ? "Review each anomaly carefully and document your findings." : "No anomalies detected during the election."}
         </Text>
       </View>
 
@@ -700,10 +713,10 @@ function AnomalyReviewStep({
 
       {expandedStats && (
         <View style={styles.statisticsContainer}>
-          <StatItem label="Total Anomalies Detected" value="2" />
-          <StatItem label="Critical Issues" value="0" />
-          <StatItem label="Resolved" value="2" />
-          <StatItem label="Pending Review" value="0" />
+          <StatItem label="Total Anomalies Detected" value={(election?.anomalies || 0).toString()} />
+          <StatItem label="Critical Issues" value={(election?.anomalies || 0).toString()} />
+          <StatItem label="Resolved" value="0" />
+          <StatItem label="Pending Review" value={(election?.anomalies || 0).toString()} />
         </View>
       )}
 
@@ -724,11 +737,13 @@ function AnomalyReviewStep({
 }
 
 interface ReportGenerationStepProps {
+  election: any;
   reportData: string;
   setReportData: (data: string) => void;
 }
 
 function ReportGenerationStep({
+  election,
   reportData,
   setReportData,
 }: ReportGenerationStepProps) {
@@ -771,7 +786,7 @@ function ReportGenerationStep({
   );
 }
 
-function SubmitStep() {
+function SubmitStep({ election }: { election: any }) {
   return (
     <View style={styles.stepContent}>
       <Text style={styles.stepHeading}>Step 6: Submit Audit Certification</Text>
@@ -784,27 +799,27 @@ function SubmitStep() {
         <View style={styles.reportGrid}>
           <View style={styles.reportCard}>
             <Text style={styles.reportLabel}>Election</Text>
-            <Text style={styles.reportValue}>Presidential Election 2026</Text>
+            <Text style={styles.reportValue}>{election?.title || 'Unknown Election'}</Text>
           </View>
           <View style={styles.reportCard}>
             <Text style={styles.reportLabel}>Audit Date</Text>
-            <Text style={styles.reportValue}>10/05/2026</Text>
+            <Text style={styles.reportValue}>{new Date().toLocaleDateString()}</Text>
           </View>
           <View style={styles.reportCard}>
             <Text style={styles.reportLabel}>Total Votes</Text>
-            <Text style={styles.reportValue}>847</Text>
+            <Text style={styles.reportValue}>{(election?.totalVotes || 0).toString()}</Text>
           </View>
           <View style={styles.reportCard}>
             <Text style={styles.reportLabel}>Verified Votes</Text>
-            <Text style={styles.reportValueGreen}>845</Text>
+            <Text style={styles.reportValueGreen}>{(election?.verifiedVotes || 0).toString()}</Text>
           </View>
           <View style={styles.reportCard}>
             <Text style={styles.reportLabel}>Anomalies</Text>
-            <Text style={styles.reportValue}>2</Text>
+            <Text style={styles.reportValue}>{(election?.anomalies || 0).toString()}</Text>
           </View>
           <View style={styles.reportCard}>
             <Text style={styles.reportLabel}>Verification Rate</Text>
-            <Text style={styles.reportValueGreen}>100%</Text>
+            <Text style={styles.reportValueGreen}>{election?.totalVotes ? (((election.verifiedVotes || 0) / election.totalVotes) * 100).toFixed(1) + "%" : "100%"}</Text>
           </View>
         </View>
       </View>

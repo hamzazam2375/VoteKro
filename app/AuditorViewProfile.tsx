@@ -273,47 +273,6 @@ export default function AuditorViewProfile() {
               </LinearGradient>
             </View>
 
-            {/* Activity Summary */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Recent Activity</Text>
-
-              <View style={styles.activityList}>
-                {recentActivities.length > 0 ? (
-                  recentActivities.map((log, index) => {
-                    const now = Date.now();
-                    const logDate = new Date(log.created_at);
-                    const diffMs = now - logDate.getTime();
-                    const diffMins = Math.round(diffMs / 60000);
-                    const diffHours = Math.round(diffMins / 60);
-                    let timeStr = "";
-
-                    if (diffMins < 60) {
-                      timeStr = `${diffMins} min ago`;
-                    } else if (diffHours < 24) {
-                      timeStr = `${diffHours} hours ago`;
-                    } else {
-                      timeStr = logDate.toLocaleDateString();
-                    }
-
-                    return (
-                      <ActivityItem
-                        key={log.id || index}
-                        action={log.action || "Performed audit action"}
-                        time={timeStr}
-                        icon="📋"
-                      />
-                    );
-                  })
-                ) : (
-                  <View style={{ padding: 16 }}>
-                    <Text style={{ color: "#666", textAlign: "center" }}>
-                      No recent activities found.
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-
             {/* Info Note */}
             <View style={styles.infoNote}>
               <Text style={styles.noteIcon}>ℹ️</Text>
