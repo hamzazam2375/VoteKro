@@ -146,6 +146,52 @@ create or replace trigger trg_elections_updated_at
 before update on public.elections
 for each row execute function public.touch_updated_at();
 
+-- When a new voter profile is created, automatically register them for all existing elections
+create or replace function public.register_voter_for_all_elections()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Only trigger for voter role profiles
+  if new.role = 'voter' then
+    insert into public.voter_registry (election_id, voter_id, is_eligible, has_voted)
+    select id, new.user_id, true, false
+    from public.elections
+    on conflict (election_id, voter_id) do nothing;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_register_voter_for_all_elections on public.profiles;
+create trigger trg_register_voter_for_all_elections
+after insert on public.profiles
+for each row execute function public.register_voter_for_all_elections();
+
+-- When a new election is created, automatically register all voters
+create or replace function public.register_all_voters_for_election()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.voter_registry (election_id, voter_id, is_eligible, has_voted)
+  select new.id, user_id, true, false
+  from public.profiles
+  where role = 'voter'
+  on conflict (election_id, voter_id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_register_all_voters_for_election on public.elections;
+create trigger trg_register_all_voters_for_election
+after insert on public.elections
+for each row execute function public.register_all_voters_for_election();
+
 create or replace function public.compute_block_hash(
   p_block_index bigint,
   p_encrypted_vote text,

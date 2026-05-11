@@ -260,12 +260,13 @@ export class VotingService extends BaseService {
     // Mark voter as having voted (for duplicate prevention)
     await this.voterRegistryRepository.markAsVoted(input.electionId, userId);
 
-    // Cast vote ANONYMOUSLY - vote is stored without voter identity
-    // voterId is intentionally not passed to maintain anonymity
+    // Cast vote ANONYMOUSLY - voterId is used for authentication but not stored
+    // Vote choice is stored without voter identity to maintain anonymity
     const voteBlock = await this.voteLedgerRepository.castVoteSecure(
       input.electionId,
       input.candidateId,
       input.nonce,
+      userId,
     );
 
     // Generate unique verification token for vote verification

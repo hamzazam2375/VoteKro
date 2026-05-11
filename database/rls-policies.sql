@@ -165,6 +165,18 @@ with check
   public.has_role('admin')
 );
 
+create policy voter_registry_update_own on public.voter_registry
+for update
+to authenticated
+using
+(
+  voter_id = auth.uid()
+)
+with check
+(
+  voter_id = auth.uid()
+);
+
 create policy vote_blocks_read_authenticated on public.vote_blocks
 for
 select
