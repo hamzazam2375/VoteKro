@@ -456,22 +456,6 @@ Report Generated: ${new Date().toLocaleString()}
       {/* Action Buttons */}
       <View style={[styles.actionButtons, isMobile && styles.actionButtonsMobile]}>
         <Pressable
-          style={({ pressed }) => [
-            styles.viewButton,
-            pressed && styles.viewButtonPressed,
-          ]}
-        >
-          <LinearGradient
-            colors={['#1a73e8', '#5b9dd9']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.viewButtonGradient}
-          >
-            <Text style={styles.viewButtonText}>View Full Report</Text>
-          </LinearGradient>
-        </Pressable>
-
-        <Pressable
           onPress={handleDownload}
           style={({ pressed }) => [
             styles.downloadButton,
@@ -479,7 +463,7 @@ Report Generated: ${new Date().toLocaleString()}
           ]}
         >
           <Text style={styles.downloadIcon}>⬇️</Text>
-          <Text style={styles.downloadButtonText}>Download</Text>
+          <Text style={styles.downloadButtonText}>Download Report</Text>
         </Pressable>
       </View>
     </LinearGradient>
@@ -751,30 +735,11 @@ const styles = StyleSheet.create({
   actionButtonsMobile: {
     flexDirection: 'column',
   },
-  viewButton: {
-    flex: 1,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  viewButtonPressed: {
-    opacity: 0.9,
-  },
-  viewButtonGradient: {
-    paddingVertical: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  viewButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
   downloadButton: {
     flex: 1,
     paddingVertical: 11,
     borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#1a73e8',
+    backgroundColor: '#1a73e8',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -789,7 +754,7 @@ const styles = StyleSheet.create({
   downloadButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1a73e8',
+    color: '#ffffff',
   },
   // Empty State
   emptyState: {
