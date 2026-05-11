@@ -11,6 +11,7 @@ import { DataAccessError } from "@/class/errors";
 import type {
     AddCandidateInput,
     CreateElectionInput,
+    DecryptedTallyRow,
     IAuditLogRepository,
     IAuthRepository,
     ICandidateRepository,
@@ -18,6 +19,7 @@ import type {
     IProfileRepository,
     IVoteLedgerRepository,
     IVoterRegistryRepository,
+    MyDecryptedVoteReceiptRow,
     UpdateCandidateInput,
     UpdateElectionInput,
 } from "@/class/service-contracts";
@@ -484,6 +486,20 @@ export class SupabaseVoterRegistryRepository
 
     return data as VoterRegistryRow;
   }
+
+  async listVotedElectionIds(voterId: string): Promise<string[]> {
+    const { data, error } = await supabase
+      .from("voter_registry")
+      .select("election_id")
+      .eq("voter_id", voterId)
+      .eq("has_voted", true);
+
+    if (error) {
+      this.throwOnError("Failed to list voted elections", error);
+    }
+
+    return (data ?? []).map((row) => (row as { election_id: string }).election_id);
+  }
 }
 
 export class SupabaseVoteLedgerRepository
@@ -544,6 +560,65 @@ export class SupabaseVoteLedgerRepository
     }
 
     return (data ?? []) as VoteBlockRow[];
+  }
+
+  async tallyDecryptedVoteBlocks(
+    electionId: string,
+    encryptionKey?: string | null,
+  ): Promise<DecryptedTallyRow[] | null> {
+    const { data, error } = await supabase.rpc("tally_vote_blocks_decrypted", {
+      p_election_id: electionId,
+      p_encryption_key: encryptionKey?.trim() || null,
+    });
+
+    if (error) {
+      console.warn("tally_vote_blocks_decrypted failed:", error.message);
+      return null;
+    }
+
+    const rows = (data ?? []) as {
+      candidate_id: string;
+      vote_count: number | string;
+    }[];
+
+    return rows.map((row) => ({
+      candidateId: row.candidate_id,
+      voteCount: Number(row.vote_count),
+    }));
+  }
+
+  async getMyDecryptedVoteReceipt(
+    electionId: string,
+    encryptionKey?: string | null,
+  ): Promise<MyDecryptedVoteReceiptRow | null> {
+    const { data, error } = await supabase.rpc("get_my_vote_receipt_decrypted", {
+      p_election_id: electionId,
+      p_encryption_key: encryptionKey?.trim() || null,
+    });
+
+    if (error) {
+      console.warn("get_my_vote_receipt_decrypted failed:", error.message);
+      return null;
+    }
+
+    const rows = (data ?? []) as {
+      current_hash: string;
+      created_at: string;
+      candidate_id: string;
+      block_index: number | string;
+    }[];
+
+    const first = rows[0];
+    if (!first) {
+      return null;
+    }
+
+    return {
+      currentHash: first.current_hash,
+      createdAt: first.created_at,
+      candidateId: first.candidate_id,
+      blockIndex: Number(first.block_index),
+    };
   }
 }
 

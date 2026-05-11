@@ -10,6 +10,7 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -269,19 +270,29 @@ ${remainingAttempts} attempt(s) remaining.`,
     <View style={styles.container}>
       <Navbar />
 
-      {step === "face-verification" && (
-        <FaceCapture
-          onFaceCapture={(captureResult) => {
-            void handleFaceVerification(captureResult);
-          }}
-          onCancel={async () => {
-            await serviceFactory.authService.signOut();
-            resetVerificationState();
-          }}
-          title="Face Verification Required"
-          subtitle="Position your face clearly in front of the camera"
-        />
-      )}
+      <Modal
+        visible={step === "face-verification"}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={async () => {
+          await serviceFactory.authService.signOut();
+          resetVerificationState();
+        }}
+      >
+        {step === "face-verification" ? (
+          <FaceCapture
+            onFaceCapture={(captureResult) => {
+              void handleFaceVerification(captureResult);
+            }}
+            onCancel={async () => {
+              await serviceFactory.authService.signOut();
+              resetVerificationState();
+            }}
+            title="Face Verification Required"
+            subtitle="Position your face clearly in front of the camera"
+          />
+        ) : null}
+      </Modal>
 
       {step === "login" && (
         <ScrollView

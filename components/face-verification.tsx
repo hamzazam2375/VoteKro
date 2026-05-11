@@ -1,4 +1,5 @@
 import { faceDetectionService } from "@/class/face-detection";
+import { FaceCapture } from "@/components/face-capture";
 import { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -27,6 +28,7 @@ export function FaceVerification({
   const [isVerifying, setIsVerifying] = useState(false);
   const [message, setMessage] = useState("Initializing face verification...");
   const [attempts, setAttempts] = useState(0);
+  const [showCapture, setShowCapture] = useState(false);
   const maxAttempts = 3;
 
   useEffect(() => {
@@ -94,6 +96,7 @@ export function FaceVerification({
   const handleRetry = () => {
     if (attempts < maxAttempts) {
       setMessage("✓ Ready! Position your face in the frame to verify.");
+      setShowCapture(true);
     }
   };
 
@@ -156,6 +159,19 @@ export function FaceVerification({
               <ActivityIndicator size="large" color="#2e63e3" />
               <Text style={styles.loaderText}>Verifying face...</Text>
             </View>
+          ) : showCapture ? (
+            <FaceCapture
+              title="Verify your face"
+              subtitle="Capture a clear photo to compare with your registration photo"
+              onFaceCapture={(result) => {
+                setShowCapture(false);
+                void performVerification(result.imageData);
+              }}
+              onCancel={() => {
+                setShowCapture(false);
+                onCancel();
+              }}
+            />
           ) : (
             <View style={styles.buttonContainer}>
               {!isMaxAttemptsReached && (

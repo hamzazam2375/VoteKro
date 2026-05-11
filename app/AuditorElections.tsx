@@ -627,8 +627,6 @@ function ElectionCard({
   const startDate = election.starts_at ? new Date(election.starts_at) : null;
   const now = new Date();
 
-  const isActive =
-    (!endDate || endDate > now) && (!startDate || startDate <= now);
   const isCompleted = endDate && endDate <= now;
   const isPending = startDate && startDate > now;
 

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 
 let webViewResolvers: Map<
@@ -154,10 +154,6 @@ const FACE_API_HTML = `
  */
 export function FaceRecognitionWebView() {
   const webViewRef = useRef<any>(null);
-  const [isReady, setIsReady] = useState(false);
-
-  // Only render on native
-  if (Platform.OS === "web") return null;
 
   const handleMessage = useCallback((event: any) => {
     try {
@@ -165,7 +161,6 @@ export function FaceRecognitionWebView() {
 
       if (data.type === "models_loaded") {
         console.log("FaceRecognitionWebView: Models loaded ✓");
-        setIsReady(true);
         // Store ref globally so face-recognition.ts can access it
         (global as any).__faceRecognitionWebView = webViewRef.current;
         (global as any).__faceRecognitionReady = true;
@@ -189,12 +184,17 @@ export function FaceRecognitionWebView() {
     }
   }, []);
 
-  // Dynamic require to avoid web bundling issues
-  let WebView: any;
-  try {
-    WebView = require("react-native-webview").default;
-  } catch {
-    console.warn("FaceRecognitionWebView: react-native-webview not installed");
+  let WebView: any = null;
+  if (Platform.OS !== "web") {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional native dependency
+      WebView = require("react-native-webview").default;
+    } catch {
+      console.warn("FaceRecognitionWebView: react-native-webview not installed");
+    }
+  }
+
+  if (Platform.OS === "web" || !WebView) {
     return null;
   }
 

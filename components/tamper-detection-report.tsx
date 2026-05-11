@@ -6,7 +6,6 @@ import {
     ScrollView,
     StyleSheet,
     Text,
-    useWindowDimensions,
     View
 } from 'react-native';
 
@@ -17,8 +16,6 @@ interface TamperDetectionReportProps {
 }
 
 export function TamperDetectionReport({ report, isLoading, onRefresh }: TamperDetectionReportProps) {
-  const { width } = useWindowDimensions();
-  const isMobile = width < 600;
   const [expandedSections, setExpandedSections] = useState<string[]>([
     'blockchain',
     'votes',

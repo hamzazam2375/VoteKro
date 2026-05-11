@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,6 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import type { VoteCounts } from '@/class/vote-count-verification';
 import type { VoteCountVerificationResult } from '@/class/vote-count-verification';
 
 /**
@@ -70,7 +69,7 @@ export const VoteCountVerificationComponent: React.FC<VoteCountVerificationProps
             {verificationResult.isConsistent ? '✓' : '⚠'}
           </Text>
           <View style={styles.statusTextContainer}>
-            <Text style={styles.statusTitle}>Vote Count Status</Text>
+            <Text style={styles.statusTitle}>Vote Count — {electionTitle}</Text>
             <Text
               style={[
                 styles.statusMessage,

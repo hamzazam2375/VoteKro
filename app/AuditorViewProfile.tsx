@@ -24,7 +24,6 @@ export default function AuditorViewProfile() {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [email, setEmail] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
-  const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalAudits: 0,
     verificationAccuracy: 98.5,
@@ -52,9 +51,6 @@ export default function AuditorViewProfile() {
             ...prev,
             totalAudits: auditLogs?.length || 0,
           }));
-          if (auditLogs) {
-            setRecentActivities(auditLogs.slice(0, 5));
-          }
         } catch (error) {
           console.error("Failed to load audit stats:", error);
         }
@@ -378,24 +374,6 @@ function PermissionItem({
         >
           {description}
         </Text>
-      </View>
-    </View>
-  );
-}
-
-interface ActivityItemProps {
-  action: string;
-  time: string;
-  icon: string;
-}
-
-function ActivityItem({ action, time, icon }: ActivityItemProps) {
-  return (
-    <View style={styles.activityItem}>
-      <Text style={styles.activityIcon}>{icon}</Text>
-      <View style={styles.activityContent}>
-        <Text style={styles.activityAction}>{action}</Text>
-        <Text style={styles.activityTime}>{time}</Text>
       </View>
     </View>
   );

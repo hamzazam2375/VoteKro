@@ -1,6 +1,7 @@
-import type { ElectionRow } from '@/class/database-types';
-import React, { useState, useEffect } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -9,9 +10,7 @@ import {
   TextInput,
   View,
   useWindowDimensions,
-  Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 interface AuditProcessModalProps {
   visible: boolean;
@@ -249,7 +248,6 @@ export function ElectionAuditProcessModal({
             )}
             {currentStep === 'report' && (
               <ReportGenerationStep
-                election={election}
                 reportData={reportData}
                 setReportData={setReportData}
               />
@@ -737,13 +735,11 @@ function AnomalyReviewStep({
 }
 
 interface ReportGenerationStepProps {
-  election: any;
   reportData: string;
   setReportData: (data: string) => void;
 }
 
 function ReportGenerationStep({
-  election,
   reportData,
   setReportData,
 }: ReportGenerationStepProps) {
@@ -864,10 +860,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 16,
     flexDirection: 'column',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
+    boxShadow: '0px 10px 20px rgba(0, 0, 0, 0.3)',
     elevation: 10,
   },
   containerMobile: {
@@ -1297,5 +1290,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#f57f17',
     lineHeight: 16,
+  },
+  anomalyAlertContainer: {
+    backgroundColor: '#fff8e1',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#ff9800',
+  },
+  anomalyAlertHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  anomalyAlertIcon: {
+    fontSize: 22,
+  },
+  anomalyAlertTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#e65100',
+    flex: 1,
+  },
+  anomalyAlertMessage: {
+    fontSize: 13,
+    color: '#5d4037',
+    lineHeight: 18,
   },
 });

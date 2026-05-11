@@ -1,4 +1,5 @@
 import { Navbar } from "@/components/navbar";
+import type { Href } from "expo-router";
 import { useRouter } from "expo-router";
 import {
     Pressable,
@@ -94,7 +95,7 @@ export default function HomeScreen() {
   const isCompact = width < 1024;
 
   const handleSignUp = () => {
-    router.push("/AdminSignup");
+    router.push("/AdminSignup" as Href);
   };
 
   const handleAdminAuditorLogin = () => {

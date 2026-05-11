@@ -23,7 +23,6 @@ export function AuditorSidebar({ onNavigate, compact = false, profileName }: Aud
   const navigationItems: SidebarItem[] = [
     { label: 'View Profile', icon: '👤', route: '/AuditorViewProfile' },
     { label: 'Overview', icon: '📊', route: '/AuditorDashboard' },
-    { label: 'Elections', icon: '🗳️', route: '/AuditorElections' },
     { label: 'Blockchain', icon: '⛓️', route: '/AuditorBlockchainLedger' },
     { label: 'Reports', icon: '📋', route: '/AuditorReports' },
   ];

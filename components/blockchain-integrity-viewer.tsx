@@ -5,8 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  useWindowDimensions,
-  FlatList,
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,7 +12,6 @@ import type { FullBlockchainVerification, BlockVerificationStatus } from '@/clas
 
 interface BlockchainIntegrityViewerProps {
   verification: FullBlockchainVerification;
-  isLoading?: boolean;
 }
 
 interface ExpandedBlock {
@@ -30,10 +27,7 @@ interface ExpandedBlock {
  */
 export const BlockchainIntegrityViewer: React.FC<BlockchainIntegrityViewerProps> = ({
   verification,
-  isLoading = false,
 }) => {
-  const { width } = useWindowDimensions();
-  const isMobile = width < 600;
   const [expandedBlocks, setExpandedBlocks] = useState<ExpandedBlock>({});
 
   const toggleBlockExpansion = (index: number) => {
@@ -47,10 +41,15 @@ export const BlockchainIntegrityViewer: React.FC<BlockchainIntegrityViewerProps>
   const renderStatusHeader = () => {
     // ✅ NEW: Check for error status in summary
     const isError = verification.summary?.includes('VERIFICATION FAILED') || verification.summary?.includes('⚠️');
-    const statusColor = isError ? '#ff9800' : verification.isFullyValid ? '#4caf50' : '#ff6b6b';
     const statusIcon = isError ? '⚠️' : verification.isFullyValid ? '✓' : '✗';
     const statusText = isError ? 'VERIFICATION ERROR' : verification.isFullyValid ? 'FULLY VALID' : 'TAMPERED';
-    const gradientColors = isError ? ['#e65100', '#ff6f00'] : verification.isFullyValid ? ['#1b5e20', '#388e3c'] : ['#b71c1c', '#d32f2f'];
+    const gradientColors = (
+      isError
+        ? ['#e65100', '#ff6f00']
+        : verification.isFullyValid
+          ? ['#1b5e20', '#388e3c']
+          : ['#b71c1c', '#d32f2f']
+    ) as readonly [string, string];
 
     return (
       <LinearGradient
@@ -86,8 +85,7 @@ export const BlockchainIntegrityViewer: React.FC<BlockchainIntegrityViewerProps>
   const renderSummary = () => {
     // ✅ NEW: Handle error status messages
     const isError = verification.summary?.includes('VERIFICATION FAILED') || verification.summary?.includes('⚠️');
-    const summaryColor = isError ? '#d32f2f' : verification.isFullyValid ? '#1b5e20' : '#ff6f00';
-    
+
     return (
       <View style={[
         styles.summaryCard,
@@ -194,7 +192,8 @@ export const BlockchainIntegrityViewer: React.FC<BlockchainIntegrityViewerProps>
               <View style={styles.detailSection}>
                 <Text style={styles.detailTitle}>❌ Chain Link Broken</Text>
                 <Text style={styles.detailDescription}>
-                  Previous hash does not match the actual previous block's hash.
+                  Previous hash does not match the actual previous block&apos;s
+                  hash.
                 </Text>
                 <View style={styles.hashItem}>
                   <Text style={styles.hashLabel}>Expected Previous Hash:</Text>
@@ -205,9 +204,9 @@ export const BlockchainIntegrityViewer: React.FC<BlockchainIntegrityViewerProps>
               </View>
             )}
 
-            {block.error && (
+            {block.errors.length > 0 && (
               <View style={styles.errorSection}>
-                <Text style={styles.errorText}>{block.error}</Text>
+                <Text style={styles.errorText}>{block.errors.join(' · ')}</Text>
               </View>
             )}
           </View>
@@ -245,7 +244,9 @@ export const BlockchainIntegrityViewer: React.FC<BlockchainIntegrityViewerProps>
         <View style={styles.emptyState}>
           <Text style={styles.emptyIcon}>⚪</Text>
           <Text style={styles.emptyTitle}>No Blocks</Text>
-          <Text style={styles.emptyDesc}>No vote blocks found in this election's blockchain.</Text>
+          <Text style={styles.emptyDesc}>
+            No vote blocks found in this election&apos;s blockchain.
+          </Text>
         </View>
       );
     }

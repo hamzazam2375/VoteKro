@@ -1,21 +1,30 @@
 import { FaceRecognitionWebView } from "@/components/face-recognition-webview";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Platform } from "react-native";
+import { Platform, View } from "react-native";
 import "react-native-reanimated";
 
+/* eslint-disable @typescript-eslint/no-require-imports -- web-only toast bundle */
 const ToastContainer =
   Platform.OS === "web" ? require("react-toastify").ToastContainer : null;
 
 if (Platform.OS === "web") {
   require("react-toastify/dist/ReactToastify.css");
 }
+/* eslint-enable @typescript-eslint/no-require-imports */
+
+const stackHostStyle =
+  Platform.OS === "web"
+    ? ({ flex: 1, zIndex: 100000, position: "relative" as const } as const)
+    : ({ flex: 1 } as const);
 
 export default function RootLayout() {
   return (
     <>
-      <Stack>
+      <View style={stackHostStyle}>
+        <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="AdminSignup" options={{ headerShown: false }} />
         <Stack.Screen name="AdminLogin" options={{ headerShown: false }} />
         <Stack.Screen name="VoterLogin" options={{ headerShown: false }} />
         <Stack.Screen
@@ -68,9 +77,10 @@ export default function RootLayout() {
           options={{ headerShown: false }}
         />
       </Stack>
+      </View>
       {ToastContainer ? (
         <ToastContainer
-          position="top-right"
+          position="bottom-right"
           autoClose={3000}
           hideProgressBar={false}
           newestOnTop={true}

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -106,10 +107,12 @@ export default function VoterSignupScreen({
       setIsFaceVerified(false);
       setShowFaceCapture(false);
 
-      Alert.alert(
-        "Success",
-        "Face captured and saved! Authorization email sent. Ask voter to click the button in email to complete registration.",
-      );
+      setTimeout(() => {
+        Alert.alert(
+          "Success",
+          "Face captured and saved! Authorization email sent. Ask voter to click the button in email to complete registration.",
+        );
+      }, 0);
     } catch (registerError) {
       const errorMessage = serviceFactory.authService.getErrorMessage(
         registerError,
@@ -127,7 +130,9 @@ export default function VoterSignupScreen({
     setFaceEmbedding(result.embedding);
     setIsFaceVerified(true);
     setShowFaceCapture(false);
-    Alert.alert("Face Captured", "Face detected and processed!");
+    setTimeout(() => {
+      Alert.alert("Face Captured", "Face detected and processed!");
+    }, 0);
   };
 
   const handleCancelFaceCapture = () => {
@@ -152,14 +157,19 @@ export default function VoterSignupScreen({
         />
       )}
 
-      {showFaceCapture && (
+      <Modal
+        visible={showFaceCapture}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={handleCancelFaceCapture}
+      >
         <FaceCapture
           onFaceCapture={handleFaceCapture}
           onCancel={handleCancelFaceCapture}
           title="Capture Voter Face"
           subtitle="Position the voter's face in the frame for registration"
         />
-      )}
+      </Modal>
 
       {!showFaceCapture && (
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>

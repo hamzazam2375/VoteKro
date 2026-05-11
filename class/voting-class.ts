@@ -12,12 +12,14 @@ import { EmailService } from "@/class/email-service";
 import { AuthenticationError, ValidationError } from "@/class/errors";
 import type {
     CastVoteInput,
+    DecryptedTallyRow,
     IAuthRepository,
     ICandidateRepository,
     IElectionRepository,
     IProfileRepository,
     IVoteLedgerRepository,
     IVoterRegistryRepository,
+    MyDecryptedVoteReceiptRow,
 } from "@/class/service-contracts";
 
 export class VotingService extends BaseService {
@@ -152,6 +154,37 @@ export class VotingService extends BaseService {
     return this.voterRegistryRepository.getByElectionAndVoter(
       electionId,
       userId,
+    );
+  }
+
+  async getMyVotedElectionIds(): Promise<string[]> {
+    const userId = await this.authRepository.getCurrentUserId();
+    if (!userId) {
+      return [];
+    }
+
+    return this.voterRegistryRepository.listVotedElectionIds(userId);
+  }
+
+  async tallyDecryptedVoteBlocksForElection(
+    electionId: string,
+    encryptionKey?: string | null,
+  ): Promise<DecryptedTallyRow[] | null> {
+    this.requireNonEmpty(electionId, "Election id");
+    return this.voteLedgerRepository.tallyDecryptedVoteBlocks(
+      electionId,
+      encryptionKey,
+    );
+  }
+
+  async getMyDecryptedVoteReceiptForElection(
+    electionId: string,
+    encryptionKey?: string | null,
+  ): Promise<MyDecryptedVoteReceiptRow | null> {
+    this.requireNonEmpty(electionId, "Election id");
+    return this.voteLedgerRepository.getMyDecryptedVoteReceipt(
+      electionId,
+      encryptionKey,
     );
   }
 

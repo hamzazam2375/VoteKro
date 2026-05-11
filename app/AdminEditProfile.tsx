@@ -78,9 +78,10 @@ export default function AdminEditProfile({
       Alert.alert("Success", "Profile updated successfully");
         if (Platform.OS === "web") {
           try {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
             const { toast } = require("react-toastify");
             toast.success("Profile updated successfully");
-          } catch (err) {
+          } catch {
             // fallback to Alert if toast isn't available
             Alert.alert("Success", "Profile updated successfully");
           }

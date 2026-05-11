@@ -1,8 +1,7 @@
-import { useWindowDimensions } from 'react-native';
-import { Navbar } from './navbar';
-import { AuditorSidebar } from './auditor-sidebar';
-import { View, ScrollView, StyleSheet } from 'react-native';
 import React from 'react';
+import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { AuditorSidebar } from './auditor-sidebar';
+import { Navbar } from './navbar';
 
 interface AuditorLayoutProps {
   children: React.ReactNode;

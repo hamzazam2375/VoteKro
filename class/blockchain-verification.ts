@@ -174,7 +174,6 @@ export function verifyFullBlockchain(blocks: VoteBlockRow[]): FullBlockchainVeri
   }
 
   // Check for gaps and duplicates in block sequence
-  const blockIndices = blocks.map((b, i) => ({ index: i, blockIndex: b.block_index }));
   const blockIndexValues = blocks.map(b => b.block_index);
   const duplicateIndices = blockIndexValues.filter((val, i) => blockIndexValues.indexOf(val) !== i);
   if (duplicateIndices.length > 0) {

@@ -330,8 +330,8 @@ begin
     raise exception 'Election not found';
   end if;
 
-  if v_election.status <> 'open'
-     timezone('utc', now()) > v_election.ends_at then
+  if timezone('utc', now()) < v_election.starts_at
+     or timezone('utc', now()) > v_election.ends_at then
     raise exception 'Election is not accepting votes right now';
   end if;
 
@@ -375,7 +375,13 @@ begin
     'base64'
   );
 
-  v_block := public.append_vote_block(p_election_id, v_encrypted_vote, v_vote_commitment, v_nonce);
+  v_block := public.append_vote_block(
+    p_election_id,
+    v_uid,
+    v_encrypted_vote,
+    v_vote_commitment,
+    v_nonce
+  );
 
   insert into public.audit_logs (actor_id, action, target_table, target_id, metadata)
   values (
@@ -437,6 +443,142 @@ begin
   end loop;
 
   return query select true, null::bigint, null::text;
+end;
+$$;
+
+-- Tallies votes using the same symmetric key as cast_vote_secure (server-side decrypt).
+-- Client-side OpenPGP often cannot decrypt PostgreSQL pgp_sym_encrypt payloads.
+create or replace function public.tally_vote_blocks_decrypted(
+  p_election_id uuid,
+  p_encryption_key text default null
+)
+returns table (
+  candidate_id uuid,
+  vote_count bigint
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_secret text;
+  rec record;
+  v_plain text;
+  v_json jsonb;
+  v_cand_id text;
+  v_counts jsonb := '{}'::jsonb;
+  v_key text;
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  v_secret := coalesce(
+    nullif(trim(coalesce(p_encryption_key, '')), ''),
+    nullif(trim(current_setting('app.vote_encryption_key', true)), '')
+  );
+
+  if v_secret is null or char_length(v_secret) = 0 then
+    return;
+  end if;
+
+  for rec in
+    select vb.encrypted_vote
+    from public.vote_blocks vb
+    where vb.election_id = p_election_id
+  loop
+    begin
+      v_plain := convert_from(
+        pgp_sym_decrypt(decode(rec.encrypted_vote, 'base64'), v_secret),
+        'utf8'
+      );
+      v_json := v_plain::jsonb;
+      v_cand_id := v_json->>'candidate_id';
+      if v_cand_id is not null and v_cand_id <> '' then
+        v_counts := jsonb_set(
+          v_counts,
+          array[v_cand_id],
+          to_jsonb(coalesce((v_counts->>v_cand_id)::int, 0) + 1),
+          true
+        );
+      end if;
+    exception
+      when others then
+        null;
+    end;
+  end loop;
+
+  for v_key in select jsonb_object_keys(v_counts)
+  loop
+    candidate_id := v_key::uuid;
+    vote_count := (v_counts->>v_key)::bigint;
+    return next;
+  end loop;
+end;
+$$;
+
+-- Returns the authenticated voter's decrypted receipt for one election (their row only).
+create or replace function public.get_my_vote_receipt_decrypted(
+  p_election_id uuid,
+  p_encryption_key text default null
+)
+returns table (
+  current_hash text,
+  created_at timestamptz,
+  candidate_id uuid,
+  block_index bigint
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_secret text;
+  v_block public.vote_blocks;
+  v_plain text;
+  v_json jsonb;
+begin
+  if auth.uid() is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  v_secret := coalesce(
+    nullif(trim(coalesce(p_encryption_key, '')), ''),
+    nullif(trim(current_setting('app.vote_encryption_key', true)), '')
+  );
+
+  if v_secret is null or char_length(v_secret) = 0 then
+    return;
+  end if;
+
+  select vb.*
+  into v_block
+  from public.vote_blocks vb
+  where vb.election_id = p_election_id
+    and vb.voter_id = auth.uid()
+  order by vb.block_index desc
+  limit 1;
+
+  if not found then
+    return;
+  end if;
+
+  begin
+    v_plain := convert_from(
+      pgp_sym_decrypt(decode(v_block.encrypted_vote, 'base64'), v_secret),
+      'utf8'
+    );
+    v_json := v_plain::jsonb;
+    return query
+    select
+      v_block.current_hash,
+      v_block.created_at,
+      (v_json->>'candidate_id')::uuid,
+      v_block.block_index;
+  exception
+    when others then
+      return;
+  end;
 end;
 $$;
 

@@ -49,21 +49,21 @@ export default function AuditorReports() {
             try {
               // Verify blockchain integrity for this election
               const chainVerification = await serviceFactory.auditorService.verifyFullBlockchainIntegrity(election.id);
-              const blockchainValid = chainVerification.isValid;
-              const anomalies = chainVerification.tamperedBlocks;
-              
-              // Verify vote count consistency
-              const candidates = await serviceFactory.electionRepository.listCandidates(election.id);
+              const blockchainValid = chainVerification.isFullyValid;
+              const anomalies = chainVerification.invalidBlocks.length;
+
+              // Verify vote count consistency (published tallies vs chain; candidates have no stored vote column)
+              const candidates = await serviceFactory.candidateRepository.listByElection(election.id);
               const resultCounts: Record<string, number> = {};
-              for (const candidate of candidates || []) {
-                resultCounts[candidate.id] = candidate.votes || 0;
+              for (const candidate of candidates) {
+                resultCounts[candidate.id] = 0;
               }
               
               let voteAccuracy = 0;
               try {
                 const consistency = await serviceFactory.auditorService.verifyVoteCountConsistency(election.id, resultCounts);
-                voteAccuracy = consistency.accuracyPercentage;
-              } catch (e) {
+                voteAccuracy = consistency.isConsistent ? 100 : 0;
+              } catch {
                 // Ignore if no votes exist yet
                 voteAccuracy = 100;
               }

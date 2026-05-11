@@ -40,6 +40,7 @@ export default function CastVotePage() {
             await serviceFactory.votingService.castVote({ electionId, candidateId: selectedCandidateId });
             if (Platform.OS === 'web') {
                 // use react-toastify on web (ToastContainer is added in layout)
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
                 const { toast } = require('react-toastify');
                 toast.success('Vote submitted successfully');
                 setTimeout(() => router.replace('/VoterDashboard'), 1200);
@@ -51,6 +52,7 @@ export default function CastVotePage() {
         } catch (err: any) {
             console.error('Failed to cast vote', err);
             if (Platform.OS === 'web') {
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
                 const { toast } = require('react-toastify');
                 toast.error(err?.message ?? 'Failed to cast vote');
             } else {
@@ -73,7 +75,11 @@ export default function CastVotePage() {
     return (
         <ScrollView contentContainerStyle={styles.container}>
             <View style={styles.logoRow}>
-                <Image source={require('../../assets/images/splash-icon.png')} style={styles.logoImage} />
+                <Image
+                    source={require('../../assets/images/splash-icon.png')}
+                    style={styles.logoImage}
+                    resizeMode="contain"
+                />
                 <Text style={styles.logoText}>VoteKro</Text>
             </View>
             {candidates.map((c) => {
@@ -113,7 +119,7 @@ const styles = StyleSheet.create({
     loadingText: { marginTop: 12, color: '#556' },
     title: { fontSize: 20, fontWeight: '800', marginBottom: 12 },
     logoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
-    logoImage: { width: 28, height: 28, resizeMode: 'contain' },
+    logoImage: { width: 28, height: 28 },
     logoText: { fontSize: 22, fontWeight: '800', color: '#2f64e6' },
     candidateCard: { width: '100%', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#d9e0ec', marginBottom: 10, backgroundColor: '#fff' },
     candidateSelected: { borderColor: '#2f64e6', backgroundColor: '#eef4ff' },

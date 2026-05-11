@@ -1,28 +1,30 @@
 import type {
-    CandidateRow,
-    ElectionRow,
-    ProfileRow,
-    VoterRegistryRow,
+  CandidateRow,
+  ElectionRow,
+  ProfileRow,
+  VoterRegistryRow,
 } from "@/class/database-types";
+import { env } from "@/class/env";
 import { serviceFactory } from "@/class/service-factory";
 import { supabase } from "@/class/supabase-client";
+import { tallyVotesFromEncryptedLedger } from "@/class/vote-ledger-tally";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-    useWindowDimensions,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
 } from "react-native";
 
-type DashboardElectionStatus = "active" | "draft" | "closed";
+type DashboardElectionStatus = "active" | "draft" | "closed" | "voted";
 
 type ElectionResultRow = {
   candidateId: string;
@@ -83,10 +85,26 @@ export default function VoterDashboard() {
     return now >= startsAt && now <= endsAt ? "active" : "draft";
   };
 
+  /** Badge for lists and dialog: shows VOTED while the election is still open. */
+  const getVoterFacingBadgeStatus = (
+    election: ElectionRow,
+  ): DashboardElectionStatus => {
+    const timeStatus = getEffectiveElectionStatus(election);
+    if (timeStatus === "closed") {
+      return "closed";
+    }
+    if (timeStatus === "active" && votedElectionIds.has(election.id)) {
+      return "voted";
+    }
+    return timeStatus;
+  };
+
   const getStatusStyle = (status: DashboardElectionStatus) => {
     switch (status) {
       case "active":
         return styles.statusActive;
+      case "voted":
+        return styles.statusVoted;
       case "draft":
         return styles.statusDraft;
       case "closed":
@@ -109,9 +127,16 @@ export default function VoterDashboard() {
           await serviceFactory.votingService.listAllElections();
         setElections(electionRows);
 
+        const votedIds =
+          await serviceFactory.votingService.getMyVotedElectionIds();
+        const votedIdSet = new Set(votedIds);
+        setVotedElectionIds(votedIdSet);
+
         const defaultElection =
           electionRows.find(
-            (election) => getEffectiveElectionStatus(election) === "active",
+            (election) =>
+              getEffectiveElectionStatus(election) === "active" &&
+              !votedIdSet.has(election.id),
           ) ??
           electionRows[0] ??
           null;
@@ -191,7 +216,7 @@ export default function VoterDashboard() {
           prevActiveElementRef.current =
             active && active !== document.body ? active : null;
         }
-      } catch (err) {
+      } catch {
         // ignore
       }
 
@@ -199,7 +224,7 @@ export default function VoterDashboard() {
       setTimeout(() => {
         try {
           dialogCloseRef.current?.focus?.();
-        } catch (err) {
+        } catch {
           // no-op
         }
       }, 50);
@@ -208,7 +233,7 @@ export default function VoterDashboard() {
       setTimeout(() => {
         try {
           prevActiveElementRef.current?.focus?.();
-        } catch (err) {
+        } catch {
           // no-op
         }
         prevActiveElementRef.current = null;
@@ -356,6 +381,13 @@ export default function VoterDashboard() {
           refreshError,
         );
       }
+
+      setElectionResults((previous) => {
+        const next = new Map(previous);
+        next.delete(selectedElection.id);
+        return next;
+      });
+      await fetchVoteDetails(selectedElection.id, { force: true });
     } catch (error) {
       console.error("[Vote] Vote failed with error:", error);
       const message = serviceFactory.authService.getErrorMessage(
@@ -403,7 +435,8 @@ export default function VoterDashboard() {
     return elections.filter((election) => {
       const startsAt = new Date(election.starts_at).getTime();
       const endsAt = new Date(election.ends_at).getTime();
-      return now >= startsAt && now <= endsAt;
+      const inWindow = now >= startsAt && now <= endsAt;
+      return inWindow && !votedElectionIds.has(election.id);
     });
   };
 
@@ -417,8 +450,17 @@ export default function VoterDashboard() {
     });
   };
 
-  const fetchVoteDetails = async (electionId: string) => {
-    if (voteDetails.has(electionId)) return;
+  const fetchVoteDetails = async (
+    electionId: string,
+    options?: { force?: boolean },
+  ) => {
+    if (
+      !options?.force &&
+      electionResults.has(electionId) &&
+      voteDetails.has(electionId)
+    ) {
+      return;
+    }
 
     try {
       const candidates =
@@ -436,13 +478,74 @@ export default function VoterDashboard() {
         );
       }
 
-      const resultCounts = new Map<string, number>();
+      const useSupabaseServerTally = env.rocksDbLedgerUrl.trim() === "";
+
+      const serverTallyRows = useSupabaseServerTally
+        ? await serviceFactory.votingService.tallyDecryptedVoteBlocksForElection(
+            electionId,
+            env.voteEncryptionKey,
+          )
+        : null;
+
+      const serverReceiptRow = useSupabaseServerTally
+        ? await serviceFactory.votingService.getMyDecryptedVoteReceiptForElection(
+            electionId,
+            env.voteEncryptionKey,
+          )
+        : null;
+
+      const serverCountMap =
+        serverTallyRows != null
+          ? new Map(
+              serverTallyRows.map((row) => [row.candidateId, row.voteCount]),
+            )
+          : null;
+      const serverTotalVotes =
+        serverTallyRows?.reduce((sum, row) => sum + row.voteCount, 0) ?? 0;
+
+      const { counts: decryptedCounts, myCandidateId, myVoteBlock } =
+        await tallyVotesFromEncryptedLedger(ledger, profile?.user_id ?? null);
+
+      const legacyPlainCounts = new Map<string, number>();
       for (const vote of ledger) {
-        resultCounts.set(
-          vote.encrypted_vote,
-          (resultCounts.get(vote.encrypted_vote) ?? 0) + 1,
-        );
+        const raw = vote.encrypted_vote?.trim();
+        if (!raw) continue;
+
+        // If the ledger stored the candidate id in plaintext (legacy), it will
+        // match a candidate id directly. Count those. Otherwise try to parse
+        // a JSON payload that contains `candidate_id` (another legacy format).
+        const directMatch = candidates.find((c) => c.id === raw);
+        if (directMatch) {
+          legacyPlainCounts.set(directMatch.id, (legacyPlainCounts.get(directMatch.id) ?? 0) + 1);
+          continue;
+        }
+
+        try {
+          const parsed = JSON.parse(raw);
+          const cid = parsed && parsed.candidate_id ? String(parsed.candidate_id) : null;
+          if (cid) {
+            legacyPlainCounts.set(cid, (legacyPlainCounts.get(cid) ?? 0) + 1);
+            continue;
+          }
+        } catch {
+          // not JSON, fallthrough
+        }
+
+        // If we couldn't interpret the payload, skip it so counts don't
+        // incorrectly get attributed to non-existent candidate ids.
       }
+
+      const clientFallbackCounts =
+        decryptedCounts.size > 0 ? decryptedCounts : legacyPlainCounts;
+
+      const trustServerTally =
+        serverCountMap != null &&
+        (serverTotalVotes > 0 ||
+          (ledger.length === 0 && serverTallyRows !== null));
+
+      const resultCounts = trustServerTally
+        ? serverCountMap
+        : clientFallbackCounts;
 
       setElectionResults((previous) =>
         new Map(previous).set(
@@ -458,11 +561,36 @@ export default function VoterDashboard() {
         ),
       );
 
-      // Find user's vote in the ledger
       const userVote = ledger.find(
         (vote) => vote.voter_id === profile?.user_id,
       );
-      if (userVote) {
+      const decryptCandidate =
+        myCandidateId != null
+          ? candidates.find((c) => c.id === myCandidateId)
+          : undefined;
+
+      if (serverReceiptRow) {
+        const receiptCandidate = candidates.find(
+          (c) => c.id === serverReceiptRow.candidateId,
+        );
+        if (receiptCandidate) {
+          setVoteDetails((prev) =>
+            new Map(prev).set(electionId, {
+              hash: serverReceiptRow.currentHash,
+              date: serverReceiptRow.createdAt,
+              candidate: receiptCandidate.display_name,
+            }),
+          );
+        }
+      } else if (myVoteBlock && decryptCandidate) {
+        setVoteDetails((prev) =>
+          new Map(prev).set(electionId, {
+            hash: myVoteBlock.current_hash,
+            date: myVoteBlock.created_at,
+            candidate: decryptCandidate.display_name,
+          }),
+        );
+      } else if (userVote) {
         const candidate = candidates.find(
           (c) => c.id === userVote.encrypted_vote,
         );
@@ -484,8 +612,8 @@ export default function VoterDashboard() {
   const openElectionDialog = async (election: ElectionRow) => {
     setSelectedElection(election);
 
-    if (currentView === "history") {
-      await fetchVoteDetails(election.id);
+    if (currentView === "history" || votedElectionIds.has(election.id)) {
+      await fetchVoteDetails(election.id, { force: true });
     }
 
     setShowElectionDialog(true);
@@ -509,6 +637,24 @@ export default function VoterDashboard() {
   const selectedVoteDetails = selectedElection
     ? voteDetails.get(selectedElection.id)
     : undefined;
+
+  const selectedTimeStatus = selectedElection
+    ? getEffectiveElectionStatus(selectedElection)
+    : ("draft" as DashboardElectionStatus);
+  const selectedUserVoted = selectedElection
+    ? votedElectionIds.has(selectedElection.id) ||
+      !!registryStatus?.has_voted
+    : false;
+  const showVotingPanel =
+    !!selectedElection &&
+    selectedTimeStatus === "active" &&
+    !selectedUserVoted;
+  const showResultsPanel =
+    !!selectedElection &&
+    (selectedTimeStatus === "closed" || selectedUserVoted);
+  const selectedBadgeStatus = selectedElection
+    ? getVoterFacingBadgeStatus(selectedElection)
+    : ("draft" as DashboardElectionStatus);
 
   if (isLoading) {
     return (
@@ -575,35 +721,6 @@ export default function VoterDashboard() {
         ]}
       >
         <Modal
-          visible={showVoteModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowVoteModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalBox}>
-              <Text style={styles.modalTitle}>{voteModalTitle}</Text>
-              <Text style={styles.modalMessage}>{voteModalMessage}</Text>
-              <Pressable
-                style={styles.modalButton}
-                accessibilityRole="button"
-                onPress={() => {
-                  setShowVoteModal(false);
-                  if (
-                    voteModalTitle === "Vote Cast Successfully" ||
-                    voteModalTitle === "Already Voted"
-                  ) {
-                    setShowElectionDialog(false);
-                  }
-                }}
-              >
-                <Text style={styles.modalButtonText}>OK</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
-
-        <Modal
           visible={showElectionDialog}
           transparent
           animationType="slide"
@@ -643,20 +760,11 @@ export default function VoterDashboard() {
                   <View
                     style={[
                       styles.statusPill,
-                      getStatusStyle(
-                        selectedElection
-                          ? getEffectiveElectionStatus(selectedElection)
-                          : "draft",
-                      ),
+                      getStatusStyle(selectedBadgeStatus),
                     ]}
                   >
                     <Text style={styles.statusPillText}>
-                      {(selectedElection
-                        ? getEffectiveElectionStatus(selectedElection)
-                        : "DRAFT"
-                      )
-                        .toString()
-                        .toUpperCase()}
+                      {selectedBadgeStatus.toUpperCase()}
                     </Text>
                   </View>
                   <Text style={styles.dialogDates}>
@@ -667,8 +775,7 @@ export default function VoterDashboard() {
                   </Text>
                 </View>
 
-                {selectedElection &&
-                getEffectiveElectionStatus(selectedElection) === "active" ? (
+                {showVotingPanel ? (
                   <>
                     <Text style={styles.sectionHeading}>Candidates</Text>
                     {!registryStatus ? (
@@ -757,8 +864,7 @@ export default function VoterDashboard() {
                       </Pressable>
                     </View>
                   </>
-                ) : selectedElection &&
-                  getEffectiveElectionStatus(selectedElection) === "closed" ? (
+                ) : showResultsPanel ? (
                   <>
                     <View style={styles.voteDetailsContainer}>
                       <Text style={styles.sectionHeading}>Results</Text>
@@ -926,7 +1032,7 @@ export default function VoterDashboard() {
               <View style={styles.electionsList}>
                 {filteredElections.map((election) => {
                   const isSelected = election.id === selectedElection?.id;
-                  const effectiveStatus = getEffectiveElectionStatus(election);
+                  const badgeStatus = getVoterFacingBadgeStatus(election);
                   return (
                     <Pressable
                       key={election.id}
@@ -936,7 +1042,10 @@ export default function VoterDashboard() {
                       ]}
                       onPress={async () => {
                         setSelectedElection(election);
-                        if (currentView === "history") {
+                        if (
+                          currentView === "history" ||
+                          votedElectionIds.has(election.id)
+                        ) {
                           await fetchVoteDetails(election.id);
                         }
                         setShowElectionDialog(true);
@@ -949,11 +1058,11 @@ export default function VoterDashboard() {
                         <View
                           style={[
                             styles.statusPill,
-                            getStatusStyle(effectiveStatus),
+                            getStatusStyle(badgeStatus),
                           ]}
                         >
                           <Text style={styles.statusPillText}>
-                            {effectiveStatus.toUpperCase()}
+                            {badgeStatus.toUpperCase()}
                           </Text>
                         </View>
                       </View>
@@ -968,7 +1077,7 @@ export default function VoterDashboard() {
                         {formatDate(election.ends_at)}
                       </Text>
                       <View style={styles.electionActionRow}>
-                        {effectiveStatus === "active" ? (
+                        {badgeStatus === "active" ? (
                           <Pressable
                             style={styles.electionPrimaryButton}
                             onPress={() => void openElectionDialog(election)}
@@ -979,7 +1088,7 @@ export default function VoterDashboard() {
                           </Pressable>
                         ) : null}
 
-                        {effectiveStatus === "closed" ? (
+                        {badgeStatus === "closed" || badgeStatus === "voted" ? (
                           <Pressable
                             style={styles.electionSecondaryButton}
                             onPress={() => void openElectionDialog(election)}
@@ -1008,7 +1117,7 @@ export default function VoterDashboard() {
                     ? "Try a different search term or clear the search box to see all elections."
                     : currentView === "home"
                       ? "There are no active elections right now. Check back soon!"
-                      : "You have not voted in any closed elections yet."}
+                      : "Completed votes and ended elections will appear here."}
                 </Text>
               </View>
             )}
@@ -1297,6 +1406,9 @@ const styles = StyleSheet.create({
   },
   statusClosed: {
     backgroundColor: "#b45309",
+  },
+  statusVoted: {
+    backgroundColor: "#4f46e5",
   },
   electionCard: {
     borderRadius: 18,

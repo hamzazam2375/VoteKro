@@ -101,7 +101,20 @@ export interface IVoterRegistryRepository {
     voterId: string,
   ): Promise<VoterRegistryRow | null>;
   markAsVoted(electionId: string, voterId: string): Promise<VoterRegistryRow>;
+  listVotedElectionIds(voterId: string): Promise<string[]>;
 }
+
+export type DecryptedTallyRow = {
+  candidateId: string;
+  voteCount: number;
+};
+
+export type MyDecryptedVoteReceiptRow = {
+  currentHash: string;
+  createdAt: string;
+  candidateId: string;
+  blockIndex: number;
+};
 
 export interface IVoteLedgerRepository {
   castVoteSecure(
@@ -112,6 +125,16 @@ export interface IVoteLedgerRepository {
   ): Promise<VoteBlockRow>;
   verifyChain(electionId: string): Promise<VerifyChainResultRow>;
   listLedger(electionId: string): Promise<VoteBlockRow[]>;
+  /** Server-side PGP tally; null if unavailable (e.g. RocksDB ledger). */
+  tallyDecryptedVoteBlocks(
+    electionId: string,
+    encryptionKey?: string | null,
+  ): Promise<DecryptedTallyRow[] | null>;
+  /** Current user's decrypted vote row; null if unavailable or not found. */
+  getMyDecryptedVoteReceipt(
+    electionId: string,
+    encryptionKey?: string | null,
+  ): Promise<MyDecryptedVoteReceiptRow | null>;
 }
 
 export interface IAuditLogRepository {

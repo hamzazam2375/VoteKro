@@ -3,10 +3,25 @@ import { serviceFactory } from "@/class/service-factory";
 import { AuditorSidebar } from "@/components/auditor-sidebar";
 import { Navbar } from "@/components/navbar";
 import { CheckCircleOutlined, CopyOutlined, ExclamationCircleOutlined, ExpandOutlined, LinkOutlined } from "@ant-design/icons";
-import { Alert, Button, Card, Collapse, Divider, Empty, Input, Modal, Select, Space, Spin, Table, Tag, Tooltip } from "antd";
+import {
+  Alert as AntAlert,
+  Button,
+  Card,
+  Collapse,
+  Divider,
+  Empty,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Spin,
+  Table,
+  Tag,
+  Tooltip,
+} from "antd";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { useWindowDimensions } from "react-native";
+import { Alert, useWindowDimensions } from "react-native";
 
 interface VoteBlock {
   id: string;
@@ -76,12 +91,10 @@ const AuditorBlockchainLedger: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [electionsLoading, setElectionsLoading] = useState(true);
-  const [chainValid, setChainValid] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [voterNameMap, setVoterNameMap] = useState<Record<string, string>>({});
   const [searchBlockId, setSearchBlockId] = useState<string>("");
   const [viewMode, setViewMode] = useState<"table" | "chain">("chain");
-  const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const [metrics, setMetrics] = useState<BlockChainMetrics>({
     totalBlocks: 0,
     isValid: false,
@@ -109,10 +122,8 @@ const AuditorBlockchainLedger: React.FC = () => {
         
         if (allElections && allElections.length > 0) {
           setElections(allElections);
-          
-          if (!selectedElection) {
-            setSelectedElection(allElections[0].id);
-          }
+
+          setSelectedElection((current) => current || allElections[0].id);
         } else {
           setError("No elections found in the system.");
         }
@@ -205,7 +216,6 @@ const AuditorBlockchainLedger: React.FC = () => {
             : "Failed to fetch blockchain ledger";
         setError(errorMsg);
         setBlocks([]);
-        setChainValid(false);
         setMetrics({
           totalBlocks: 0,
           isValid: false,
@@ -511,7 +521,7 @@ const AuditorBlockchainLedger: React.FC = () => {
 
       {/* Error Alert */}
       {error && (
-        <Alert
+        <AntAlert
           title="⚠️ Alert"
           description={error}
           type={error.includes("compromised") ? "error" : "warning"}
@@ -523,7 +533,7 @@ const AuditorBlockchainLedger: React.FC = () => {
 
       {/* Chain Validity Alert */}
       {selectedElection && metrics.isValid === true && !error && (
-        <Alert
+        <AntAlert
           title="✓ Blockchain is Valid and Tamper-Proof"
           description="All blocks are properly linked with correct hash validation. No tampering detected."
           type="success"
@@ -534,7 +544,7 @@ const AuditorBlockchainLedger: React.FC = () => {
       )}
 
       {selectedElection && metrics.isValid === false && (
-        <Alert
+        <AntAlert
           title="✗ Blockchain Integrity Check Failed"
           description={`Detected ${metrics.tamperedCount} tampered block(s). First tampering at Block #${metrics.invalidAt}. Hash chain validation failed.`}
           type="error"
@@ -611,7 +621,7 @@ const AuditorBlockchainLedger: React.FC = () => {
         {selectedBlock && (
           <div>
             {selectedBlock.isValid === false && (
-              <Alert
+              <AntAlert
                 title="⚠️ Blockchain Tampering Detected"
                 description={selectedBlock.validationError || "Hash mismatch detected in this block"}
                 type="error"

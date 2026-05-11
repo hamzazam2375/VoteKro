@@ -416,8 +416,8 @@ export default function AdminManageElections({
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>Delete Election</Text>
             <Text style={styles.modalMessage}>
-              Are you sure you want to delete "{selectedElection?.title}"? This
-              action cannot be undone.
+              Are you sure you want to delete &quot;{selectedElection?.title}
+              &quot;? This action cannot be undone.
             </Text>
             <View style={styles.modalButtons}>
               <Pressable

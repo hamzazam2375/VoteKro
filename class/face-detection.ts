@@ -274,28 +274,6 @@ export class FaceDetectionService {
     }
   }
 
-  /** Compare two canvases using color histogram similarity. Web only. */
-  private compareCanvasRegions(
-    canvas1: HTMLCanvasElement,
-    canvas2: HTMLCanvasElement,
-  ): number {
-    const size = 64;
-    const tmpCanvas = document.createElement("canvas");
-    tmpCanvas.width = size;
-    tmpCanvas.height = size;
-    const ctx = tmpCanvas.getContext("2d")!;
-
-    ctx.drawImage(canvas1, 0, 0, size, size);
-    const h1 = this.colorHistogram(ctx.getImageData(0, 0, size, size));
-    ctx.clearRect(0, 0, size, size);
-    ctx.drawImage(canvas2, 0, 0, size, size);
-    const h2 = this.colorHistogram(ctx.getImageData(0, 0, size, size));
-
-    let sum = 0;
-    for (let i = 0; i < h1.length; i++) sum += Math.sqrt(h1[i] * h2[i]);
-    return sum;
-  }
-
   createFaceImage(base64Data: string, numFaces: number): FaceImage {
     return { imageData: base64Data, timestamp: Date.now(), numFaces };
   }
@@ -427,56 +405,6 @@ export class FaceDetectionService {
     }
 
     return false;
-  }
-
-  /** Color-histogram similarity (Bhattacharyya coefficient). Web only. */
-  private compareImageRegions(
-    img1: HTMLImageElement,
-    img2: HTMLImageElement,
-  ): number {
-    const size = 64;
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d")!;
-
-    ctx.drawImage(img1, 0, 0, size, size);
-    const h1 = this.colorHistogram(ctx.getImageData(0, 0, size, size));
-    ctx.clearRect(0, 0, size, size);
-    ctx.drawImage(img2, 0, 0, size, size);
-    const h2 = this.colorHistogram(ctx.getImageData(0, 0, size, size));
-
-    let sum = 0;
-    for (let i = 0; i < h1.length; i++) sum += Math.sqrt(h1[i] * h2[i]);
-    return sum;
-  }
-
-  private colorHistogram(imageData: ImageData): number[] {
-    const bins = 16;
-    const hist = new Array(bins * 3).fill(0);
-    const px = imageData.data;
-    const total = px.length / 4;
-    for (let i = 0; i < px.length; i += 4) {
-      hist[Math.floor((px[i] / 256) * bins)]++;
-      hist[bins + Math.floor((px[i + 1] / 256) * bins)]++;
-      hist[bins * 2 + Math.floor((px[i + 2] / 256) * bins)]++;
-    }
-    for (let i = 0; i < hist.length; i++) hist[i] /= total;
-    return hist;
-  }
-
-  /** Load an image source into an HTMLImageElement. Web only. */
-  private loadImage(src: string): Promise<HTMLImageElement> {
-    const img = new Image();
-    // Only set crossOrigin for remote URLs, NOT for data URIs or blob URLs
-    if (src.startsWith("http")) {
-      img.crossOrigin = "anonymous";
-    }
-    return new Promise((resolve, reject) => {
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("Failed to load image"));
-      img.src = src;
-    });
   }
 }
 

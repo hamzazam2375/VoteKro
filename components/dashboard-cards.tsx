@@ -278,12 +278,6 @@ const styles = StyleSheet.create({
     fontSize: 26,
     marginRight: 10,
   },
-  metricTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#525252',
-    flex: 1,
-  },
   metricBody: {
     marginBottom: 14,
   },

@@ -100,6 +100,8 @@ export default function AuditorVerifyVotes() {
     };
 
     void loadData();
+    // Intentionally mount-only: runs initial verification for the first election.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runVerification et al. defined below
   }, [router]);
 
   /**
@@ -618,7 +620,6 @@ export default function AuditorVerifyVotes() {
                 <View style={styles.verificationContainer}>
                   <BlockchainIntegrityViewer
                     verification={blockchainVerification}
-                    isLoading={isBlockchainVerifying}
                   />
                 </View>
               ) : (

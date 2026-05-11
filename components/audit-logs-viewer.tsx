@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,7 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-  useWindowDimensions,
   TextInput,
-  FlatList,
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -38,8 +36,6 @@ export const AuditLogsViewer: React.FC<AuditLogsViewerProps> = ({
   isLoading = false,
   onRefresh,
 }) => {
-  const { width } = useWindowDimensions();
-  const isMobile = width < 600;
   const [filters, setFilters] = useState<FilterState>({
     type: null,
     searchText: '',
@@ -49,12 +45,7 @@ export const AuditLogsViewer: React.FC<AuditLogsViewerProps> = ({
   const [filteredLogs, setFilteredLogs] = useState(logs);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Update filtered logs when logs or filters change
-  useEffect(() => {
-    filterAndSortLogs();
-  }, [logs, filters]);
-
-  const filterAndSortLogs = () => {
+  const filterAndSortLogs = useCallback(() => {
     let result = logs;
 
     // Filter by type
@@ -85,7 +76,12 @@ export const AuditLogsViewer: React.FC<AuditLogsViewerProps> = ({
 
     // Already sorted by descending timestamp from service
     setFilteredLogs(result);
-  };
+  }, [logs, filters]);
+
+  // Update filtered logs when logs or filters change
+  useEffect(() => {
+    filterAndSortLogs();
+  }, [filterAndSortLogs]);
 
   const getTypeColor = (type: string): string => {
     switch (type) {
@@ -122,7 +118,7 @@ export const AuditLogsViewer: React.FC<AuditLogsViewerProps> = ({
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = date.getFullYear();
       return `${hours}:${minutes} (${day}/${month}/${year})`;
-    } catch (e) {
+    } catch {
       return timestamp;
     }
   };

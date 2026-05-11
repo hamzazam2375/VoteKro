@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -51,7 +52,9 @@ export default function AdminDashboard() {
   >("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
+  const [intervalId, setIntervalId] = useState<ReturnType<typeof setInterval> | null>(
+    null,
+  );
 
   const loadDashboardOverview = useCallback(async () => {
     // Don't load data if logout is in progress
@@ -113,7 +116,7 @@ export default function AdminDashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [router, isLoggingOut]);
+  }, [isLoggingOut]);
 
   const reloadOnFocus = useCallback(() => {
     void loadDashboardOverview();
@@ -143,6 +146,14 @@ export default function AdminDashboard() {
   }, [navigation, isLoggingOut]);
 
   const handleLogout = () => {
+    // RN Web's Alert polyfill can leave invisible overlays after other dialogs (e.g. face capture),
+    // which blocks header buttons. Use the native confirm on web instead.
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      if (window.confirm("Are you sure you want to logout?")) {
+        void doLogout();
+      }
+      return;
+    }
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
       { text: "Logout", style: "destructive", onPress: () => void doLogout() },
@@ -190,7 +201,13 @@ export default function AdminDashboard() {
     <View style={styles.container}>
       {/* Custom Header for Mobile with Hamburger */}
       {isMobile ? (
-        <View style={[styles.mobileHeader, { paddingTop: insets.top + 10 }]}>
+        <View
+          style={[
+            styles.mobileHeader,
+            Platform.OS === "web" && styles.headerStackWeb,
+            { paddingTop: insets.top + 10 },
+          ]}
+        >
           <Pressable
             style={styles.mobileHamburger}
             onPress={() => setSidebarOpen(!sidebarOpen)}
@@ -208,16 +225,24 @@ export default function AdminDashboard() {
           </Pressable>
         </View>
       ) : (
-        <Navbar
-          homeRoute="/AdminDashboard"
-          actions={[
-            { label: "Logout", onPress: handleLogout, variant: "outline" },
-          ]}
-        />
+        <View style={Platform.OS === "web" ? styles.headerStackWeb : undefined}>
+          <Navbar
+            homeRoute="/AdminDashboard"
+            actions={[
+              { label: "Logout", onPress: handleLogout, variant: "outline" },
+            ]}
+          />
+        </View>
       )}
 
-      {/* Main Layout - Sidebar + Content */}
-      <View style={[styles.mainLayout, isMobile && styles.mainLayoutMobile]}>
+      {/* Main Layout - Sidebar + Content (keep below header in web stacking) */}
+      <View
+        style={[
+          styles.mainLayout,
+          isMobile && styles.mainLayoutMobile,
+          Platform.OS === "web" && styles.mainStackWeb,
+        ]}
+      >
         {/* Overlay Backdrop - Mobile Only */}
         {isMobile && sidebarOpen && (
           <Pressable
@@ -1044,6 +1069,15 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     position: "relative",
+  },
+  /** Web: keep content subtree under the header so fixed/camera layers cannot steal clicks */
+  mainStackWeb: {
+    zIndex: 0,
+    position: "relative" as const,
+  },
+  headerStackWeb: {
+    zIndex: 2147480000,
+    position: "relative" as const,
   },
   mainLayoutMobile: {
     flexDirection: "column",

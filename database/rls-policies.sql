@@ -209,3 +209,9 @@ grant execute on function public.cast_vote_secure
 (uuid, uuid, text, text) to authenticated;
 grant execute on function public.verify_chain
 (uuid) to authenticated;
+
+grant execute on function public.tally_vote_blocks_decrypted
+(uuid, text) to authenticated;
+
+grant execute on function public.get_my_vote_receipt_decrypted
+(uuid, text) to authenticated;

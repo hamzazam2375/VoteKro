@@ -26,6 +26,22 @@ export interface FaceCaptureProps {
 
 const isWeb = Platform.OS === "web";
 
+/** expo-camera web can leave live video elements that still capture pointer events after unmount */
+function releaseWebCameraStreams() {
+  if (!isWeb || typeof document === "undefined") return;
+  try {
+    for (const video of document.querySelectorAll("video")) {
+      const src = video.srcObject;
+      if (src && typeof (src as MediaStream).getTracks === "function") {
+        (src as MediaStream).getTracks().forEach((t) => t.stop());
+        video.srcObject = null;
+      }
+    }
+  } catch {
+    // ignore
+  }
+}
+
 export function FaceCapture({
   onFaceCapture,
   onCancel,
@@ -61,6 +77,7 @@ export function FaceCapture({
 
     return () => {
       faceRecognitionService.dispose();
+      releaseWebCameraStreams();
     };
   }, []);
 

@@ -219,8 +219,7 @@ export class AuditorService extends BaseService {
         }
         
         if (blocks.length === 0) {
-          console.warn('No blocks found for election:', electionId);
-          // Return valid result for empty blockchain (no votes cast yet)
+          // Empty ledger is normal before any votes are cast; treat as valid without noisy logging
           return {
             isFullyValid: true,
             totalBlocks: 0,

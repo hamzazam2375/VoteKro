@@ -75,4 +75,18 @@ export class RocksDbVoteLedgerRepository implements IVoteLedgerRepository {
 
     return (await response.json()) as VoteBlockRow[];
   }
+
+  async tallyDecryptedVoteBlocks(
+    _electionId: string,
+    _encryptionKey?: string | null,
+  ): Promise<null> {
+    return null;
+  }
+
+  async getMyDecryptedVoteReceipt(
+    _electionId: string,
+    _encryptionKey?: string | null,
+  ): Promise<null> {
+    return null;
+  }
 }

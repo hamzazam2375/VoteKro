@@ -70,8 +70,6 @@ export default function AuditorBlockchainLedger() {
     tamperedCount: 0,
   });
 
-  const rocksDbUrl = process.env.EXPO_PUBLIC_ROCKSDB_LEDGER_URL || 'http://localhost:8787';
-
   useEffect(() => {
     const loadProfileAndElections = async () => {
       try {

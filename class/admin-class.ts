@@ -277,7 +277,7 @@ export class AdminService extends BaseService {
 
     const election = await this.electionRepository.findById(electionId);
     if (!election) {
-      throw new NotFoundError("Election not found");
+      throw new ValidationError("Election not found");
     }
 
     return this.electionRepository.update({
@@ -318,15 +318,4 @@ export class AdminService extends BaseService {
     return password;
   }
 
-  private requireMinimumLength(
-    value: string,
-    minLength: number,
-    fieldName: string,
-  ): void {
-    if (value.length < minLength) {
-      throw new ValidationError(
-        `${fieldName} must be at least ${minLength} characters`,
-      );
-    }
-  }
 }

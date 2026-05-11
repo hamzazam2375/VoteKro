@@ -19,7 +19,7 @@ export class ServiceFactory {
   private readonly authRepository = new SupabaseAuthRepository();
   readonly profileRepository = new SupabaseProfileRepository();
   readonly electionRepository = new SupabaseElectionRepository();
-  private readonly candidateRepository = new SupabaseCandidateRepository();
+  readonly candidateRepository = new SupabaseCandidateRepository();
   private readonly voterRegistryRepository = new SupabaseVoterRegistryRepository();
   private readonly voteLedgerRepository = env.rocksDbLedgerUrl.trim().length > 0
     ? new RocksDbVoteLedgerRepository(env.rocksDbLedgerUrl.replace(/\/$/, ''))

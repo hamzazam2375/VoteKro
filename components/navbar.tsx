@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import {
     Image,
+    Platform,
     Pressable,
     StyleSheet,
     Text,
@@ -51,6 +52,7 @@ export function Navbar({
         styles.navbar,
         compact && styles.navbarCompact,
         { paddingTop: insets.top + (compact ? 10 : 14) },
+        Platform.OS === "web" && styles.navbarWeb,
       ]}
     >
       {/* Top row: brand on left, action buttons on right */}
@@ -149,6 +151,11 @@ const styles = StyleSheet.create({
     boxShadow: "0px 2px 8px rgba(36, 59, 99, 0.06)",
     elevation: 2,
   },
+  /** Keep header above scroll/camera layers on web so actions stay clickable */
+  navbarWeb: {
+    zIndex: 10000,
+    position: "relative" as const,
+  },
   navbarCompact: {
     paddingHorizontal: 16,
     paddingBottom: 10,
@@ -237,6 +244,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderWidth: 1.5,
+    ...(Platform.OS === "web" ? ({ cursor: "pointer" } as object) : {}),
   },
   actionButtonCompact: {
     borderRadius: 10,

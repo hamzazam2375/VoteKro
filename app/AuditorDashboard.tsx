@@ -25,8 +25,6 @@ export default function AuditorDashboard() {
   const statsItemWidth = `${Math.floor(100 / statsColumns) - 1}%`;
   const metricsColumns = width >= 900 ? 2 : width >= 520 ? 2 : 1;
   const metricsItemWidth = `${Math.floor(100 / metricsColumns) - 1}%`;
-  const statusColumns = width >= 900 ? 2 : 1;
-  const statusItemWidth = `${Math.floor(100 / statusColumns) - 1}%`;
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -36,9 +34,6 @@ export default function AuditorDashboard() {
     anomalies: 0,
     verifiedVotes: 0,
     blockchainRecords: 0,
-    recentAuditName: "None",
-    recentAuditTime: "Never",
-    recentAuditStatus: "N/A",
     systemHealth: "100%",
     systemHealthSubtext: "All systems operational",
     systemHealthStatus: "● Healthy",
@@ -75,8 +70,12 @@ export default function AuditorDashboard() {
           if (!verification.isFullyValid) {
             totalAnomalies += verification.invalidBlocks.length;
             verification.invalidBlocks.forEach((block) => {
+              const detail =
+                block.errors?.length > 0
+                  ? block.errors.join("; ")
+                  : "validation failed";
               anomaliesList.push(
-                `Election ${election.title}: Block ${block.index} - ${block.reason}`,
+                `Election ${election.title}: Block ${block.index} - ${detail}`,
               );
             });
           }
@@ -93,30 +92,6 @@ export default function AuditorDashboard() {
               ((totalExpected - totalAnomalies) / totalExpected) * 1000,
             ) / 10;
 
-      let recentAuditName = "None";
-      let recentAuditTime = "Never";
-      let recentAuditStatus = "N/A";
-
-      const logs = await serviceFactory.auditorService.getAuditLogs(1);
-      if (logs.length > 0) {
-        recentAuditName = logs[0].action;
-
-        const logDate = new Date(logs[0].created_at);
-        const diffMs = now - logDate.getTime();
-        const diffMins = Math.round(diffMs / 60000);
-        const diffHours = Math.round(diffMins / 60);
-
-        if (diffMins < 60) {
-          recentAuditTime = `${diffMins} min ago`;
-        } else if (diffHours < 24) {
-          recentAuditTime = `${diffHours} hours ago`;
-        } else {
-          recentAuditTime = logDate.toLocaleDateString();
-        }
-
-        recentAuditStatus = "✓ Logged";
-      }
-
       setStats({
         totalBlocks: totalBlocksCount,
         activeElections: activeElections.length,
@@ -124,9 +99,6 @@ export default function AuditorDashboard() {
         verifiedVotes: totalExpected - totalAnomalies,
         blockchainRecords: totalExpected,
         verificationRate: verificationRate,
-        recentAuditName,
-        recentAuditTime,
-        recentAuditStatus,
         systemHealth: totalAnomalies === 0 ? "100%" : "Needs Attention",
         systemHealthSubtext:
           totalAnomalies === 0
@@ -300,7 +272,7 @@ export default function AuditorDashboard() {
               </View>
             </View>
 
-            {/* Recent Audit and System Health */}
+            {/* System Health */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>🔍 Audit Status</Text>
               <View
@@ -309,34 +281,10 @@ export default function AuditorDashboard() {
                   isMobile && styles.statusCardsGridMobile,
                 ]}
               >
-                {/* Recent Audit Card */}
                 <View
                   style={[
                     styles.statusCard,
-                    { width: statusItemWidth } as any,
-                    isMobile && styles.statusCardMobile,
-                  ]}
-                >
-                  <View style={styles.statusCardHeader}>
-                    <Text style={styles.statusCardIcon}>📋</Text>
-                    <Text style={styles.statusCardTitle}>Recent Audit</Text>
-                  </View>
-                  <Text style={styles.statusCardValue} numberOfLines={1}>
-                    {stats.recentAuditName}
-                  </Text>
-                  <Text style={styles.statusCardSubtext}>
-                    {stats.recentAuditTime}
-                  </Text>
-                  <Text style={styles.statusCardStatus}>
-                    {stats.recentAuditStatus}
-                  </Text>
-                </View>
-
-                {/* System Health Card */}
-                <View
-                  style={[
-                    styles.statusCard,
-                    { width: statusItemWidth } as any,
+                    styles.statusCardFullWidth,
                     isMobile && styles.statusCardMobile,
                   ]}
                 >
@@ -505,6 +453,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderWidth: 1,
     borderColor: "#e0e7ff",
+  },
+  statusCardFullWidth: {
+    minWidth: "100%",
+    width: "100%",
   },
   statusCardMobile: {
     minWidth: "100%",
