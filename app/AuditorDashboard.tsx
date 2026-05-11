@@ -43,6 +43,14 @@ export default function AuditorDashboard() {
     systemHealthSubtext: "All systems operational",
     systemHealthStatus: "● Healthy",
     anomaliesList: [] as string[],
+    electionBlockchainDetails: [] as Array<{
+      electionId: string;
+      electionTitle: string;
+      totalVotes: number;
+      totalBlocks: number;
+      verificationStatus: string;
+      isValid: boolean;
+    }>,
   });
 
   const loadDashboardData = useCallback(async () => {
@@ -63,14 +71,37 @@ export default function AuditorDashboard() {
       let totalBlocksCount = 0;
       let totalAnomalies = 0;
       const anomaliesList: string[] = [];
+      const electionBlockchainDetails: Array<{
+        electionId: string;
+        electionTitle: string;
+        totalVotes: number;
+        totalBlocks: number;
+        verificationStatus: string;
+        isValid: boolean;
+      }> = [];
 
       for (const election of elections) {
         try {
+          // Get vote count from database (real votes, not dummy)
+          const voteCounts = await serviceFactory.auditorService.countVotesFromLedger(election.id);
+          const totalVotes = Object.values(voteCounts).reduce((sum, count) => sum + count, 0);
+
+          // Get blockchain verification
           const verification =
             await serviceFactory.auditorService.verifyFullBlockchainIntegrity(
               election.id,
             );
           totalBlocksCount += verification.totalBlocks;
+
+          // Add election details
+          electionBlockchainDetails.push({
+            electionId: election.id,
+            electionTitle: election.title,
+            totalVotes,
+            totalBlocks: verification.totalBlocks,
+            verificationStatus: verification.isFullyValid ? "✓ Valid" : "⚠️ Issues Found",
+            isValid: verification.isFullyValid,
+          });
 
           if (!verification.isFullyValid) {
             totalAnomalies += verification.invalidBlocks.length;
@@ -135,6 +166,7 @@ export default function AuditorDashboard() {
         systemHealthStatus:
           totalAnomalies === 0 ? "● Healthy" : "● Issues Found",
         anomaliesList,
+        electionBlockchainDetails,
       });
     } catch (error) {
       Alert.alert(
@@ -398,6 +430,80 @@ export default function AuditorDashboard() {
                 )}
               </View>
             </View>
+
+            {/* Blockchain Details Section - Shows Real Database Votes */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>⛓️ Blockchain Verification Details</Text>
+              <Text style={styles.sectionSubtitle}>
+                Real vote counts from database verification
+              </Text>
+              <View style={styles.blockchainDetailsContainer}>
+                {stats.electionBlockchainDetails.length === 0 ? (
+                  <Text style={styles.noDetailsText}>
+                    No elections available for verification
+                  </Text>
+                ) : (
+                  stats.electionBlockchainDetails.map((detail) => (
+                    <View
+                      key={detail.electionId}
+                      style={[
+                        styles.blockchainDetailBlock,
+                        !detail.isValid && styles.blockchainDetailBlockWarning,
+                      ]}
+                    >
+                      <View style={styles.blockchainDetailHeader}>
+                        <Text style={styles.blockchainDetailTitle}>
+                          {detail.electionTitle}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.blockchainDetailStatus,
+                            !detail.isValid && styles.blockchainDetailStatusWarning,
+                          ]}
+                        >
+                          {detail.verificationStatus}
+                        </Text>
+                      </View>
+                      <View style={styles.blockchainDetailRow}>
+                        <Text style={styles.blockchainDetailLabel}>
+                          Total Votes:
+                        </Text>
+                        <Text style={styles.blockchainDetailValue}>
+                          {detail.totalVotes}
+                        </Text>
+                      </View>
+                      <View style={styles.blockchainDetailRow}>
+                        <Text style={styles.blockchainDetailLabel}>
+                          Blockchain Blocks:
+                        </Text>
+                        <Text style={styles.blockchainDetailValue}>
+                          {detail.totalBlocks}
+                        </Text>
+                      </View>
+                      {detail.totalVotes === detail.totalBlocks ? (
+                        <Text
+                          style={[
+                            styles.blockchainDetailLabel,
+                            { color: "#4caf50", marginTop: 8 },
+                          ]}
+                        >
+                          ✓ Vote count matches blockchain blocks
+                        </Text>
+                      ) : (
+                        <Text
+                          style={[
+                            styles.blockchainDetailLabel,
+                            { color: "#ff9800", marginTop: 8 },
+                          ]}
+                        >
+                          ⚠️ Vote count: {detail.totalVotes}, Blocks: {detail.totalBlocks}
+                        </Text>
+                      )}
+                    </View>
+                  ))
+                )}
+              </View>
+            </View>
           </View>
         </ScrollView>
       </View>
@@ -611,5 +717,80 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     color: "#333333",
+  },
+  // Blockchain Details Section
+  sectionSubtitle: {
+    fontSize: 12,
+    color: "#999",
+    marginBottom: 12,
+  },
+  blockchainDetailsContainer: {
+    gap: 12,
+  },
+  blockchainDetailBlock: {
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: "#4caf50",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  blockchainDetailBlockWarning: {
+    borderLeftColor: "#ff9800",
+  },
+  blockchainDetailHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+    paddingBottom: 10,
+  },
+  blockchainDetailTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1a1a1a",
+  },
+  blockchainDetailStatus: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#4caf50",
+    backgroundColor: "#e8f5e9",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+  },
+  blockchainDetailStatusWarning: {
+    color: "#ff9800",
+    backgroundColor: "#fff3e0",
+  },
+  blockchainDetailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  blockchainDetailLabel: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "500",
+  },
+  blockchainDetailValue: {
+    fontSize: 13,
+    color: "#1a73e8",
+    fontWeight: "600",
+  },
+  noDetailsText: {
+    fontSize: 14,
+    color: "#999",
+    textAlign: "center",
+    paddingVertical: 20,
   },
 });

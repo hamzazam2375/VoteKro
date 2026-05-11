@@ -72,6 +72,7 @@ create table if not exists public.elections (
   created_by uuid not null references public.profiles (user_id),
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
+  last_audited timestamptz,
   constraint election_window_valid check (ends_at > starts_at)
 );
 

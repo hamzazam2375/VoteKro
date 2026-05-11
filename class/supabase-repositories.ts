@@ -344,6 +344,23 @@ export class SupabaseElectionRepository
 
     return (data ?? []) as ElectionRow[];
   }
+
+  async updateLastAudited(electionId: string): Promise<ElectionRow> {
+    const { data, error } = await supabase
+      .from("elections")
+      .update({
+        last_audited: new Date().toISOString(),
+      })
+      .eq("id", electionId)
+      .select("*")
+      .single();
+
+    if (error) {
+      this.throwOnError("Failed to update election audit timestamp", error);
+    }
+
+    return data as ElectionRow;
+  }
 }
 
 export class SupabaseCandidateRepository
@@ -559,5 +576,30 @@ export class SupabaseAuditLogRepository
     }
 
     return (data ?? []) as AuditLogRow[];
+  }
+
+  async recordAuditAction(
+    action: string,
+    targetId: string,
+    metadata?: Record<string, any>
+  ): Promise<AuditLogRow> {
+    const { data, error } = await supabase
+      .from("audit_logs")
+      .insert([
+        {
+          action,
+          target_id: targetId,
+          metadata: metadata || {},
+          created_at: new Date().toISOString(),
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      this.throwOnError("Failed to record audit action", error);
+    }
+
+    return data as AuditLogRow;
   }
 }
