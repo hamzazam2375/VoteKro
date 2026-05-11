@@ -1,21 +1,30 @@
-import type { ProfileRow } from '@/class/database-types';
-import { serviceFactory } from '@/class/service-factory';
-import { supabase } from '@/class/supabase-client';
-import { AuditorSidebar } from '@/components/auditor-sidebar';
-import { Navbar } from '@/components/navbar';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import type { ProfileRow } from "@/class/database-types";
+import { serviceFactory } from "@/class/service-factory";
+import { supabase } from "@/class/supabase-client";
+import { AuditorSidebar } from "@/components/auditor-sidebar";
+import { Navbar } from "@/components/navbar";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 
 export default function AuditorViewProfile() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isMobile = width < 760;
-  
+
   const [profile, setProfile] = useState<ProfileRow | null>(null);
-  const [email, setEmail] = useState<string>('');
+  const [email, setEmail] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalAudits: 0,
     verificationAccuracy: 98.5,
@@ -25,7 +34,8 @@ export default function AuditorViewProfile() {
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        const userProfile = await serviceFactory.authService.getRequiredProfile('auditor');
+        const userProfile =
+          await serviceFactory.authService.getRequiredProfile("auditor");
         setProfile(userProfile);
 
         // Get email from Supabase auth session
@@ -33,20 +43,30 @@ export default function AuditorViewProfile() {
         if (data?.session?.user?.email) {
           setEmail(data.session.user.email);
         }
-        
+
         // Load additional stats
         try {
-          const auditLogs = await serviceFactory.auditorService.getAuditLogs(1000);
-          setStats(prev => ({
+          const auditLogs =
+            await serviceFactory.auditorService.getAuditLogs(1000);
+          setStats((prev) => ({
             ...prev,
             totalAudits: auditLogs?.length || 0,
           }));
+          if (auditLogs) {
+            setRecentActivities(auditLogs.slice(0, 5));
+          }
         } catch (error) {
-          console.error('Failed to load audit stats:', error);
+          console.error("Failed to load audit stats:", error);
         }
       } catch (error) {
-        Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to load profile'));
-        router.replace('/AuditorSignup');
+        Alert.alert(
+          "Error",
+          serviceFactory.authService.getErrorMessage(
+            error,
+            "Failed to load profile",
+          ),
+        );
+        router.replace("/AuditorSignup");
       } finally {
         setIsLoading(false);
       }
@@ -58,19 +78,22 @@ export default function AuditorViewProfile() {
   const handleLogout = async () => {
     try {
       await serviceFactory.authService.signOut();
-      router.replace('/');
+      router.replace("/");
     } catch (error) {
-      Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to logout'));
+      Alert.alert(
+        "Error",
+        serviceFactory.authService.getErrorMessage(error, "Failed to logout"),
+      );
     }
   };
 
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <Navbar 
+        <Navbar
           homeRoute="/AuditorDashboard"
           actions={[
-            { label: 'Logout', onPress: handleLogout, variant: 'outline' },
+            { label: "Logout", onPress: handleLogout, variant: "outline" },
           ]}
         />
         <View style={styles.mainContent}>
@@ -94,17 +117,17 @@ export default function AuditorViewProfile() {
 
   return (
     <View style={styles.container}>
-      <Navbar 
+      <Navbar
         homeRoute="/AuditorDashboard"
         actions={[
-          { label: 'Logout', onPress: handleLogout, variant: 'outline' },
+          { label: "Logout", onPress: handleLogout, variant: "outline" },
         ]}
       />
-      
+
       <View style={styles.mainContent}>
         {!isMobile && <AuditorSidebar profileName={profile?.full_name} />}
-        
-        <ScrollView 
+
+        <ScrollView
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
@@ -112,7 +135,7 @@ export default function AuditorViewProfile() {
           <View style={styles.innerWrapper}>
             {/* Profile Header */}
             <LinearGradient
-              colors={['#e8f4fd', '#f5fafe']}
+              colors={["#e8f4fd", "#f5fafe"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.profileHeader}
@@ -120,18 +143,20 @@ export default function AuditorViewProfile() {
               <View style={styles.avatarSection}>
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>
-                    {profile.full_name?.charAt(0) || 'A'}
+                    {profile.full_name?.charAt(0) || "A"}
                   </Text>
                 </View>
                 <View style={styles.nameSection}>
-                  <Text style={styles.fullName}>{profile.full_name || 'Auditor'}</Text>
+                  <Text style={styles.fullName}>
+                    {profile.full_name || "Auditor"}
+                  </Text>
                   <Text style={styles.firstName}>
-                    {profile.full_name?.split(' ')[0] || 'Auditor'}
+                    {profile.full_name?.split(" ")[0] || "Auditor"}
                   </Text>
                   <Text style={styles.roleText}>Senior Auditor</Text>
                 </View>
               </View>
-              
+
               <View style={styles.statusBadge}>
                 <Text style={styles.statusDot}>●</Text>
                 <Text style={styles.statusText}>Active</Text>
@@ -141,16 +166,16 @@ export default function AuditorViewProfile() {
             {/* Profile Information Grid */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Account Information</Text>
-              
+
               <View style={styles.infoGrid}>
                 <InfoCard
                   label="Auditor ID"
-                  value={profile.user_id?.slice(0, 8).toUpperCase() || 'N/A'}
+                  value={profile.user_id?.slice(0, 8).toUpperCase() || "N/A"}
                   icon="🆔"
                 />
                 <InfoCard
                   label="Email Address"
-                  value={email || 'N/A'}
+                  value={email || "N/A"}
                   icon="📧"
                 />
                 <InfoCard
@@ -161,7 +186,11 @@ export default function AuditorViewProfile() {
                 />
                 <InfoCard
                   label="Joined Date"
-                  value={profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'N/A'}
+                  value={
+                    profile.created_at
+                      ? new Date(profile.created_at).toLocaleDateString()
+                      : "N/A"
+                  }
                   icon="📅"
                 />
               </View>
@@ -170,7 +199,7 @@ export default function AuditorViewProfile() {
             {/* Audit Statistics */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Audit Statistics</Text>
-              
+
               <View style={styles.statsGrid}>
                 <StatBox
                   label="Total Audits"
@@ -202,9 +231,9 @@ export default function AuditorViewProfile() {
             {/* Permissions & Role */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Role & Permissions</Text>
-              
+
               <LinearGradient
-                colors={['#f5fafe', '#ffffff']}
+                colors={["#f5fafe", "#ffffff"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.permissionCard}
@@ -247,28 +276,41 @@ export default function AuditorViewProfile() {
             {/* Activity Summary */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Recent Activity</Text>
-              
+
               <View style={styles.activityList}>
-                <ActivityItem
-                  action="Verified blockchain integrity"
-                  time="2 hours ago"
-                  icon="⛓️"
-                />
-                <ActivityItem
-                  action="Completed election audit"
-                  time="5 hours ago"
-                  icon="🗳️"
-                />
-                <ActivityItem
-                  action="Generated audit report"
-                  time="1 day ago"
-                  icon="📋"
-                />
-                <ActivityItem
-                  action="Logged in to system"
-                  time="1 day ago"
-                  icon="🔐"
-                />
+                {recentActivities.length > 0 ? (
+                  recentActivities.map((log, index) => {
+                    const now = Date.now();
+                    const logDate = new Date(log.created_at);
+                    const diffMs = now - logDate.getTime();
+                    const diffMins = Math.round(diffMs / 60000);
+                    const diffHours = Math.round(diffMins / 60);
+                    let timeStr = "";
+
+                    if (diffMins < 60) {
+                      timeStr = `${diffMins} min ago`;
+                    } else if (diffHours < 24) {
+                      timeStr = `${diffHours} hours ago`;
+                    } else {
+                      timeStr = logDate.toLocaleDateString();
+                    }
+
+                    return (
+                      <ActivityItem
+                        key={log.id || index}
+                        action={log.action || "Performed audit action"}
+                        time={timeStr}
+                        icon="📋"
+                      />
+                    );
+                  })
+                ) : (
+                  <View style={{ padding: 16 }}>
+                    <Text style={{ color: "#666", textAlign: "center" }}>
+                      No recent activities found.
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
 
@@ -278,8 +320,9 @@ export default function AuditorViewProfile() {
               <View style={styles.noteContent}>
                 <Text style={styles.noteTitle}>Read-Only Profile</Text>
                 <Text style={styles.noteText}>
-                  This is your profile information page. You cannot edit your profile details. 
-                  Contact your administrator if you need to update your information.
+                  This is your profile information page. You cannot edit your
+                  profile details. Contact your administrator if you need to
+                  update your information.
                 </Text>
               </View>
             </View>
@@ -297,10 +340,10 @@ interface InfoCardProps {
   color?: string;
 }
 
-function InfoCard({ label, value, icon, color = '#1a73e8' }: InfoCardProps) {
+function InfoCard({ label, value, icon, color = "#1a73e8" }: InfoCardProps) {
   return (
     <LinearGradient
-      colors={['#ffffff', '#f8faff']}
+      colors={["#ffffff", "#f8faff"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.infoCard}
@@ -322,7 +365,7 @@ interface StatBoxProps {
 function StatBox({ label, value, icon, color }: StatBoxProps) {
   return (
     <LinearGradient
-      colors={['#ffffff', '#f8faff']}
+      colors={["#ffffff", "#f8faff"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.statBox}
@@ -341,20 +384,39 @@ interface PermissionItemProps {
   disabled?: boolean;
 }
 
-function PermissionItem({ icon, label, description, disabled = false }: PermissionItemProps) {
+function PermissionItem({
+  icon,
+  label,
+  description,
+  disabled = false,
+}: PermissionItemProps) {
   return (
-    <View style={[styles.permissionItem, disabled && styles.permissionItemDisabled]}>
-      <Text style={[
-        styles.permissionIcon,
-        { color: disabled ? '#ccc' : '#4caf50' }
-      ]}>
+    <View
+      style={[styles.permissionItem, disabled && styles.permissionItemDisabled]}
+    >
+      <Text
+        style={[
+          styles.permissionIcon,
+          { color: disabled ? "#ccc" : "#4caf50" },
+        ]}
+      >
         {icon}
       </Text>
       <View style={styles.permissionTextContent}>
-        <Text style={[styles.permissionLabel, disabled && styles.permissionLabelDisabled]}>
+        <Text
+          style={[
+            styles.permissionLabel,
+            disabled && styles.permissionLabelDisabled,
+          ]}
+        >
           {label}
         </Text>
-        <Text style={[styles.permissionDescription, disabled && styles.permissionDescriptionDisabled]}>
+        <Text
+          style={[
+            styles.permissionDescription,
+            disabled && styles.permissionDescriptionDisabled,
+          ]}
+        >
           {description}
         </Text>
       </View>
@@ -383,43 +445,43 @@ function ActivityItem({ action, time, icon }: ActivityItemProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
   mainContent: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   content: {
     flex: 1,
   },
   contentContainer: {
     padding: 20,
-    alignItems: 'center',
+    alignItems: "center",
   },
   innerWrapper: {
-    width: '100%',
+    width: "100%",
     maxWidth: 1000,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
   },
   errorText: {
     fontSize: 16,
-    color: '#d32f2f',
+    color: "#d32f2f",
   },
   // Profile Header
   profileHeader: {
@@ -427,68 +489,68 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#e0e7ff',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    borderColor: "#e0e7ff",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   avatarSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   avatar: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#1a73e8',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#1a73e8",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 16,
   },
   avatarText: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontWeight: "700",
+    color: "#ffffff",
   },
   nameSection: {
     flex: 1,
   },
   fullName: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1a1a1a',
+    fontWeight: "700",
+    color: "#1a1a1a",
     marginBottom: 4,
   },
   firstName: {
     fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
+    color: "#666",
+    fontWeight: "500",
     marginBottom: 2,
   },
   roleText: {
     fontSize: 13,
-    color: '#666',
-    fontWeight: '500',
+    color: "#666",
+    fontWeight: "500",
   },
   statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#e8f5e9',
+    backgroundColor: "#e8f5e9",
     borderRadius: 20,
     marginLeft: 16,
   },
   statusDot: {
     fontSize: 16,
-    color: '#4caf50',
+    color: "#4caf50",
     marginRight: 6,
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#2e7d32',
+    fontWeight: "600",
+    color: "#2e7d32",
   },
   // Sections
   section: {
@@ -496,23 +558,23 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#1a1a1a',
+    fontWeight: "700",
+    color: "#1a1a1a",
     marginBottom: 14,
   },
   // Info Grid
   infoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
   },
   infoCard: {
     flex: 1,
-    minWidth: '48%',
+    minWidth: "48%",
     padding: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e0e7ff',
+    borderColor: "#e0e7ff",
   },
   infoIcon: {
     fontSize: 20,
@@ -520,28 +582,28 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 11,
-    color: '#999',
-    fontWeight: '500',
+    color: "#999",
+    fontWeight: "500",
     marginBottom: 6,
   },
   infoValue: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   // Stats Grid
   statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
   },
   statBox: {
     flex: 1,
-    minWidth: '23%',
+    minWidth: "23%",
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e0e7ff',
-    alignItems: 'center',
+    borderColor: "#e0e7ff",
+    alignItems: "center",
   },
   statIcon: {
     fontSize: 28,
@@ -549,27 +611,27 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 11,
-    color: '#999',
-    textAlign: 'center',
+    color: "#999",
+    textAlign: "center",
   },
   // Permission Card
   permissionCard: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e0e7ff',
+    borderColor: "#e0e7ff",
     padding: 16,
   },
   permissionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: "#f0f0f0",
   },
   permissionItemDisabled: {
     opacity: 0.6,
@@ -577,40 +639,40 @@ const styles = StyleSheet.create({
   permissionIcon: {
     fontSize: 18,
     marginRight: 12,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   permissionTextContent: {
     flex: 1,
   },
   permissionLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    fontWeight: "600",
+    color: "#1a1a1a",
     marginBottom: 2,
   },
   permissionLabelDisabled: {
-    color: '#999',
+    color: "#999",
   },
   permissionDescription: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
   },
   permissionDescriptionDisabled: {
-    color: '#bbb',
+    color: "#bbb",
   },
   // Activity List
   activityList: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e0e7ff',
-    overflow: 'hidden',
+    borderColor: "#e0e7ff",
+    overflow: "hidden",
   },
   activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: "#f0f0f0",
   },
   activityIcon: {
     fontSize: 20,
@@ -621,22 +683,22 @@ const styles = StyleSheet.create({
   },
   activityAction: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#1a1a1a',
+    fontWeight: "500",
+    color: "#1a1a1a",
     marginBottom: 2,
   },
   activityTime: {
     fontSize: 11,
-    color: '#999',
+    color: "#999",
   },
   // Info Note
   infoNote: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 16,
-    backgroundColor: '#e3f2fd',
+    backgroundColor: "#e3f2fd",
     borderRadius: 12,
     borderLeftWidth: 4,
-    borderLeftColor: '#1a73e8',
+    borderLeftColor: "#1a73e8",
     marginBottom: 20,
   },
   noteIcon: {
@@ -648,35 +710,35 @@ const styles = StyleSheet.create({
   },
   noteTitle: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#0a5fa8',
+    fontWeight: "700",
+    color: "#0a5fa8",
     marginBottom: 4,
   },
   noteText: {
     fontSize: 12,
-    color: '#0d47a1',
+    color: "#0d47a1",
     lineHeight: 18,
   },
   backButtonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "flex-end",
     marginBottom: 20,
   },
   backButton: {
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
   },
   backButtonPressed: {
     opacity: 0.7,
-    backgroundColor: '#e8e8e8',
+    backgroundColor: "#e8e8e8",
   },
   backButtonText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#333333',
+    fontWeight: "500",
+    color: "#333333",
   },
 });
