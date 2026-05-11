@@ -34,7 +34,6 @@ export default function VoterDashboard() {
     const [isSubmittingVote, setIsSubmittingVote] = useState(false);
     const [votedElectionIds, setVotedElectionIds] = useState<Set<string>>(new Set());
     const [currentView, setCurrentView] = useState<'home' | 'history'>('home');
-    const [showSearchBar, setShowSearchBar] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [userEmail, setUserEmail] = useState('');
     const [electionResults, setElectionResults] = useState<Map<string, ElectionResultRow[]>>(new Map());
@@ -371,6 +370,16 @@ export default function VoterDashboard() {
         }
     };
 
+    const openElectionDialog = async (election: ElectionRow) => {
+        setSelectedElection(election);
+
+        if (currentView === 'history') {
+            await fetchVoteDetails(election.id);
+        }
+
+        setShowElectionDialog(true);
+    };
+
     const displayedElections = currentView === 'home' ? getActiveElections() : getHistoryElections();
     const filteredElections = displayedElections.filter((election) => {
         const query = searchQuery.trim().toLowerCase();
@@ -428,9 +437,6 @@ export default function VoterDashboard() {
                 homeRoute="/VoterDashboard"
                 userName={displayName}
                 userRole="Voter"
-                userDetails={{
-                    email: userEmail,
-                }}
                 onLogout={handleLogout}
                 sidebarItems={[
                     {
@@ -637,49 +643,29 @@ export default function VoterDashboard() {
                         )}
 
                         <View style={styles.searchBarSection}>
-                            <Pressable
-                                style={({ pressed }) => [styles.searchButton, pressed && styles.buttonPressed]}
-                                accessibilityRole="button"
-                                onPress={() => {
-                                    setShowSearchBar((previous) => {
-                                        const next = !previous;
-
-                                        if (next) {
-                                            setTimeout(() => searchInputRef.current?.focus?.(), 50);
-                                        } else {
-                                            setSearchQuery('');
-                                        }
-
-                                        return next;
-                                    });
-                                }}
-                            >
-                                <Text style={styles.searchButtonText}>🔍 Search Elections</Text>
-                            </Pressable>
-
-                            {showSearchBar ? (
-                                <View style={styles.searchInputWrap}>
-                                    <TextInput
-                                        ref={searchInputRef}
-                                        value={searchQuery}
-                                        onChangeText={setSearchQuery}
-                                        placeholder="Search by election title or description"
-                                        placeholderTextColor="#8b97a8"
-                                        style={styles.searchInput}
-                                        autoCorrect={false}
-                                        autoCapitalize="none"
-                                        returnKeyType="search"
-                                    />
+                            <View style={styles.searchInputContainer}>
+                                <Text style={styles.searchIcon}>🔍</Text>
+                                <TextInput
+                                    ref={searchInputRef}
+                                    value={searchQuery}
+                                    onChangeText={setSearchQuery}
+                                    placeholder="Search by election title or description"
+                                    placeholderTextColor="#8b97a8"
+                                    style={styles.searchInput}
+                                    autoCorrect={false}
+                                    autoCapitalize="none"
+                                    returnKeyType="search"
+                                />
+                                {searchQuery ? (
                                     <Pressable
                                         style={({ pressed }) => [styles.clearSearchButton, pressed && styles.buttonPressed]}
                                         accessibilityRole="button"
                                         onPress={() => setSearchQuery('')}
-                                        disabled={!searchQuery}
                                     >
-                                        <Text style={styles.clearSearchButtonText}>Clear</Text>
+                                        <Text style={styles.clearSearchButtonText}>✕</Text>
                                     </Pressable>
-                                </View>
-                            ) : null}
+                                ) : null}
+                            </View>
                         </View>
 
                         <View style={styles.sectionHeaderRow}>
@@ -720,7 +706,7 @@ export default function VoterDashboard() {
                                             </Text>
                                             <View style={styles.electionActionRow}>
                                                 {effectiveStatus === 'active' ? (
-                                                    <Pressable style={styles.electionPrimaryButton} onPress={() => router.push(`/CastVote/${election.id}`)}>
+                                                    <Pressable style={styles.electionPrimaryButton} onPress={() => void openElectionDialog(election)}>
                                                         <Text style={styles.electionPrimaryText}>Cast Vote</Text>
                                                     </Pressable>
                                                 ) : null}
@@ -835,55 +821,43 @@ const styles = StyleSheet.create({
         marginBottom: 46,
     },
     searchBarSection: {
-        marginBottom: 18,
-        gap: 10,
+        marginBottom: 28,
+        width: '100%',
     },
-    searchButton: {
-        alignSelf: 'flex-start',
+    searchInputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#ffffff',
         borderWidth: 1,
-        borderColor: '#cfd8ea',
-        borderRadius: 999,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        boxShadow: '0px 4px 10px rgba(36, 59, 99, 0.06)',
+        borderColor: '#d9dee7',
+        borderRadius: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        gap: 8,
+        boxShadow: '0px 1px 3px rgba(15, 23, 42, 0.06)',
         elevation: 2,
     },
-    searchButtonText: {
-        fontSize: 14,
-        fontWeight: '700',
+    searchIcon: {
+        fontSize: 18,
         color: '#2f64e6',
-    },
-    searchInputWrap: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
     },
     searchInput: {
         flex: 1,
-        backgroundColor: '#ffffff',
-        borderWidth: 1,
-        borderColor: '#cfd8ea',
-        borderRadius: 12,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        fontSize: 15,
-        color: '#14203a',
+        fontSize: 14,
+        color: '#111827',
+        fontWeight: '500',
     },
     clearSearchButton: {
-        backgroundColor: '#eef4ff',
-        borderRadius: 12,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        borderWidth: 1,
-        borderColor: '#d7e4ff',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     clearSearchButtonText: {
-        color: '#2f64e6',
+        color: '#6b7280',
         fontWeight: '700',
-        fontSize: 14,
+        fontSize: 16,
     },
     tabBar: {
         flexDirection: 'row',

@@ -1,8 +1,7 @@
-import type { ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -21,28 +20,6 @@ export default function AuditorSignupScreen({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [profile, setProfile] = useState<ProfileRow | null>(null);
-
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const userProfile =
-          await serviceFactory.authService.getRequiredProfile("admin");
-        setProfile(userProfile);
-      } catch (error) {
-        Alert.alert(
-          "Error",
-          serviceFactory.authService.getErrorMessage(
-            error,
-            "Failed to load profile",
-          ),
-        );
-        router.replace("/AdminLogin");
-      }
-    };
-
-    void loadProfile();
-  }, [router]);
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -105,7 +82,6 @@ export default function AuditorSignupScreen({
     <View style={styles.container}>
       {!isEmbedded && (
         <Navbar
-          infoText={`Welcome, ${profile?.full_name ?? "Administrator"}!`}
           actions={[
             { label: "Logout", onPress: handleLogout, variant: "outline" },
           ]}

@@ -28,6 +28,7 @@ export class AuthService extends BaseService {
     const normalizedEmail = email.trim();
 
     this.requireNonEmpty(normalizedEmail, "Email");
+    this.requireEmailAddress(normalizedEmail);
     this.requireNonEmpty(password, "Password");
     await this.authRepository.signIn(normalizedEmail, password);
   }

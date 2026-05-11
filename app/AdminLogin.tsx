@@ -73,10 +73,10 @@ export default function LoginScreen() {
                     </View>
 
                     <View style={styles.inputContainer}>
-                        <Text style={styles.label}>{selectedRole === 'admin' ? 'Admin ID / Email' : 'Auditor ID / Email'}</Text>
+                        <Text style={styles.label}>{selectedRole === 'admin' ? 'Admin Email' : 'Auditor Email'}</Text>
                         <TextInput
                             style={styles.input}
-                            placeholder={selectedRole === 'admin' ? 'Type: ADMIN001 or email' : 'Type: AUDITOR001 or email'}
+                            placeholder={selectedRole === 'admin' ? 'Enter admin email' : 'Enter auditor email'}
                             placeholderTextColor="#999"
                             value={email}
                             onChangeText={setEmail}
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         paddingHorizontal: 14,
         paddingVertical: 12,
-        fontSize: 15,
+        fontSize: 16,
         color: '#1a2438',
     },
     loginButton: {
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     },
     loginButtonText: {
         color: '#fff',
-        fontSize: 16,
+        fontSize: 17,
         fontWeight: '700',
     },
     registerLinkContainer: {
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     auditorNote: {
         marginTop: 14,
         textAlign: 'center',
-        fontSize: 12,
+        fontSize: 13,
         color: '#5c6f89',
     },
 });

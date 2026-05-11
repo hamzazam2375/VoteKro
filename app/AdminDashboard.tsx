@@ -5,17 +5,18 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    useWindowDimensions,
-    View,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AdminCreateElection from "./AdminCreateElection";
+import AdminEditProfile from "./AdminEditProfile";
 import AdminManageCandidates from "./AdminManageCandidates";
 import AdminManageElections from "./AdminManageElections";
 import AdminViewResults from "./AdminViewResults";
@@ -39,6 +40,7 @@ export default function AdminDashboard() {
   const [currentPage, setCurrentPage] = useState<
     | "overview"
     | "create-election"
+    | "edit-profile"
     | "manage-elections"
     | "manage-candidates"
     | "view-results"
@@ -357,19 +359,39 @@ export default function AdminDashboard() {
                   </Text>
                 </Pressable>
               )}
-            </View>
 
-            {/* Sidebar Footer - Profile Button */}
-            <View style={styles.sidebarFooter}>
               <Pressable
-                style={[styles.sidebarButton]}
+                style={[
+                  styles.sidebarButton,
+                  currentPage === "edit-profile" &&
+                    styles.sidebarButtonActive,
+                ]}
                 onPress={() => {
-                  router.push("/AdminEditProfile");
+                  setCurrentPage("edit-profile");
                   if (isMobile) setSidebarOpen(false);
                 }}
               >
-                <Text style={styles.sidebarButtonText}>👤 Edit Profile</Text>
+                <Text
+                  style={[
+                    styles.sidebarButtonText,
+                    currentPage === "edit-profile" &&
+                      styles.sidebarButtonTextActive,
+                  ]}
+                >
+                  👤 Edit Profile
+                </Text>
               </Pressable>
+            </View>
+
+            <View style={styles.sidebarFooter}>
+              <View style={styles.userProfileCard}>
+                <Text numberOfLines={1} style={styles.userProfileName}>
+                  {profile?.full_name?.trim() || "Administrator"}
+                </Text>
+                <Text style={styles.userProfileRole}>
+                  {profile?.role || "admin"}
+                </Text>
+              </View>
             </View>
           </View>
         )}
@@ -685,6 +707,7 @@ export default function AdminDashboard() {
                 <AuditorSignup isEmbedded={true} />
               </View>
             )}
+            {currentPage === "edit-profile" && <AdminEditProfile isEmbedded={true} />}
           </View>
         </ScrollView>
       </View>
@@ -768,8 +791,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 20,
-    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 18,
+    paddingBottom: 32,
+    alignItems: "stretch",
   },
   contentContainerCentered: {
     flexGrow: 1,
@@ -778,6 +803,7 @@ const styles = StyleSheet.create({
   innerWrapper: {
     width: "100%",
     maxWidth: 1100,
+    alignSelf: "center",
   },
   innerWrapperCentered: {
     flex: 1,
@@ -793,7 +819,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   dashboardTitle: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: "bold",
     color: "#1a1a1a",
     marginBottom: 4,
@@ -834,7 +860,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   statNumber: {
-    fontSize: 42,
+    fontSize: 40,
     fontWeight: "bold",
     color: "#1a73e8",
   },
@@ -889,7 +915,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   actionTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
     color: "#1a1a1a",
     marginBottom: 6,
@@ -958,13 +984,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   emptyText: {
-    fontSize: 15,
+    fontSize: 14,
     color: "#999",
     fontWeight: "500",
   },
   emptyHintText: {
     marginTop: 8,
-    fontSize: 13,
+    fontSize: 12,
     color: "#6b7280",
     textAlign: "center",
     maxWidth: 460,
@@ -1078,6 +1104,7 @@ const styles = StyleSheet.create({
   },
   // Sidebar Footer
   sidebarFooter: {
+    gap: 12,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: "#e0e0e0",
@@ -1100,5 +1127,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#677b94",
     fontWeight: "500",
+  },
+  userProfileCard: {
+    backgroundColor: "#f6f8fc",
+    borderWidth: 1,
+    borderColor: "#e1e7f2",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  userProfileName: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1f2e4a",
+  },
+  userProfileRole: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#5d6d86",
+    textTransform: "capitalize",
   },
 });

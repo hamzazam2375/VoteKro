@@ -1,7 +1,6 @@
 import { useRouter } from "expo-router";
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useState } from "react";
 import {
-    Platform,
     Pressable,
     StyleSheet,
     Text,
@@ -19,15 +18,10 @@ export type DashboardSidebarItem = {
   active?: boolean;
 };
 
-type DashboardUserDetails = {
-  email?: string;
-};
-
 type DashboardShellProps = {
   sidebarItems: DashboardSidebarItem[];
   userName: string;
   userRole: string;
-  userDetails?: DashboardUserDetails;
   infoText?: string;
   onLogout: () => void;
   children: ReactNode;
@@ -40,7 +34,6 @@ export function DashboardShell({
   sidebarItems,
   userName,
   userRole,
-  userDetails,
   infoText,
   onLogout,
   children,
@@ -52,35 +45,6 @@ export function DashboardShell({
   const isMobile = width < 600;
   const insets = useSafeAreaInsets();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showUserDetails, setShowUserDetails] = useState(false);
-  const hoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (hoverCloseTimerRef.current) {
-        clearTimeout(hoverCloseTimerRef.current);
-      }
-    };
-  }, []);
-
-  const openUserDetails = () => {
-    if (hoverCloseTimerRef.current) {
-      clearTimeout(hoverCloseTimerRef.current);
-      hoverCloseTimerRef.current = null;
-    }
-    setShowUserDetails(true);
-  };
-
-  const closeUserDetails = () => {
-    if (hoverCloseTimerRef.current) {
-      clearTimeout(hoverCloseTimerRef.current);
-    }
-
-    hoverCloseTimerRef.current = setTimeout(() => {
-      setShowUserDetails(false);
-      hoverCloseTimerRef.current = null;
-    }, 120);
-  };
 
   const handleItemPress = (onPress: () => void) => {
     onPress();
@@ -157,41 +121,12 @@ export function DashboardShell({
             </View>
 
             <View style={styles.sidebarFooter}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.userProfileCard,
-                  pressed && styles.userProfileCardPressed,
-                ]}
-                accessibilityRole="button"
-                onHoverIn={openUserDetails}
-                onHoverOut={closeUserDetails}
-                onPress={() => {
-                  if (Platform.OS !== "web") {
-                    setShowUserDetails((previous) => !previous);
-                  }
-                }}
-              >
+              <View style={styles.userProfileCard}>
                 <Text numberOfLines={1} style={styles.userProfileName}>
                   {userName}
                 </Text>
                 <Text style={styles.userProfileRole}>{userRole}</Text>
-              </Pressable>
-
-              {showUserDetails ? (
-                <Pressable
-                  style={styles.userDetailsTooltip}
-                  onHoverIn={openUserDetails}
-                  onHoverOut={closeUserDetails}
-                >
-                  <Text style={styles.userDetailsTitle}>Login Details</Text>
-                  <Text style={styles.userDetailsText}>
-                    Email: {userDetails?.email ?? "N/A"}
-                  </Text>
-                  <Text style={styles.userDetailsText}>
-                    Password: Not available for security
-                  </Text>
-                </Pressable>
-              ) : null}
+              </View>
             </View>
           </View>
         )}
@@ -212,6 +147,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     position: "relative",
+    overflow: "visible",
   },
   mainLayoutMobile: {
     flexDirection: "column",
@@ -267,6 +203,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     flexDirection: "column",
     justifyContent: "flex-start",
+    overflow: "visible",
+    position: "relative",
+    zIndex: 50,
   },
   sidebarMobile: {
     position: "absolute",
@@ -325,9 +264,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  userProfileCardPressed: {
-    opacity: 0.95,
-  },
   userProfileName: {
     fontSize: 14,
     fontWeight: "700",
@@ -339,28 +275,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#5d6d86",
     textTransform: "capitalize",
-  },
-  userDetailsTooltip: {
-    marginTop: 10,
-    backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#dce5f1",
-    borderRadius: 10,
-    padding: 10,
-    boxShadow: "0px 6px 16px rgba(0, 0, 0, 0.12)",
-    elevation: 6,
-  },
-  userDetailsTitle: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#1f2e4a",
-    marginBottom: 6,
-    textTransform: "uppercase",
-  },
-  userDetailsText: {
-    fontSize: 12,
-    color: "#41536f",
-    lineHeight: 18,
   },
   content: {
     flex: 1,

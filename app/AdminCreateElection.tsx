@@ -1,9 +1,6 @@
 import type { ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
-import DateTimePicker, {
-    type DateTimePickerEvent,
-} from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -14,7 +11,7 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    View,
+    View
 } from "react-native";
 
 export default function AdminCreateElectionScreen({
@@ -29,8 +26,6 @@ export default function AdminCreateElectionScreen({
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
-  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -97,36 +92,6 @@ export default function AdminCreateElectionScreen({
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
-  };
-
-  const toDateFromInput = (value: string) => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      return new Date();
-    }
-
-    const [year, month, day] = value.split("-").map(Number);
-    return new Date(year, month - 1, day);
-  };
-
-  const onStartDateChange = (
-    event: DateTimePickerEvent,
-    selectedDate?: Date,
-  ) => {
-    setShowStartDatePicker(false);
-    if (event.type === "dismissed" || !selectedDate) {
-      return;
-    }
-
-    setStartDate(toDateInputValue(selectedDate));
-  };
-
-  const onEndDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-    setShowEndDatePicker(false);
-    if (event.type === "dismissed" || !selectedDate) {
-      return;
-    }
-
-    setEndDate(toDateInputValue(selectedDate));
   };
 
   const handleCreateElection = async () => {
@@ -239,60 +204,28 @@ export default function AdminCreateElectionScreen({
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Start Date</Text>
-            <View style={styles.dateInputRow}>
-              <TextInput
-                style={[styles.input, styles.dateInputFlex]}
-                value={startDate}
-                onChangeText={setStartDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor="#9ca3af"
-                editable={!isSubmitting}
-              />
-              <Pressable
-                style={styles.datePickerButton}
-                onPress={() => setShowStartDatePicker(true)}
-                disabled={isSubmitting}
-              >
-                <Text style={styles.datePickerButtonText}>📅</Text>
-              </Pressable>
-            </View>
-            {showStartDatePicker ? (
-              <DateTimePicker
-                value={toDateFromInput(startDate)}
-                mode="date"
-                display="default"
-                onChange={onStartDateChange}
-              />
-            ) : null}
+            <TextInput
+              style={styles.input}
+              value={startDate}
+              onChangeText={setStartDate}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#9ca3af"
+              editable={!isSubmitting}
+              inputMode="text"
+            />
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>End Date</Text>
-            <View style={styles.dateInputRow}>
-              <TextInput
-                style={[styles.input, styles.dateInputFlex]}
-                value={endDate}
-                onChangeText={setEndDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor="#9ca3af"
-                editable={!isSubmitting}
-              />
-              <Pressable
-                style={styles.datePickerButton}
-                onPress={() => setShowEndDatePicker(true)}
-                disabled={isSubmitting}
-              >
-                <Text style={styles.datePickerButtonText}>📅</Text>
-              </Pressable>
-            </View>
-            {showEndDatePicker ? (
-              <DateTimePicker
-                value={toDateFromInput(endDate)}
-                mode="date"
-                display="default"
-                onChange={onEndDateChange}
-              />
-            ) : null}
+            <TextInput
+              style={styles.input}
+              value={endDate}
+              onChangeText={setEndDate}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#9ca3af"
+              editable={!isSubmitting}
+              inputMode="text"
+            />
           </View>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -363,14 +296,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  dateInputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
   inputFlex: {
-    flex: 1,
-  },
-  dateInputFlex: {
     flex: 1,
   },
   inputGroup: {
@@ -391,25 +317,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc",
     color: "#111827",
     fontSize: 13,
-  },
-  datePickerButton: {
-    height: 42,
-    borderWidth: 1,
-    borderColor: "#d9dee7",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    backgroundColor: "#f8fafc",
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 8,
-    minWidth: 44,
-  },
-  datePickerButtonText: {
-    color: "#111827",
-    fontSize: 13,
-  },
-  datePickerPlaceholder: {
-    color: "#9ca3af",
   },
   errorText: {
     marginTop: 4,

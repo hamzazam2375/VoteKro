@@ -1,5 +1,4 @@
-import { useRouter, usePathname } from 'expo-router';
-import React from 'react';
+import { usePathname, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 export type SidebarItem = {
@@ -94,7 +93,6 @@ export function AuditorSidebar({ onNavigate, compact = false, profileName }: Aud
         })}
       </ScrollView>
 
-      {/* Logout Button */}
       <View style={[styles.logoutSection, compact && styles.logoutSectionCompact]}>
         <Pressable
           style={({ pressed }) => [
@@ -107,6 +105,13 @@ export function AuditorSidebar({ onNavigate, compact = false, profileName }: Aud
           <Text style={styles.logoutIcon}>🚪</Text>
           {!compact && <Text style={styles.logoutLabel}>Logout</Text>}
         </Pressable>
+
+        <View style={styles.userProfileCard}>
+          <Text numberOfLines={1} style={styles.userProfileName}>
+            {profileName?.trim() || "Auditor"}
+          </Text>
+          <Text style={styles.userProfileRole}>Auditor</Text>
+        </View>
       </View>
     </View>
   );
@@ -227,5 +232,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#d32f2f',
+  },
+  userProfileCard: {
+    backgroundColor: '#f6f8fc',
+    borderWidth: 1,
+    borderColor: '#e1e7f2',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  userProfileName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1f2e4a',
+  },
+  userProfileRole: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#5d6d86',
+    textTransform: 'capitalize',
   },
 });
