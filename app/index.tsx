@@ -650,13 +650,13 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     featureGridCompact: {
-        flexDirection: 'column',
     },
     featureGridMobile: {
-        flexDirection: 'column',
     },
     featureCard: {
-        flexBasis: '48%',
+        flex: 1,
+        minWidth: 280,
+        maxWidth: 350,
         minHeight: 170,
         backgroundColor: '#ffffff',
         borderColor: '#e2ecf7',
@@ -667,10 +667,9 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     featureCardCompact: {
-        flexBasis: '100%',
     },
     featureCardMobile: {
-        flexBasis: '100%',
+        maxWidth: '100%',
         minHeight: 0,
     },
     featureIcon: {
@@ -695,14 +694,13 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     rolesGridCompact: {
-        flexDirection: 'column',
     },
     rolesGridMobile: {
-        flexDirection: 'column',
     },
     roleCard: {
         flex: 1,
         minWidth: 280,
+        maxWidth: 350,
         backgroundColor: '#ffffff',
         borderRadius: 16,
         borderWidth: 1,
@@ -712,12 +710,9 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     roleCardCompact: {
-        minWidth: 0,
-        width: '100%',
     },
     roleCardMobile: {
-        minWidth: 0,
-        width: '100%',
+        maxWidth: '100%',
     },
     roleIcon: {
         fontSize: 40,
@@ -769,14 +764,13 @@ const styles = StyleSheet.create({
         marginBottom: 18,
     },
     setupGridCompact: {
-        flexDirection: 'column',
     },
     setupGridMobile: {
-        flexDirection: 'column',
     },
     setupCard: {
-        flexBasis: '31.5%',
-        minWidth: 250,
+        flex: 1,
+        minWidth: 280,
+        maxWidth: 350,
         backgroundColor: '#ffffff',
         borderRadius: 14,
         borderWidth: 1,
@@ -786,12 +780,9 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     setupCardCompact: {
-        flexBasis: '100%',
-        minWidth: 0,
     },
     setupCardMobile: {
-        flexBasis: '100%',
-        minWidth: 0,
+        maxWidth: '100%',
     },
     stepCard: {
         flexBasis: '48%',
@@ -832,17 +823,18 @@ const styles = StyleSheet.create({
     },
     statsRow: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         gap: 12,
         marginBottom: 24,
     },
     statsRowCompact: {
-        flexDirection: 'column',
     },
     statsRowMobile: {
-        flexDirection: 'column',
     },
     statCard: {
         flex: 1,
+        minWidth: 280,
+        maxWidth: 350,
         borderRadius: 12,
         backgroundColor: '#ffffff',
         borderWidth: 1,
@@ -853,10 +845,9 @@ const styles = StyleSheet.create({
         elevation: 1,
     },
     statCardCompact: {
-        minWidth: 0,
     },
     statCardMobile: {
-        minWidth: 0,
+        maxWidth: '100%',
     },
     statValue: {
         color: '#1f52cb',
