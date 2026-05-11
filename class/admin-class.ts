@@ -1,22 +1,22 @@
 import { AuthService } from "@/class/auth-class";
 import { BaseService } from "@/class/base-service";
 import type {
-    CandidateRow,
-    ElectionRow,
-    ProfileRow,
-    VoterRegistryRow,
+  CandidateRow,
+  ElectionRow,
+  ProfileRow,
+  VoterRegistryRow,
 } from "@/class/database-types";
 import { EmailService } from "@/class/email-service";
 import { ValidationError } from "@/class/errors";
 import type {
-    AddCandidateInput,
-    CreateElectionInput,
-    ICandidateRepository,
-    IElectionRepository,
-    IProfileRepository,
-    IVoterRegistryRepository,
-    UpdateCandidateInput,
-    UpdateElectionInput,
+  AddCandidateInput,
+  CreateElectionInput,
+  ICandidateRepository,
+  IElectionRepository,
+  IProfileRepository,
+  IVoterRegistryRepository,
+  UpdateCandidateInput,
+  UpdateElectionInput,
 } from "@/class/service-contracts";
 
 type RegisterUserInput = {
@@ -275,6 +275,7 @@ export class AdminService extends BaseService {
     electionId: string,
     status: ElectionRow["status"],
   ): Promise<ElectionRow> {
+    await this.authService.getRequiredProfile("admin");
     this.requireNonEmpty(electionId, "Election id");
     return this.electionRepository.updateStatus(electionId, status);
   }

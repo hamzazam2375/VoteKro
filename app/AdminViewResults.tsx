@@ -1,21 +1,22 @@
 import type {
-  CandidateRow,
-  ElectionRow,
-  ProfileRow,
+    CandidateRow,
+    ElectionRow,
+    ProfileRow,
 } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
+import { PageBackground } from "@/constants/theme";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
+    ActivityIndicator,
+    Alert,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
+    useWindowDimensions,
 } from "react-native";
 
 type CandidateResult = {
@@ -431,13 +432,13 @@ export default function AdminViewResults({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f3f4f6",
+    backgroundColor: PageBackground,
   },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f3f4f6",
+    backgroundColor: PageBackground,
   },
   loadingText: {
     marginTop: 12,

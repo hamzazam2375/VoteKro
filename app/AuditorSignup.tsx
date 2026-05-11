@@ -1,16 +1,17 @@
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
+import { PageBackground } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 export default function AuditorSignupScreen({
@@ -20,6 +21,7 @@ export default function AuditorSignupScreen({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -42,12 +44,13 @@ export default function AuditorSignupScreen({
 
   const handleRegister = async () => {
     // Validation
+    setError(null);
     if (!fullName.trim()) {
-      Alert.alert("Error", "Please enter auditor name");
+      setError("Please enter auditor name");
       return;
     }
     if (!email.trim()) {
-      Alert.alert("Error", "Please enter auditor gmail");
+      setError("Please enter auditor email");
       return;
     }
     setIsLoading(true);
@@ -106,6 +109,12 @@ export default function AuditorSignupScreen({
               Send an authorization email with login credentials. Auditor must
               click the authorize button before logging in.
             </Text>
+
+            {error ? (
+              <View style={styles.errorMessage}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
 
             {/* Full Name Input */}
             <View style={styles.inputContainer}>
@@ -175,13 +184,14 @@ export default function AuditorSignupScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: PageBackground,
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 20,
+    backgroundColor: PageBackground,
   },
   centerContainer: {
     width: "100%",
@@ -297,5 +307,20 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 15,
     fontWeight: "700",
+  },
+  errorMessage: {
+    backgroundColor: "#fee2e2",
+    borderColor: "#dc2626",
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 14,
+  },
+  errorText: {
+    fontSize: 13,
+    color: "#991b1b",
+    fontWeight: "600",
+    lineHeight: 18,
   },
 });

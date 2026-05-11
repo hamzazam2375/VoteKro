@@ -32,17 +32,7 @@ export function AuditorSidebar({ onNavigate, compact = false, profileName }: Aud
     if (onNavigate) {
       onNavigate(route);
     }
-    router.push(route);
-  };
-
-  const handleLogout = async () => {
-    try {
-      const { serviceFactory } = await import('@/class/service-factory');
-      await serviceFactory.authService.signOut();
-      router.replace('/');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+    router.push(route as never);
   };
 
   if (isMobile && compact) {
@@ -51,7 +41,7 @@ export function AuditorSidebar({ onNavigate, compact = false, profileName }: Aud
 
   return (
     <View style={[styles.sidebar, compact && styles.sidebarCompact]}>
-      <ScrollView 
+      <ScrollView
         style={styles.navContainer}
         contentContainerStyle={styles.navContent}
         showsVerticalScrollIndicator={false}
@@ -82,30 +72,12 @@ export function AuditorSidebar({ onNavigate, compact = false, profileName }: Aud
                   {item.label}
                 </Text>
               )}
-              {isActive && !compact && (
-                <View style={styles.activeIndicator} />
-              )}
-              {isActive && compact && (
-                <View style={styles.activeIndicatorCompact} />
-              )}
             </Pressable>
           );
         })}
       </ScrollView>
 
-      <View style={[styles.logoutSection, compact && styles.logoutSectionCompact]}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.logoutButton,
-            pressed && styles.logoutButtonPressed,
-            compact && styles.logoutButtonCompact,
-          ]}
-          onPress={handleLogout}
-        >
-          <Text style={styles.logoutIcon}>🚪</Text>
-          {!compact && <Text style={styles.logoutLabel}>Logout</Text>}
-        </Pressable>
-
+      <View style={[styles.sidebarFooter, compact && styles.sidebarFooterCompact]}>
         <View style={styles.userProfileCard}>
           <Text numberOfLines={1} style={styles.userProfileName}>
             {profileName?.trim() || "Auditor"}
@@ -119,15 +91,16 @@ export function AuditorSidebar({ onNavigate, compact = false, profileName }: Aud
 
 const styles = StyleSheet.create({
   sidebar: {
-    width: 260,
+    width: 240,
     backgroundColor: '#ffffff',
     borderRightWidth: 1,
-    borderRightColor: '#e0e7ff',
+    borderRightColor: '#e0e0e0',
     flexDirection: 'column',
-    paddingTop: 16,
-    paddingBottom: 16,
-    boxShadow: '0px 2px 8px rgba(26, 115, 232, 0.05)',
-    elevation: 2,
+    paddingVertical: 20,
+    paddingHorizontal: 12,
+    overflow: 'visible',
+    position: 'relative',
+    zIndex: 50,
   },
   sidebarCompact: {
     width: 80,
@@ -137,24 +110,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   navContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    gap: 8,
+    flex: 1,
   },
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 14,
-    marginBottom: 8,
-    borderRadius: 10,
-    backgroundColor: '#f8faff',
-    borderLeftWidth: 3,
-    borderLeftColor: 'transparent',
-    position: 'relative',
+    borderRadius: 8,
+    backgroundColor: 'transparent',
   },
   navItemActive: {
-    backgroundColor: '#e8f4fd',
-    borderLeftColor: '#1a73e8',
+    backgroundColor: '#1a73e8',
   },
   navItemPressed: {
     opacity: 0.8,
@@ -162,76 +130,32 @@ const styles = StyleSheet.create({
   navItemCompact: {
     paddingVertical: 10,
     paddingHorizontal: 10,
-    marginBottom: 6,
     justifyContent: 'center',
   },
   navIcon: {
-    fontSize: 20,
-    marginRight: 12,
+    fontSize: 14,
+    marginRight: 10,
   },
   navIconCompact: {
     marginRight: 0,
-    fontSize: 22,
+    fontSize: 18,
   },
   navLabel: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#525252',
+    fontWeight: '600',
+    color: '#4a4a4a',
     flex: 1,
   },
   navLabelActive: {
-    color: '#1a73e8',
-    fontWeight: '600',
+    color: '#ffffff',
   },
-  activeIndicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#1a73e8',
-    marginLeft: 'auto',
-  },
-  activeIndicatorCompact: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#1a73e8',
-  },
-  logoutSection: {
-    paddingHorizontal: 12,
+  sidebarFooter: {
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    marginTop: 'auto',
+    borderTopColor: '#edf0f5',
   },
-  logoutSectionCompact: {
-    paddingHorizontal: 8,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    backgroundColor: '#ffe8e8',
-    borderLeftWidth: 3,
-    borderLeftColor: 'transparent',
-  },
-  logoutButtonPressed: {
-    opacity: 0.8,
-  },
-  logoutButtonCompact: {
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    justifyContent: 'center',
-  },
-  logoutIcon: {
-    fontSize: 18,
-    marginRight: 10,
-  },
-  logoutLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#d32f2f',
+  sidebarFooterCompact: {
+    paddingHorizontal: 0,
   },
   userProfileCard: {
     backgroundColor: '#f6f8fc',
@@ -240,7 +164,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    marginBottom: 12,
   },
   userProfileName: {
     fontSize: 14,

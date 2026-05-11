@@ -1,5 +1,4 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface StatCardProps {
@@ -201,6 +200,7 @@ const styles = StyleSheet.create({
   gradient: {
     flex: 1,
     padding: 18,
+    paddingRight: 28,
     justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: '#e0e7ff',
@@ -231,11 +231,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#666',
     flex: 1,
+    flexWrap: 'wrap',
+    overflow: 'hidden',
   },
   value: {
     fontSize: 28,
     fontWeight: '700',
     marginBottom: 6,
+    flexWrap: 'wrap',
+    flexShrink: 1,
   },
   subtext: {
     fontSize: 12,
@@ -262,6 +266,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 14,
+  },
+  metricTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#525252',
+    flex: 1,
+    flexWrap: 'wrap',
   },
   metricIcon: {
     fontSize: 26,

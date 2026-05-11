@@ -1,21 +1,25 @@
-import type { AuditLogRow, ProfileRow } from '@/class/database-types';
+import type { ProfileRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
-import { AuditLogsViewer } from '@/components/audit-logs-viewer';
 import { AuditorSidebar } from '@/components/auditor-sidebar';
 import { MetricCard, StatCard } from '@/components/dashboard-cards';
 import { Navbar } from '@/components/navbar';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 export default function AuditorDashboard() {
     const router = useRouter();
     const { width } = useWindowDimensions();
     const isMobile = width < 760;
+    // Responsive columns: 1,2,3,4 depending on width
+    const statsColumns = width >= 1200 ? 4 : width >= 900 ? 3 : width >= 520 ? 2 : 1;
+    const statsItemWidth = `${Math.floor(100 / statsColumns) - 1}%`;
+    const metricsColumns = width >= 900 ? 2 : width >= 520 ? 2 : 1;
+    const metricsItemWidth = `${Math.floor(100 / metricsColumns) - 1}%`;
+    const statusColumns = width >= 900 ? 2 : 1;
+    const statusItemWidth = `${Math.floor(100 / statusColumns) - 1}%`;
     const [profile, setProfile] = useState<ProfileRow | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [auditLogs, setAuditLogs] = useState<(AuditLogRow & { displayType: string })[]>([]);
-    const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
     useEffect(() => {
         const loadProfile = async () => {
@@ -23,8 +27,6 @@ export default function AuditorDashboard() {
                 const userProfile = await serviceFactory.authService.getRequiredProfile('auditor');
                 setProfile(userProfile);
                 
-                // Load audit logs after profile is loaded
-                await loadAuditLogs();
             } catch (error) {
                 Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to load profile'));
                 router.replace('/AuditorSignup');
@@ -36,24 +38,31 @@ export default function AuditorDashboard() {
         void loadProfile();
     }, [router]);
 
-    const loadAuditLogs = async () => {
-        setIsLoadingLogs(true);
+    const handleLogout = async () => {
         try {
-            const logs = await serviceFactory.auditorService.getAuditLogs(100);
-            const formattedLogs = serviceFactory.auditorService.getFormattedAuditLogs(logs);
-            setAuditLogs(formattedLogs);
+            await serviceFactory.authService.signOut();
+            router.replace('/');
         } catch (error) {
-            console.error('Failed to load audit logs:', error);
-        } finally {
-            setIsLoadingLogs(false);
+            Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to logout'));
         }
     };
 
     if (isLoading) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#1a73e8" />
-                <Text style={styles.loadingText}>Loading...</Text>
+                        <View style={styles.container}>
+                                <Navbar
+                                    homeRoute="/AuditorDashboard"
+                                    actions={[
+                                        { label: 'Logout', onPress: handleLogout, variant: 'outline' },
+                                    ]}
+                                />
+                                <View style={styles.mainContent}>
+                                        {!isMobile && <AuditorSidebar profileName={profile?.full_name} />}
+                                        <View style={styles.loadingContainer}>
+                                                <ActivityIndicator size="large" color="#1a73e8" />
+                                                <Text style={styles.loadingText}>Loading...</Text>
+                                        </View>
+                                </View>
             </View>
         );
     }
@@ -61,9 +70,9 @@ export default function AuditorDashboard() {
     return (
         <View style={styles.container}>
             <Navbar 
-              auditorName={`Auditor ${profile?.full_name || ''}`}
+                            homeRoute="/AuditorDashboard"
               actions={[
-                { label: 'Back', onPress: () => router.back(), variant: 'outline' },
+                                { label: 'Logout', onPress: handleLogout, variant: 'outline' },
               ]}
             />
             
@@ -84,60 +93,72 @@ export default function AuditorDashboard() {
 
                         {/* Quick Stats Grid */}
                         <View style={[styles.statsGrid, isMobile && styles.statsGridMobile]}>
-                            <StatCard
-                                label="Total Blocks"
-                                value="3"
-                                icon="⛓️"
-                                color="#1a73e8"
-                                accentColor="#1a73e8"
-                                subtext="Verified"
-                            />
-                            <StatCard
-                                label="Elections"
-                                value="1"
-                                icon="🗳️"
-                                color="#4caf50"
-                                accentColor="#4caf50"
-                                subtext="Active"
-                            />
-                            <StatCard
-                                label="Verification Rate"
-                                value="98.5%"
-                                icon="✓"
-                                color="#1a73e8"
-                                accentColor="#1a73e8"
-                                subtext="Accurate"
-                            />
-                            <StatCard
-                                label="Anomalies"
-                                value="0"
-                                icon="⚠️"
-                                color="#ff9800"
-                                accentColor="#ff9800"
-                                subtext="Detected"
-                            />
+                            <View style={[styles.cardItem, ({ width: statsItemWidth } as any)]}>
+                                <StatCard
+                                    label="Total Blocks"
+                                    value="3"
+                                    icon="⛓️"
+                                    color="#1a73e8"
+                                    accentColor="#1a73e8"
+                                    subtext="Verified"
+                                />
+                            </View>
+                            <View style={[styles.cardItem, ({ width: statsItemWidth } as any)]}>
+                                <StatCard
+                                    label="Elections"
+                                    value="1"
+                                    icon="🗳️"
+                                    color="#4caf50"
+                                    accentColor="#4caf50"
+                                    subtext="Active"
+                                />
+                            </View>
+                            <View style={[styles.cardItem, ({ width: statsItemWidth } as any)]}>
+                                <StatCard
+                                    label="Verification Rate"
+                                    value="98.5%"
+                                    icon="✓"
+                                    color="#1a73e8"
+                                    accentColor="#1a73e8"
+                                    subtext="Accurate"
+                                />
+                            </View>
+                            <View style={[styles.cardItem, ({ width: statsItemWidth } as any)]}>
+                                <StatCard
+                                    label="Anomalies"
+                                    value="0"
+                                    icon="⚠️"
+                                    color="#ff9800"
+                                    accentColor="#ff9800"
+                                    subtext="Detected"
+                                />
+                            </View>
                         </View>
 
                         {/* Key Metrics Section */}
                         <View style={styles.section}>
                             <Text style={styles.sectionTitle}>📊 Key Metrics</Text>
                             <View style={[styles.metricsGrid, isMobile && styles.metricsGridMobile]}>
-                                <MetricCard
-                                    title="Verified Votes"
-                                    metric={5842}
-                                    unit="votes"
-                                    icon="✓"
-                                    color="#4caf50"
-                                    progress={98}
-                                />
-                                <MetricCard
-                                    title="Blockchain Records"
-                                    metric={3}
-                                    unit="blocks"
-                                    icon="⛓️"
-                                    color="#1a73e8"
-                                    progress={100}
-                                />
+                                <View style={[styles.metricItem, ({ width: metricsItemWidth } as any)]}>
+                                    <MetricCard
+                                        title="Verified Votes"
+                                        metric={5842}
+                                        unit="votes"
+                                        icon="✓"
+                                        color="#4caf50"
+                                        progress={98}
+                                    />
+                                </View>
+                                <View style={[styles.metricItem, ({ width: metricsItemWidth } as any)]}>
+                                    <MetricCard
+                                        title="Blockchain Records"
+                                        metric={3}
+                                        unit="blocks"
+                                        icon="⛓️"
+                                        color="#1a73e8"
+                                        progress={100}
+                                    />
+                                </View>
                             </View>
                         </View>
 
@@ -146,7 +167,7 @@ export default function AuditorDashboard() {
                             <Text style={styles.sectionTitle}>🔍 Audit Status</Text>
                             <View style={[styles.statusCardsGrid, isMobile && styles.statusCardsGridMobile]}>
                                 {/* Recent Audit Card */}
-                                <View style={styles.statusCard}>
+                                <View style={[styles.statusCard, ({ width: statusItemWidth } as any), isMobile && styles.statusCardMobile]}>
                                     <View style={styles.statusCardHeader}>
                                         <Text style={styles.statusCardIcon}>📋</Text>
                                         <Text style={styles.statusCardTitle}>Recent Audit</Text>
@@ -157,7 +178,7 @@ export default function AuditorDashboard() {
                                 </View>
 
                                 {/* System Health Card */}
-                                <View style={styles.statusCard}>
+                                <View style={[styles.statusCard, ({ width: statusItemWidth } as any), isMobile && styles.statusCardMobile]}>
                                     <View style={styles.statusCardHeader}>
                                         <Text style={styles.statusCardIcon}>❤️</Text>
                                         <Text style={styles.statusCardTitle}>System Health</Text>
@@ -285,6 +306,29 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffffff',
         borderWidth: 1,
         borderColor: '#e0e7ff',
+    },
+    statusCardMobile: {
+        minWidth: '100%',
+        marginBottom: 12,
+    },
+    // Responsive card item wrappers
+    cardItem: {
+        padding: 0,
+    },
+    cardItemDesktop: {
+        width: '23%'
+    },
+    cardItemMobile: {
+        width: '100%'
+    },
+    metricItem: {
+        padding: 0,
+    },
+    metricItemDesktop: {
+        width: '48%'
+    },
+    metricItemMobile: {
+        width: '100%'
     },
     statusCardHeader: {
         flexDirection: 'row',

@@ -1,22 +1,23 @@
 import type { ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
+import { PageBackground } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker, {
-  type DateTimePickerEvent,
+    type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
 export default function AdminCreateElectionScreen({
@@ -456,13 +457,13 @@ export default function AdminCreateElectionScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f3f4f6",
+    backgroundColor: PageBackground,
   },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f3f4f6",
+    backgroundColor: PageBackground,
   },
   loadingText: {
     marginTop: 12,

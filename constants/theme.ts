@@ -27,6 +27,9 @@ export const Colors = {
   },
 };
 
+// Page background used for outer padding areas around centered cards
+export const PageBackground = "#f3f4f6";
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */

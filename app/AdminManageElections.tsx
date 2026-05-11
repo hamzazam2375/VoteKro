@@ -181,14 +181,6 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
       return;
     }
 
-    const now = Date.now();
-    const endsAt = new Date(election.ends_at).getTime();
-
-    if (now > endsAt) {
-      Alert.alert("Info", "This election has already ended.");
-      return;
-    }
-
     Alert.alert(
       "End Election",
       `Are you sure you want to end \"${election.title}\"? Voters will no longer be able to cast votes once it is closed.`,
@@ -205,14 +197,10 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
 
   const confirmEndElection = async (election: ElectionRow) => {
     try {
-      await serviceFactory.adminService.updateElection({
-        electionId: election.id,
-        title: election.title,
-        description: election.description ?? undefined,
-        startsAtIso: election.starts_at,
-        endsAtIso: election.ends_at,
-        status: "closed",
-      });
+      await serviceFactory.adminService.updateElectionStatus(
+        election.id,
+        "closed",
+      );
 
       Alert.alert("Success", "Election ended successfully");
       void loadData();
@@ -534,7 +522,7 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
                             style={styles.endBtn}
                             onPress={() => handleEndElection(election)}
                           >
-                            <Text style={styles.endBtnText}>End</Text>
+                            <Text style={styles.endBtnText}>End Election</Text>
                           </Pressable>
                         ) : null}
                         <Pressable
@@ -661,13 +649,15 @@ const styles = StyleSheet.create({
   },
   endBtn: {
     backgroundColor: "#fef3c7",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#f59e0b",
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 6,
   },
   endBtnText: {
     color: "#b45309",
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
   },
   electionsList: {

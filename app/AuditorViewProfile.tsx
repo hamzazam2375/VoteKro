@@ -5,8 +5,8 @@ import { AuditorSidebar } from '@/components/auditor-sidebar';
 import { Navbar } from '@/components/navbar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 export default function AuditorViewProfile() {
   const router = useRouter();
@@ -55,11 +55,31 @@ export default function AuditorViewProfile() {
     void loadProfile();
   }, [router]);
 
+  const handleLogout = async () => {
+    try {
+      await serviceFactory.authService.signOut();
+      router.replace('/');
+    } catch (error) {
+      Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to logout'));
+    }
+  };
+
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1a73e8" />
-        <Text style={styles.loadingText}>Loading Profile...</Text>
+      <View style={styles.container}>
+        <Navbar 
+          homeRoute="/AuditorDashboard"
+          actions={[
+            { label: 'Logout', onPress: handleLogout, variant: 'outline' },
+          ]}
+        />
+        <View style={styles.mainContent}>
+          {!isMobile && <AuditorSidebar profileName={profile?.full_name} />}
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#1a73e8" />
+            <Text style={styles.loadingText}>Loading Profile...</Text>
+          </View>
+        </View>
       </View>
     );
   }
@@ -75,9 +95,9 @@ export default function AuditorViewProfile() {
   return (
     <View style={styles.container}>
       <Navbar 
-        auditorName="Auditor, Rizwan"
+        homeRoute="/AuditorDashboard"
         actions={[
-          { label: 'Back', onPress: () => router.back(), variant: 'outline' },
+          { label: 'Logout', onPress: handleLogout, variant: 'outline' },
         ]}
       />
       
@@ -125,7 +145,7 @@ export default function AuditorViewProfile() {
               <View style={styles.infoGrid}>
                 <InfoCard
                   label="Auditor ID"
-                  value={profile.id?.slice(0, 8).toUpperCase() || 'N/A'}
+                  value={profile.user_id?.slice(0, 8).toUpperCase() || 'N/A'}
                   icon="🆔"
                 />
                 <InfoCard

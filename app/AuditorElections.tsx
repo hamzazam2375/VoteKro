@@ -1,11 +1,11 @@
-import type { AuditLogRow, ElectionRow, ProfileRow, VoteBlockRow } from '@/class/database-types';
+import type { ElectionRow, ProfileRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
 import { AuditorSidebar } from '@/components/auditor-sidebar';
-import { Navbar } from '@/components/navbar';
 import { ElectionAuditProcessModal } from '@/components/election-audit-process-modal';
+import { Navbar } from '@/components/navbar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 
 interface ElectionWithStats extends ElectionRow {
@@ -156,11 +156,31 @@ export default function AuditorElections() {
     // Optionally navigate to results page or refresh data
   };
 
+  const handleLogout = async () => {
+    try {
+      await serviceFactory.authService.signOut();
+      router.replace('/');
+    } catch (error) {
+      Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to logout'));
+    }
+  };
+
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1a73e8" />
-        <Text style={styles.loadingText}>Loading Elections...</Text>
+      <View style={styles.container}>
+        <Navbar 
+          homeRoute="/AuditorDashboard"
+          actions={[
+            { label: 'Logout', onPress: handleLogout, variant: 'outline' },
+          ]}
+        />
+        <View style={styles.mainContent}>
+          {!isMobile && <AuditorSidebar profileName={profile?.full_name} />}
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#1a73e8" />
+            <Text style={styles.loadingText}>Loading Elections...</Text>
+          </View>
+        </View>
       </View>
     );
   }
@@ -168,9 +188,9 @@ export default function AuditorElections() {
   return (
     <View style={styles.container}>
       <Navbar 
-        auditorName="Auditor, Rizwan"
+        homeRoute="/AuditorDashboard"
         actions={[
-          { label: 'Back', onPress: () => router.back(), variant: 'outline' },
+          { label: 'Logout', onPress: handleLogout, variant: 'outline' },
         ]}
       />
       <View style={styles.mainContent}>

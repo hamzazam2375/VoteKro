@@ -4,7 +4,7 @@ import { AuditorSidebar } from '@/components/auditor-sidebar';
 import { Navbar } from '@/components/navbar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 
 interface AuditReport {
@@ -143,11 +143,31 @@ export default function AuditorReports() {
     setFilteredReports(filtered);
   }, [searchQuery, filterStatus, reports]);
 
+  const handleLogout = async () => {
+    try {
+      await serviceFactory.authService.signOut();
+      router.replace('/');
+    } catch (error) {
+      Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to logout'));
+    }
+  };
+
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1a73e8" />
-        <Text style={styles.loadingText}>Loading Reports...</Text>
+      <View style={styles.container}>
+        <Navbar 
+          homeRoute="/AuditorDashboard"
+          actions={[
+            { label: 'Logout', onPress: handleLogout, variant: 'outline' },
+          ]}
+        />
+        <View style={styles.mainContent}>
+          {!isMobile && <AuditorSidebar profileName={profile?.full_name} />}
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#1a73e8" />
+            <Text style={styles.loadingText}>Loading Reports...</Text>
+          </View>
+        </View>
       </View>
     );
   }
@@ -155,9 +175,9 @@ export default function AuditorReports() {
   return (
     <View style={styles.container}>
       <Navbar 
-        auditorName="Auditor, Rizwan"
+        homeRoute="/AuditorDashboard"
         actions={[
-          { label: 'Back', onPress: () => router.back(), variant: 'outline' },
+          { label: 'Logout', onPress: handleLogout, variant: 'outline' },
         ]}
       />
       <View style={styles.mainContent}>

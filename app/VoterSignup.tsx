@@ -2,18 +2,19 @@ import type { ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { FaceCapture, type FaceCaptureResult } from "@/components/face-capture";
 import { Navbar } from "@/components/navbar";
+import { PageBackground } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 export default function VoterSignupScreen({
@@ -219,7 +220,7 @@ export default function VoterSignupScreen({
                   placeholderTextColor="#999"
                   value={fullName}
                   onChangeText={setFullName}
-                  editable={!isLoading && isFaceVerified}
+                  editable={!isLoading}
                 />
               </View>
 
@@ -233,7 +234,7 @@ export default function VoterSignupScreen({
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  editable={!isLoading && isFaceVerified}
+                  editable={!isLoading}
                 />
               </View>
 
@@ -241,10 +242,10 @@ export default function VoterSignupScreen({
                 style={({ pressed }) => [
                   styles.registerButton,
                   pressed && styles.registerButtonPressed,
-                  (!isFaceVerified || isLoading) && styles.registerButtonDisabled,
+                  isLoading && styles.registerButtonDisabled,
                 ]}
                 onPress={handleRegister}
-                disabled={!isFaceVerified || isLoading}
+                disabled={isLoading}
               >
                 {isLoading ? (
                   <ActivityIndicator color="#fff" />
@@ -263,13 +264,14 @@ export default function VoterSignupScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: PageBackground,
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 20,
+    backgroundColor: PageBackground,
   },
   backButton: {
     marginTop: 20,
@@ -288,8 +290,6 @@ const styles = StyleSheet.create({
   },
   centerContainer: {
     width: "100%",
-    maxWidth: 500,
-    alignItems: "center",
     paddingHorizontal: 20,
   },
   card: {
@@ -347,14 +347,12 @@ const styles = StyleSheet.create({
     marginTop: 6,
     height: 42,
     borderRadius: 6,
-    backgroundColor: "#0f9962",
+    backgroundColor: "#0f8a3d",
     alignItems: "center",
     justifyContent: "center",
-    boxShadow: "0px 3px 6px rgba(5, 150, 105, 0.2)",
-    elevation: 2,
   },
   registerButtonPressed: {
-    backgroundColor: "#0b7e51",
+    backgroundColor: "#0a6630",
   },
   registerButtonDisabled: {
     opacity: 0.6,

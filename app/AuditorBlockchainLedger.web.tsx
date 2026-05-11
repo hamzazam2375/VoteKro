@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { Table, Button, Modal, Select, Card, Spin, Alert, Collapse, Input, Tag, Space, Tooltip, Divider, Empty } from "antd";
-import { CopyOutlined, ExpandOutlined, LinkOutlined, CheckCircleOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { serviceFactory } from "@/class/service-factory";
 import type { ElectionRow } from "@/class/database-types";
+import { serviceFactory } from "@/class/service-factory";
+import { AuditorSidebar } from "@/components/auditor-sidebar";
+import { Navbar } from "@/components/navbar";
+import { CheckCircleOutlined, CopyOutlined, ExclamationCircleOutlined, ExpandOutlined, LinkOutlined } from "@ant-design/icons";
+import { Alert, Button, Card, Collapse, Divider, Empty, Input, Modal, Select, Space, Spin, Table, Tag, Tooltip } from "antd";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { useWindowDimensions } from "react-native";
 
 interface VoteBlock {
   id: string;
@@ -61,6 +64,8 @@ const verifyBlockchain = (blocks: VoteBlock[]): { isValid: boolean; blocks: Vote
 
 const AuditorBlockchainLedger: React.FC = () => {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 760;
   const searchParams = useLocalSearchParams();
   const [blocks, setBlocks] = useState<VoteBlock[]>([]);
   const [elections, setElections] = useState<ElectionRow[]>([]);
@@ -85,6 +90,15 @@ const AuditorBlockchainLedger: React.FC = () => {
     tamperedCount: 0,
   });
   const rocksDbUrl = process.env.EXPO_PUBLIC_ROCKSDB_LEDGER_URL || "http://localhost:8787";
+
+  const handleLogout = async () => {
+    try {
+      await serviceFactory.authService.signOut();
+      router.replace('/');
+    } catch (error) {
+      Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to logout'));
+    }
+  };
 
   // Fetch elections from database
   useEffect(() => {
@@ -426,15 +440,19 @@ const AuditorBlockchainLedger: React.FC = () => {
   );
 
   return (
-    <div style={{ 
-      padding: "20px", 
-      backgroundColor: "#f5f5f5", 
-      minHeight: "100vh",
-      maxHeight: "100vh",
-      overflowY: "auto",
-      overflowX: "hidden",
-    }}>
-      <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "#f5f5f5", display: "flex", flexDirection: "column" }}>
+      <Navbar actions={[{ label: 'Logout', onPress: handleLogout, variant: 'outline' }]} />
+      <div style={{ display: "flex", flex: 1 }}>
+        {!isMobile && <AuditorSidebar />}
+        <div style={{ 
+          padding: "20px", 
+          backgroundColor: "#f5f5f5", 
+          flex: 1,
+          minWidth: 0,
+          overflowY: "auto",
+          overflowX: "hidden",
+        }}>
+          <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
         <h1 style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
           <LinkOutlined /> Blockchain Ledger - Auditor View
         </h1>
@@ -752,6 +770,8 @@ const AuditorBlockchainLedger: React.FC = () => {
           </div>
         )}
       </Modal>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,10 +1,12 @@
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
+import { PageBackground } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -74,7 +76,19 @@ export default function AdminEditProfile({
         password: newPassword.trim() || undefined,
       });
       Alert.alert("Success", "Profile updated successfully");
-      router.replace("/AdminDashboard");
+        if (Platform.OS === "web") {
+          try {
+            const { toast } = require("react-toastify");
+            toast.success("Profile updated successfully");
+          } catch (err) {
+            // fallback to Alert if toast isn't available
+            Alert.alert("Success", "Profile updated successfully");
+          }
+        } else {
+          Alert.alert("Success", "Profile updated successfully");
+        }
+
+        // Stay on the same page after successful save (no navigation)
     } catch (error) {
       Alert.alert(
         "Error",
@@ -113,9 +127,11 @@ export default function AdminEditProfile({
 
   if (isLoading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#1a73e8" />
-        <Text style={styles.loadingText}>Loading...</Text>
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1a73e8" />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
       </View>
     );
   }
@@ -130,96 +146,82 @@ export default function AdminEditProfile({
         />
       )}
 
-      {!isEmbedded && (
-        <Pressable style={styles.backButton} onPress={() => router.replace("/AdminDashboard")}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </Pressable>
-      )}
-
       <ScrollView
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.innerWrapper}>
-          <View style={styles.titleSection}>
-            <Text style={styles.pageTitle}>Edit Profile</Text>
-            <Text style={styles.pageSubtitle}>
+        <View style={styles.centerContainer}>
+          <View style={styles.card}>
+            <View style={styles.titleContainer}>
+              <Text style={styles.icon}>👤</Text>
+              <Text style={styles.title}>Edit Profile</Text>
+            </View>
+
+            <Text style={styles.description}>
               Update your account information
             </Text>
-          </View>
 
-          <View style={styles.formCard}>
-            <View style={styles.inputGroup}>
+            <View style={styles.inputContainer}>
               <Text style={styles.label}>Full name</Text>
               <TextInput
                 style={styles.input}
                 value={fullName}
                 onChangeText={setFullName}
-                placeholder="e.g., John Doe"
-                placeholderTextColor="#a3a3a3"
+                placeholder="Enter your name"
+                placeholderTextColor="#999"
                 editable={!isLoading}
               />
             </View>
 
-            <View style={styles.inputGroup}>
+            <View style={styles.inputContainer}>
               <Text style={styles.label}>Email</Text>
               <TextInput
                 style={styles.input}
                 value={email}
                 onChangeText={setEmail}
                 placeholder="your.email@example.com"
-                placeholderTextColor="#a3a3a3"
+                placeholderTextColor="#999"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 editable={!isLoading}
               />
             </View>
 
-            <View style={styles.inputGroup}>
+            <View style={styles.inputContainer}>
               <Text style={styles.label}>New Password</Text>
               <TextInput
                 style={styles.input}
                 value={newPassword}
                 onChangeText={setNewPassword}
                 placeholder="Leave blank to keep current password"
-                placeholderTextColor="#a3a3a3"
+                placeholderTextColor="#999"
                 secureTextEntry
                 editable={!isLoading}
               />
             </View>
 
-            <Text style={styles.helperText}>
-              Updating email or password will use your current authenticated
-              session.
-            </Text>
-
-            <View style={styles.buttonRow}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.saveButton,
-                  pressed && styles.saveButtonPressed,
-                  isLoading && styles.saveButtonDisabled,
-                ]}
-                disabled={isLoading}
-                onPress={() => void handleSave()}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#ffffff" size="small" />
-                ) : (
-                  <Text style={styles.saveButtonText}>Save Changes</Text>
-                )}
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.cancelButton,
-                  pressed && styles.cancelButtonPressed,
-                ]}
-                onPress={handleCancel}
-                disabled={isLoading}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </Pressable>
-            </View>
+            <Pressable
+              style={({ pressed }) => [
+                styles.saveButton,
+                pressed && styles.saveButtonPressed,
+                isLoading && styles.saveButtonDisabled,
+              ]}
+              disabled={isLoading}
+              onPress={() => void handleSave()}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+              )}
+            </Pressable>
           </View>
+
+          {!isEmbedded && (
+            <Pressable style={styles.backButton} onPress={handleCancel}>
+              <Text style={styles.backButtonText}>← Back</Text>
+            </Pressable>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -229,9 +231,9 @@ export default function AdminEditProfile({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f3f4f6",
+    backgroundColor: PageBackground,
   },
-  centerContainer: {
+  loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
@@ -242,76 +244,71 @@ const styles = StyleSheet.create({
     color: "#64748b",
     fontSize: 14,
   },
-  contentContainer: {
-    paddingTop: 18,
-    paddingHorizontal: 16,
-    paddingBottom: 32,
-    alignItems: "stretch",
-  },
-  innerWrapper: {
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 20,
     width: "100%",
-    maxWidth: 600,
+    backgroundColor: PageBackground,
+  },
+  centerContainer: {
+    width: "100%",
+    maxWidth: 460,
     alignSelf: "center",
+    alignItems: "center",
+    paddingHorizontal: 0,
   },
-  backButton: {
-    alignSelf: "flex-start",
-    borderWidth: 1.5,
-    borderColor: "#2e63e3",
+  card: {
+    backgroundColor: "#fff",
     borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    backgroundColor: "#ffffff",
-    marginBottom: 0,
-    marginLeft: 16,
-    marginTop: 12,
-    marginRight: 16,
+    padding: 32,
+    boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.08)",
+    elevation: 2,
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
   },
-  backButtonText: {
-    color: "#2e63e3",
-    fontSize: 14,
-    fontWeight: "600",
+  titleContainer: {
+    alignItems: "center",
+    marginBottom: 12,
+    justifyContent: "center",
   },
-  titleSection: {
-    marginBottom: 24,
-  },
-  pageTitle: {
-    fontSize: 32,
-    fontWeight: "800",
-    color: "#111827",
+  icon: {
+    fontSize: 36,
     marginBottom: 8,
   },
-  pageSubtitle: {
-    fontSize: 15,
-    color: "#6b7280",
+  title: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: "#1a1a1a",
+    textAlign: "center",
   },
-  formCard: {
-    backgroundColor: "#ffffff",
-    borderWidth: 1,
-    borderColor: "#e4e7ec",
-    borderRadius: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-    boxShadow: "0px 1px 3px rgba(15, 23, 42, 0.06)",
-    elevation: 2,
+  description: {
+    fontSize: 13,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 28,
+    lineHeight: 19,
   },
-  inputGroup: {
+  inputContainer: {
     marginBottom: 20,
   },
   label: {
     fontSize: 13,
-    fontWeight: "700",
-    color: "#111827",
+    fontWeight: "600",
+    color: "#1a1a1a",
     marginBottom: 8,
   },
   input: {
-    height: 46,
     borderWidth: 1,
-    borderColor: "#d9dee7",
-    borderRadius: 10,
+    borderColor: "#ddd",
+    borderRadius: 6,
     paddingHorizontal: 14,
-    backgroundColor: "#f8fafc",
-    color: "#111827",
-    fontSize: 14,
+    paddingVertical: 11,
+    fontSize: 13,
+    backgroundColor: "#fafafa",
+    color: "#1a1a1a",
   },
   helperText: {
     marginBottom: 20,
@@ -319,46 +316,39 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "500",
-  },
-  buttonRow: {
-    flexDirection: "row",
-    gap: 10,
+    textAlign: "center",
   },
   saveButton: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 10,
-    backgroundColor: "#0ea66c",
+    backgroundColor: "#0f8a3d",
+    borderRadius: 6,
+    paddingVertical: 12,
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 12,
   },
   saveButtonPressed: {
-    opacity: 0.88,
+    backgroundColor: "#0a6630",
   },
   saveButtonDisabled: {
-    opacity: 0.65,
+    opacity: 0.6,
   },
   saveButtonText: {
-    color: "#ffffff",
-    fontSize: 14,
+    color: "#fff",
+    fontSize: 15,
     fontWeight: "700",
   },
-  cancelButton: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 10,
-    backgroundColor: "#ffffff",
-    borderWidth: 1.5,
-    borderColor: "#d9dee7",
-    alignItems: "center",
-    justifyContent: "center",
+  backButton: {
+    marginTop: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    alignSelf: "center",
   },
-  cancelButtonPressed: {
-    backgroundColor: "#f8fafc",
-  },
-  cancelButtonText: {
-    color: "#374151",
+  backButtonText: {
+    color: "#1a73e8",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "500",
   },
 });

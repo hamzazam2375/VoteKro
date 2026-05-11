@@ -84,6 +84,7 @@ export default function HomeScreen() {
     const router = useRouter();
     const { width } = useWindowDimensions();
     const isMobile = width < 768;
+    const isCompact = width < 1024;
 
     const handleSignUp = () => {
         router.push('/AdminSignup');
@@ -104,17 +105,52 @@ export default function HomeScreen() {
             />
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                <View style={[styles.heroSection, isMobile && styles.heroSectionMobile]}>
+                <View
+                    style={[
+                        styles.heroSection,
+                        isCompact && styles.heroSectionCompact,
+                        isMobile && styles.heroSectionMobile,
+                    ]}
+                >
                     <View style={styles.backgroundBlobTopRight} />
                     <View style={styles.backgroundBlobBottomLeft} />
 
-                    <View style={[styles.hero, isMobile && styles.heroMobile]}>
+                    <View
+                        style={[
+                            styles.hero,
+                            isCompact && styles.heroCompact,
+                            isMobile && styles.heroMobile,
+                        ]}
+                    >
                         <View style={styles.heroTitleRow}>
-                            <Text style={[styles.title, isMobile && styles.titleMobile]}>Welcome to</Text>
+                            <Text
+                                style={[
+                                    styles.title,
+                                    isCompact && styles.titleCompact,
+                                    isMobile && styles.titleMobile,
+                                ]}
+                            >
+                                Welcome to
+                            </Text>
                         </View>
-                        <Text style={[styles.title, styles.titleSecondLine, isMobile && styles.titleMobile]}>VoteKro</Text>
+                        <Text
+                            style={[
+                                styles.title,
+                                styles.titleSecondLine,
+                                isCompact && styles.titleCompact,
+                                isMobile && styles.titleMobile,
+                            ]}
+                        >
+                            VoteKro
+                        </Text>
 
-                        <Text style={[styles.subtitle, isMobile && styles.subtitleMobile]}>
+                        <Text
+                            style={[
+                                styles.subtitle,
+                                isCompact && styles.subtitleCompact,
+                                isMobile && styles.subtitleMobile,
+                            ]}
+                        >
                             Professional digital voting for voters, election organizers, and auditors with
                             blockchain-backed integrity.
                         </Text>
@@ -122,6 +158,8 @@ export default function HomeScreen() {
                         <Pressable
                             style={({ pressed }) => [
                                 styles.primaryButton,
+                                isCompact && styles.primaryButtonCompact,
+                                isMobile && styles.primaryButtonMobile,
                                 pressed && styles.primaryButtonPressed,
                             ]}
                             onPress={handleVoterContinue}
@@ -132,6 +170,8 @@ export default function HomeScreen() {
                         <Pressable
                             style={({ pressed }) => [
                                 styles.secondaryButton,
+                                isCompact && styles.secondaryButtonCompact,
+                                isMobile && styles.secondaryButtonMobile,
                                 pressed && styles.secondaryButtonPressed,
                             ]}
                             onPress={handleAdminAuditorLogin}
@@ -141,7 +181,13 @@ export default function HomeScreen() {
                     </View>
                 </View>
 
-                <View style={[styles.sectionShell, styles.sectionShellMuted]}>
+                <View
+                    style={[
+                        styles.sectionShell,
+                        isCompact && styles.sectionShellCompact,
+                        styles.sectionShellMuted,
+                    ]}
+                >
                     <Text style={styles.sectionEyebrow}>NEW ORGANIZER GUIDE</Text>
                     <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>
                         First Time Setting Up an Election?
@@ -150,9 +196,22 @@ export default function HomeScreen() {
                         This path is for new users who want to run an election. Start with Admin Sign Up, then follow
                         these setup steps in order.
                     </Text>
-                    <View style={[styles.setupGrid, isMobile && styles.setupGridMobile]}>
+                    <View
+                        style={[
+                            styles.setupGrid,
+                            isCompact && styles.setupGridCompact,
+                            isMobile && styles.setupGridMobile,
+                        ]}
+                    >
                         {electionSetupSteps.map((step) => (
-                            <View key={step.number} style={styles.setupCard}>
+                            <View
+                                key={step.number}
+                                style={[
+                                    styles.setupCard,
+                                    isCompact && styles.setupCardCompact,
+                                    isMobile && styles.setupCardMobile,
+                                ]}
+                            >
                                 <Text style={styles.stepNumber}>{step.number}</Text>
                                 <Text style={styles.stepTitle}>{step.title}</Text>
                                 <Text style={styles.stepBody}>{step.body}</Text>
@@ -168,14 +227,27 @@ export default function HomeScreen() {
                     </Pressable>
                 </View>
 
-                <View style={styles.sectionShell}>
+                <View style={[styles.sectionShell, isCompact && styles.sectionShellCompact]}>
                     <Text style={styles.sectionEyebrow}>WHY VOTEKRO</Text>
                     <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>
                         Everything You Need in One Place
                     </Text>
-                    <View style={[styles.featureGrid, isMobile && styles.featureGridMobile]}>
+                    <View
+                        style={[
+                            styles.featureGrid,
+                            isCompact && styles.featureGridCompact,
+                            isMobile && styles.featureGridMobile,
+                        ]}
+                    >
                         {featureHighlights.map((feature) => (
-                            <View key={feature.title} style={styles.featureCard}>
+                            <View
+                                key={feature.title}
+                                style={[
+                                    styles.featureCard,
+                                    isCompact && styles.featureCardCompact,
+                                    isMobile && styles.featureCardMobile,
+                                ]}
+                            >
                                 <Text style={styles.featureIcon}>{feature.icon}</Text>
                                 <Text style={styles.featureTitle}>{feature.title}</Text>
                                 <Text style={styles.featureBody}>{feature.body}</Text>
@@ -184,15 +256,34 @@ export default function HomeScreen() {
                     </View>
                 </View>
 
-                <View style={[styles.sectionShell, styles.sectionShellMuted]}>
+                <View
+                    style={[
+                        styles.sectionShell,
+                        isCompact && styles.sectionShellCompact,
+                        styles.sectionShellMuted,
+                    ]}
+                >
                     <Text style={styles.sectionEyebrow}>CHOOSE YOUR PATH</Text>
                     <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>
                         Built for Every Role in an Election
                     </Text>
 
-                    <View style={[styles.rolesGrid, isMobile && styles.rolesGridMobile]}>
+                    <View
+                        style={[
+                            styles.rolesGrid,
+                            isCompact && styles.rolesGridCompact,
+                            isMobile && styles.rolesGridMobile,
+                        ]}
+                    >
                         {roleJourneys.map((role) => (
-                            <View key={role.title} style={styles.roleCard}>
+                            <View
+                                key={role.title}
+                                style={[
+                                    styles.roleCard,
+                                    isCompact && styles.roleCardCompact,
+                                    isMobile && styles.roleCardMobile,
+                                ]}
+                            >
                                 <Text style={styles.roleIcon}>{role.icon}</Text>
                                 <Text style={styles.roleTitle}>{role.title}</Text>
                                 <Text style={styles.roleBody}>{role.body}</Text>
@@ -213,7 +304,7 @@ export default function HomeScreen() {
                     </View>
                 </View>
 
-                <View style={styles.sectionShell}>
+                <View style={[styles.sectionShell, isCompact && styles.sectionShellCompact]}>
                     <Text style={styles.sectionEyebrow}>ABOUT</Text>
                     <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>
                         Built for Fair, Verifiable, and Trusted Elections
@@ -223,9 +314,22 @@ export default function HomeScreen() {
                         encrypted voting, and transparent auditing so organizations can run elections with confidence.
                     </Text>
 
-                    <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
+                    <View
+                        style={[
+                            styles.statsRow,
+                            isCompact && styles.statsRowCompact,
+                            isMobile && styles.statsRowMobile,
+                        ]}
+                    >
                         {trustStats.map((stat) => (
-                            <View key={stat.value} style={styles.statCard}>
+                            <View
+                                key={stat.value}
+                                style={[
+                                    styles.statCard,
+                                    isCompact && styles.statCardCompact,
+                                    isMobile && styles.statCardMobile,
+                                ]}
+                            >
                                 <Text style={styles.statValue}>{stat.value}</Text>
                                 <Text style={styles.statLabel}>{stat.label}</Text>
                             </View>
@@ -250,6 +354,9 @@ const styles = StyleSheet.create({
         minHeight: 640,
         justifyContent: 'center',
         overflow: 'hidden',
+    },
+    heroSectionCompact: {
+        minHeight: 580,
     },
     heroSectionMobile: {
         minHeight: 560,
@@ -287,6 +394,9 @@ const styles = StyleSheet.create({
         minHeight: 560,
         zIndex: 1,
     },
+    heroCompact: {
+        paddingHorizontal: 18,
+    },
     heroMobile: {
         justifyContent: 'flex-start',
         paddingTop: 72,
@@ -312,6 +422,10 @@ const styles = StyleSheet.create({
         fontSize: 40,
         lineHeight: 48,
     },
+    titleCompact: {
+        fontSize: 46,
+        lineHeight: 54,
+    },
     subtitle: {
         color: '#5a6f87',
         fontSize: 18,
@@ -320,6 +434,11 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginBottom: 28,
         fontWeight: '400',
+    },
+    subtitleCompact: {
+        maxWidth: 660,
+        fontSize: 17,
+        lineHeight: 26,
     },
     subtitleMobile: {
         fontSize: 16,
@@ -447,6 +566,13 @@ const styles = StyleSheet.create({
         opacity: 0.9,
         transform: [{ scale: 0.98 }],
     },
+    primaryButtonCompact: {
+        minWidth: 280,
+    },
+    primaryButtonMobile: {
+        minWidth: '100%',
+        width: '100%',
+    },
     primaryButtonText: {
         color: '#ffffff',
         fontSize: 16,
@@ -468,6 +594,13 @@ const styles = StyleSheet.create({
         opacity: 0.92,
         transform: [{ scale: 0.99 }],
     },
+    secondaryButtonCompact: {
+        minWidth: 280,
+    },
+    secondaryButtonMobile: {
+        minWidth: '100%',
+        width: '100%',
+    },
     secondaryButtonText: {
         color: '#2f64e6',
         fontSize: 16,
@@ -480,6 +613,10 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         paddingHorizontal: 22,
         paddingVertical: 54,
+    },
+    sectionShellCompact: {
+        paddingHorizontal: 18,
+        paddingVertical: 42,
     },
     sectionShellMuted: {
         backgroundColor: '#f7fafD',
@@ -512,6 +649,9 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
         gap: 16,
     },
+    featureGridCompact: {
+        flexDirection: 'column',
+    },
     featureGridMobile: {
         flexDirection: 'column',
     },
@@ -525,6 +665,13 @@ const styles = StyleSheet.create({
         padding: 20,
         boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.04)',
         elevation: 2,
+    },
+    featureCardCompact: {
+        flexBasis: '100%',
+    },
+    featureCardMobile: {
+        flexBasis: '100%',
+        minHeight: 0,
     },
     featureIcon: {
         fontSize: 32,
@@ -547,6 +694,9 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
         gap: 16,
     },
+    rolesGridCompact: {
+        flexDirection: 'column',
+    },
     rolesGridMobile: {
         flexDirection: 'column',
     },
@@ -560,6 +710,14 @@ const styles = StyleSheet.create({
         padding: 24,
         boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.06)',
         elevation: 3,
+    },
+    roleCardCompact: {
+        minWidth: 0,
+        width: '100%',
+    },
+    roleCardMobile: {
+        minWidth: 0,
+        width: '100%',
     },
     roleIcon: {
         fontSize: 40,
@@ -610,6 +768,9 @@ const styles = StyleSheet.create({
         gap: 14,
         marginBottom: 18,
     },
+    setupGridCompact: {
+        flexDirection: 'column',
+    },
     setupGridMobile: {
         flexDirection: 'column',
     },
@@ -623,6 +784,14 @@ const styles = StyleSheet.create({
         padding: 20,
         boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.04)',
         elevation: 2,
+    },
+    setupCardCompact: {
+        flexBasis: '100%',
+        minWidth: 0,
+    },
+    setupCardMobile: {
+        flexBasis: '100%',
+        minWidth: 0,
     },
     stepCard: {
         flexBasis: '48%',
@@ -666,6 +835,9 @@ const styles = StyleSheet.create({
         gap: 12,
         marginBottom: 24,
     },
+    statsRowCompact: {
+        flexDirection: 'column',
+    },
     statsRowMobile: {
         flexDirection: 'column',
     },
@@ -679,6 +851,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 18,
         boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.03)',
         elevation: 1,
+    },
+    statCardCompact: {
+        minWidth: 0,
+    },
+    statCardMobile: {
+        minWidth: 0,
     },
     statValue: {
         color: '#1f52cb',

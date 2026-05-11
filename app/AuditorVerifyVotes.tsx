@@ -2,6 +2,7 @@ import type { FullBlockchainVerification } from '@/class/blockchain-verification
 import type { CandidateRow, ProfileRow } from '@/class/database-types';
 import { serviceFactory } from '@/class/service-factory';
 import type { VoteCounts, VoteCountVerificationResult } from '@/class/vote-count-verification';
+import { AuditorSidebar } from '@/components/auditor-sidebar';
 import { BlockchainIntegrityViewer } from '@/components/blockchain-integrity-viewer';
 import { Navbar } from '@/components/navbar';
 import { TamperDetectionReport } from '@/components/tamper-detection-report';
@@ -27,6 +28,15 @@ export default function AuditorVerifyVotes() {
     const [selectedElectionId, setSelectedElectionId] = useState<string | null>(null);
     const [electionName, setElectionName] = useState<string>('');
     const [activeTab, setActiveTab] = useState<'tamper' | 'votes' | 'blockchain'>('tamper');
+
+    const handleLogout = async () => {
+        try {
+            await serviceFactory.authService.signOut();
+            router.replace('/');
+        } catch (error) {
+            Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to logout'));
+        }
+    };
 
     useEffect(() => {
         const loadData = async () => {
@@ -238,9 +248,9 @@ export default function AuditorVerifyVotes() {
 
             // Create mock verification result
             const mockCandidates: CandidateRow[] = [
-                { id: 'candidate-1', display_name: 'Ali Khan', election_id: 'demo', description: '', created_at: '', updated_at: '' },
-                { id: 'candidate-2', display_name: 'Hassan Malik', election_id: 'demo', description: '', created_at: '', updated_at: '' },
-                { id: 'candidate-3', display_name: 'Harnain Malik', election_id: 'demo', description: '', created_at: '', updated_at: '' },
+                { id: 'candidate-1', display_name: 'Ali Khan', election_id: 'demo', party_name: null, candidate_number: 1, created_at: '' },
+                { id: 'candidate-2', display_name: 'Hassan Malik', election_id: 'demo', party_name: null, candidate_number: 2, created_at: '' },
+                { id: 'candidate-3', display_name: 'Harnain Malik', election_id: 'demo', party_name: null, candidate_number: 3, created_at: '' },
             ];
 
             const mockResult: VoteCountVerificationResult = {
@@ -309,9 +319,18 @@ export default function AuditorVerifyVotes() {
     if (isLoading) {
         return (
             <View style={styles.container}>
-                <View style={styles.centerContainer}>
-                    <ActivityIndicator size="large" color="#1a73e8" />
-                    <Text style={styles.loadingText}>Loading verification...</Text>
+                <Navbar
+                    homeRoute="/AuditorDashboard"
+                    actions={[
+                        { label: 'Logout', onPress: handleLogout, variant: 'outline' },
+                    ]}
+                />
+                <View style={styles.mainContent}>
+                    {!isMobile && <AuditorSidebar profileName={profile?.full_name} />}
+                    <View style={styles.centerContainer}>
+                        <ActivityIndicator size="large" color="#1a73e8" />
+                        <Text style={styles.loadingText}>Loading verification...</Text>
+                    </View>
                 </View>
             </View>
         );
@@ -320,10 +339,10 @@ export default function AuditorVerifyVotes() {
     return (
         <View style={styles.container}>
             <Navbar
+                homeRoute="/AuditorDashboard"
                 infoText={`${profile?.full_name?.split(' ')[0] || 'Auditor'} - Election Verification`}
-                auditorName="Auditor, Rizwan"
                 actions={[
-                    { label: 'Back', onPress: handleGoBack, variant: 'outline' },
+                    { label: 'Logout', onPress: handleLogout, variant: 'outline' },
                 ]}
             />
 
@@ -582,6 +601,10 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#f5f5f5',
+    },
+    mainContent: {
+        flex: 1,
+        flexDirection: 'row',
     },
     centerContainer: {
         flex: 1,
