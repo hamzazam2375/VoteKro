@@ -26,6 +26,7 @@ export interface ElectionRow {
   created_by: string;
   created_at: string;
   updated_at: string;
+  last_audited?: string | null;
 }
 
 export interface CandidateRow {

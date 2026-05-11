@@ -194,7 +194,123 @@ export default function AuditorElections() {
   const handleAuditComplete = () => {
     setIsAuditProcessModalVisible(false);
     setSelectedElection(null);
-    // Optionally navigate to results page or refresh data
+    // Refresh elections list to show updated audit time
+    const loadElections = async () => {
+      try {
+        const userProfile =
+          await serviceFactory.authService.getRequiredProfile("auditor");
+        setProfile(userProfile);
+
+        const electionList = await serviceFactory.electionRepository.listAll();
+
+        // Enrich elections with vote statistics
+        const enrichedElections: ElectionWithStats[] = await Promise.all(
+          (electionList || []).map(async (election) => {
+            try {
+              const verification =
+                await serviceFactory.auditorService.verifyFullBlockchainIntegrity(
+                  election.id,
+                );
+              const totalVotes = verification.totalBlocks;
+              const anomalies = verification.invalidBlocks.length;
+              const verifiedVotes = totalVotes - anomalies;
+
+              const auditLogs =
+                await serviceFactory.auditorService.getAuditLogs(100);
+              const electionAudits =
+                auditLogs?.filter(
+                  (log) =>
+                    log.metadata?.electionId === election.id ||
+                    log.target_id === election.id,
+                ) || [];
+              const lastAudit =
+                electionAudits.length > 0
+                  ? electionAudits[0]?.created_at
+                  : null;
+
+              return {
+                ...election,
+                totalVotes,
+                verifiedVotes,
+                anomalies,
+                lastAuditTime: lastAudit,
+              } as ElectionWithStats;
+            } catch (error) {
+              console.error("Error enriching election:", error);
+              return {
+                ...election,
+                totalVotes: 0,
+                verifiedVotes: 0,
+                anomalies: 0,
+                lastAuditTime: null,
+              } as ElectionWithStats;
+            }
+          }),
+        );
+
+        setElections(enrichedElections);
+      } catch (error) {
+        console.error("Error loading elections:", error);
+      }
+    };
+
+    void loadElections();
+  };
+
+  const generateAuditCSV = (election: ElectionWithStats): string => {
+    const headers = ['Election Title', 'Status', 'Start Date', 'End Date', 'Total Votes', 'Verified Votes', 'Anomalies Detected', 'Verification Rate', 'Last Audited'];
+    
+    const status = new Date(election.ends_at) <= new Date() ? 'Completed' : 'Active';
+    const verificationRate = election.totalVotes > 0 
+      ? ((election.verifiedVotes / election.totalVotes) * 100).toFixed(1) + '%'
+      : '100%';
+    
+    const rows = [
+      [
+        election.title || '',
+        status,
+        new Date(election.starts_at).toLocaleDateString('en-US'),
+        new Date(election.ends_at).toLocaleDateString('en-US'),
+        election.totalVotes.toString(),
+        election.verifiedVotes.toString(),
+        election.anomalies.toString(),
+        verificationRate,
+        election.lastAuditTime 
+          ? new Date(election.lastAuditTime).toLocaleString('en-US')
+          : 'Not yet audited'
+      ]
+    ];
+
+    const headerRow = headers.map(h => `"${h}"`).join(',');
+    const dataRows = rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    
+    return headerRow + '\n' + dataRows;
+  };
+
+  const downloadCSV = (filename: string, csvContent: string) => {
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      const element = document.createElement('a');
+      element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
+      element.setAttribute('download', filename);
+      element.style.display = 'none';
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+    } else {
+      Alert.alert('Error', 'Download is only available in web browsers');
+    }
+  };
+
+  const handleDownloadCSV = (election: ElectionWithStats) => {
+    try {
+      const csvContent = generateAuditCSV(election);
+      const filename = `audit-report-${election.title}-${new Date().getTime()}.csv`;
+      downloadCSV(filename, csvContent);
+      Alert.alert('Success', `Audit report for "${election.title}" downloaded successfully!`);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to generate CSV file');
+      console.error('CSV generation error:', error);
+    }
   };
 
   const handleLogout = async () => {
@@ -315,6 +431,7 @@ export default function AuditorElections() {
                     election={election}
                     onStartAudit={handleStartAudit}
                     onViewDetails={handleViewDetails}
+                    onDownloadCSV={handleDownloadCSV}
                     isMobile={isMobile}
                   />
                 ))}
@@ -585,6 +702,20 @@ export default function AuditorElections() {
                           </Text>
                         </LinearGradient>
                       </Pressable>
+<<<<<<< HEAD
+
+                      <Pressable
+                        onPress={() => selectedElection && handleDownloadCSV(selectedElection)}
+                        style={({ pressed }) => [
+                          styles.exportButton,
+                          pressed && styles.exportButtonPressed,
+                        ]}
+                      >
+                        <Text style={styles.exportIcon}>⬇️</Text>
+                        <Text style={styles.exportText}>Export Report</Text>
+                      </Pressable>
+=======
+>>>>>>> 92170e94eedc6c2d24890160e8135d6e8a9f89fa
                     </View>
                   </View>
 
@@ -614,6 +745,7 @@ interface ElectionCardProps {
   election: ElectionWithStats;
   onStartAudit: (electionId: string) => void;
   onViewDetails: (election: ElectionWithStats) => void;
+  onDownloadCSV: (election: ElectionWithStats) => void;
   isMobile: boolean;
 }
 
@@ -621,6 +753,7 @@ function ElectionCard({
   election,
   onStartAudit,
   onViewDetails,
+  onDownloadCSV,
   isMobile,
 }: ElectionCardProps) {
   const endDate = election.ends_at ? new Date(election.ends_at) : null;
@@ -762,6 +895,20 @@ function ElectionCard({
             <Text style={styles.secondaryButtonIcon}>👁️</Text>
             <Text style={styles.secondaryButtonText}>Details</Text>
           </Pressable>
+<<<<<<< HEAD
+
+          <Pressable
+            onPress={() => onDownloadCSV(election)}
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              pressed && styles.secondaryButtonPressed,
+            ]}
+          >
+            <Text style={styles.secondaryButtonIcon}>⬇️</Text>
+            <Text style={styles.secondaryButtonText}>Download CSV</Text>
+          </Pressable>
+=======
+>>>>>>> 92170e94eedc6c2d24890160e8135d6e8a9f89fa
         </View>
       </View>
     </LinearGradient>

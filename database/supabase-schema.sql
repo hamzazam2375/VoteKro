@@ -1,6 +1,11 @@
-
+-- =========================================================
+-- EXTENSIONS
+-- =========================================================
 create extension if not exists pgcrypto;
 
+-- =========================================================
+-- USER ROLE TYPE
+-- =========================================================
 do $$
 begin
   if not exists (
@@ -12,11 +17,12 @@ begin
   ) then
     create type public.user_role as enum ('admin', 'voter', 'auditor');
   end if;
-
-
 end
 $$;
 
+-- =========================================================
+-- PROFILES
+-- =========================================================
 create table if not exists public.profiles (
   user_id uuid primary key references auth.users (id) on delete cascade,
   full_name text not null,
@@ -25,17 +31,21 @@ create table if not exists public.profiles (
   is_verified boolean not null default false,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
-  constraint voter_hash_length check (voter_code_hash is null or char_length(voter_code_hash) = 64)
+  constraint voter_hash_length check (
+    voter_code_hash is null or char_length(voter_code_hash) = 64
+  )
 );
 
+-- =========================================================
+-- PROFILE FUNCTIONS
+-- =========================================================
 create or replace function public.get_profile_by_user_id(p_user_id uuid)
 returns public.profiles
 language sql
 security definer
 set search_path = public
 as $$
-  select *
-  from public.profiles
+  select * from public.profiles
   where user_id = p_user_id
   limit 1;
 $$;
@@ -46,8 +56,7 @@ language sql
 security definer
 set search_path = public
 as $$
-  select *
-  from public.profiles
+  select * from public.profiles
   where role = p_role
   limit 1;
 $$;
@@ -63,6 +72,9 @@ as $$
   where role = p_role;
 $$;
 
+-- =========================================================
+-- ELECTIONS
+-- =========================================================
 create table if not exists public.elections (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -72,9 +84,13 @@ create table if not exists public.elections (
   created_by uuid not null references public.profiles (user_id),
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
+  last_audited timestamptz,
   constraint election_window_valid check (ends_at > starts_at)
 );
 
+-- =========================================================
+-- CANDIDATES
+-- =========================================================
 create table if not exists public.candidates (
   id uuid primary key default gen_random_uuid(),
   election_id uuid not null references public.elections (id) on delete cascade,
@@ -85,7 +101,9 @@ create table if not exists public.candidates (
   unique (election_id, candidate_number)
 );
 
--- Tracks election eligibility and vote status while keeping vote choice anonymous.
+-- =========================================================
+-- VOTER REGISTRY
+-- =========================================================
 create table if not exists public.voter_registry (
   id uuid primary key default gen_random_uuid(),
   election_id uuid not null references public.elections (id) on delete cascade,
@@ -97,7 +115,9 @@ create table if not exists public.voter_registry (
   unique (election_id, voter_id)
 );
 
--- Immutable blockchain-style ledger of encrypted votes.
+-- =========================================================
+-- BLOCKCHAIN STYLE VOTE LEDGER
+-- =========================================================
 create table if not exists public.vote_blocks (
   id uuid primary key default gen_random_uuid(),
   election_id uuid not null references public.elections (id) on delete cascade,
@@ -111,13 +131,23 @@ create table if not exists public.vote_blocks (
   created_at timestamptz not null default timezone('utc', now()),
   unique (election_id, block_index),
   unique (current_hash),
-  constraint hash_length_check check (char_length(previous_hash) = 64 and char_length(current_hash) = 64),
-  constraint commitment_length_check check (char_length(vote_commitment) = 64),
-  constraint nonce_length_check check (char_length(nonce) > 0)
+  constraint hash_length_check check (
+    char_length(previous_hash) = 64 and char_length(current_hash) = 64
+  ),
+  constraint commitment_length_check check (
+    char_length(vote_commitment) = 64
+  ),
+  constraint nonce_length_check check (
+    char_length(nonce) > 0
+  )
 );
 
-create index if not exists idx_vote_blocks_election_idx on public.vote_blocks (election_id, block_index);
+create index if not exists idx_vote_blocks_election_idx
+on public.vote_blocks (election_id, block_index);
 
+-- =========================================================
+-- AUDIT LOGS
+-- =========================================================
 create table if not exists public.audit_logs (
   id uuid primary key default gen_random_uuid(),
   actor_id uuid references public.profiles (user_id),
@@ -128,6 +158,9 @@ create table if not exists public.audit_logs (
   created_at timestamptz not null default timezone('utc', now())
 );
 
+-- =========================================================
+-- UPDATED_AT TRIGGER
+-- =========================================================
 create or replace function public.touch_updated_at()
 returns trigger
 language plpgsql
@@ -146,52 +179,9 @@ create or replace trigger trg_elections_updated_at
 before update on public.elections
 for each row execute function public.touch_updated_at();
 
--- When a new voter profile is created, automatically register them for all existing elections
-create or replace function public.register_voter_for_all_elections()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  -- Only trigger for voter role profiles
-  if new.role = 'voter' then
-    insert into public.voter_registry (election_id, voter_id, is_eligible, has_voted)
-    select id, new.user_id, true, false
-    from public.elections
-    on conflict (election_id, voter_id) do nothing;
-  end if;
-  return new;
-end;
-$$;
-
-drop trigger if exists trg_register_voter_for_all_elections on public.profiles;
-create trigger trg_register_voter_for_all_elections
-after insert on public.profiles
-for each row execute function public.register_voter_for_all_elections();
-
--- When a new election is created, automatically register all voters
-create or replace function public.register_all_voters_for_election()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  insert into public.voter_registry (election_id, voter_id, is_eligible, has_voted)
-  select new.id, user_id, true, false
-  from public.profiles
-  where role = 'voter'
-  on conflict (election_id, voter_id) do nothing;
-  return new;
-end;
-$$;
-
-drop trigger if exists trg_register_all_voters_for_election on public.elections;
-create trigger trg_register_all_voters_for_election
-after insert on public.elections
-for each row execute function public.register_all_voters_for_election();
-
+-- =========================================================
+-- BLOCK HASH FUNCTION (FIXED DIGEST ISSUE)
+-- =========================================================
 create or replace function public.compute_block_hash(
   p_block_index bigint,
   p_encrypted_vote text,
@@ -205,19 +195,24 @@ immutable
 as $$
   select encode(
     digest(
-      concat_ws('|', 
-        p_block_index::text, 
-        p_encrypted_vote, 
-        p_vote_commitment, 
-        p_previous_hash, 
-        to_char(p_created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
-      ),
+      (
+        concat_ws('|',
+          p_block_index::text,
+          p_encrypted_vote,
+          p_vote_commitment,
+          p_previous_hash,
+          to_char(p_created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+        )
+      )::bytea,
       'sha256'
     ),
     'hex'
   );
 $$;
 
+-- =========================================================
+-- APPEND BLOCK FUNCTION
+-- =========================================================
 create or replace function public.append_vote_block(
   p_election_id uuid,
   p_voter_id uuid,

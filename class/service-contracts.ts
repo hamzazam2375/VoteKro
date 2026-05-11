@@ -82,6 +82,7 @@ export interface IElectionRepository {
   delete(electionId: string): Promise<void>;
   findById(electionId: string): Promise<ElectionRow | null>;
   listAll(): Promise<ElectionRow[]>;
+  updateLastAudited(electionId: string): Promise<ElectionRow>;
 }
 
 export interface ICandidateRepository {
@@ -139,4 +140,5 @@ export interface IVoteLedgerRepository {
 
 export interface IAuditLogRepository {
   listRecent(limit?: number): Promise<AuditLogRow[]>;
+  recordAuditAction(action: string, targetId: string, metadata?: Record<string, any>): Promise<AuditLogRow>;
 }

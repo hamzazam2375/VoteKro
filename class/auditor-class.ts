@@ -4,9 +4,9 @@ import {
   verifyFullBlockchain,
   type FullBlockchainVerification,
 } from '@/class/blockchain-verification';
-import type { AuditLogRow, CandidateRow, VerifyChainResultRow, VoteBlockRow } from '@/class/database-types';
+import type { AuditLogRow, CandidateRow, ElectionRow, VerifyChainResultRow, VoteBlockRow } from '@/class/database-types';
 import { ValidationError } from '@/class/errors';
-import type { IAuditLogRepository, ICandidateRepository, IVoteLedgerRepository } from '@/class/service-contracts';
+import type { IAuditLogRepository, ICandidateRepository, IElectionRepository, IVoteLedgerRepository } from '@/class/service-contracts';
 import {
   countVotesFromBlockchain,
   generateVerificationReport,
@@ -19,7 +19,8 @@ export class AuditorService extends BaseService {
   constructor(
     private readonly voteLedgerRepository: IVoteLedgerRepository,
     private readonly auditLogRepository: IAuditLogRepository,
-    private readonly candidateRepository: ICandidateRepository
+    private readonly candidateRepository: ICandidateRepository,
+    private readonly electionRepository: IElectionRepository
   ) {
     super();
   }
@@ -36,6 +37,38 @@ export class AuditorService extends BaseService {
 
   async getAuditLogs(limit = 100): Promise<AuditLogRow[]> {
     return this.auditLogRepository.listRecent(limit);
+  }
+
+  /**
+   * Record audit completion for an election
+   * Logs the audit action with election details to the audit log
+   */
+  async recordAuditCompletion(
+    electionId: string,
+    auditorId?: string,
+    notes?: string
+  ): Promise<AuditLogRow> {
+    this.requireNonEmpty(electionId, 'Election id');
+    return this.auditLogRepository.recordAuditAction(
+      'ELECTION_AUDIT_COMPLETED',
+      electionId,
+      {
+        electionId,
+        auditorId: auditorId || 'unknown',
+        completedAt: new Date().toISOString(),
+        notes: notes || '',
+        action: 'Audit process completed and certified'
+      }
+    );
+  }
+
+  /**
+   * Update the last_audited timestamp for an election
+   * Called when audit process completes successfully
+   */
+  async updateAuditTimestamp(electionId: string): Promise<ElectionRow> {
+    this.requireNonEmpty(electionId, 'Election id');
+    return this.electionRepository.updateLastAudited(electionId);
   }
 
   /**
