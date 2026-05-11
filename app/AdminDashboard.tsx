@@ -1,7 +1,7 @@
 import type { ElectionRow, ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -25,6 +25,7 @@ import VoterSignup from "./VoterSignup";
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isMobile = width < 600;
@@ -49,8 +50,15 @@ export default function AdminDashboard() {
     | "register-auditor"
   >("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
 
   const loadDashboardOverview = useCallback(async () => {
+    // Don't load data if logout is in progress
+    if (isLoggingOut) {
+      return;
+    }
+
     try {
       const overview = await serviceFactory.adminService.getDashboardOverview();
       setProfile(overview.profile);
@@ -82,7 +90,11 @@ export default function AdminDashboard() {
               election.id,
             );
             return [election.id, ledger.length] as const;
-          } catch {
+          } catch (error) {
+            console.error(
+              `Failed to get vote count for election ${election.id}:`,
+              error,
+            );
             return [election.id, 0] as const;
           }
         }),
@@ -98,11 +110,10 @@ export default function AdminDashboard() {
           "Failed to load profile",
         ),
       );
-      router.replace("/AdminLogin");
     } finally {
       setIsLoading(false);
     }
-  }, [router]);
+  }, [router, isLoggingOut]);
 
   const reloadOnFocus = useCallback(() => {
     void loadDashboardOverview();
@@ -112,12 +123,24 @@ export default function AdminDashboard() {
   useFocusEffect(reloadOnFocus);
 
   useEffect(() => {
-    const intervalId = setInterval(() => {
+    const id = setInterval(() => {
       void loadDashboardOverview();
     }, 10000);
+    setIntervalId(id);
 
-    return () => clearInterval(intervalId);
+    return () => clearInterval(id);
   }, [loadDashboardOverview]);
+
+  // Prevent back swipe/gesture navigation
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      if (!isLoggingOut) {
+        e.preventDefault();
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, isLoggingOut]);
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -128,9 +151,15 @@ export default function AdminDashboard() {
 
   const doLogout = async () => {
     try {
+      // Stop the interval from trying to reload data during logout
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+      setIsLoggingOut(true);
       await serviceFactory.authService.signOut();
       router.replace("/");
     } catch (error) {
+      setIsLoggingOut(false);
       Alert.alert(
         "Error",
         serviceFactory.authService.getErrorMessage(error, "Failed to logout"),

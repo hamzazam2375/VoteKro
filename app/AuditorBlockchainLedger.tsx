@@ -105,12 +105,7 @@ export default function AuditorBlockchainLedger() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`${rocksDbUrl}/ledger/${encodeURIComponent(selectedElection)}`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch ledger (${response.status})`);
-        }
-
-        const data = (await response.json()) as VoteBlock[];
+        const data = (await serviceFactory.auditorService.getLedger(selectedElection)) as VoteBlock[];
         const verifiedBlocks = verifyBlockchain(data || []);
         const tamperedCount = verifiedBlocks.filter((block) => block.isValid === false).length;
 
@@ -132,7 +127,7 @@ export default function AuditorBlockchainLedger() {
     };
 
     void loadLedger();
-  }, [rocksDbUrl, selectedElection]);
+  }, [selectedElection]);
 
   const handleLogout = async () => {
     try {

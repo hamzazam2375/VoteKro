@@ -28,7 +28,9 @@ function blurActiveElementOnWeb() {
   activeElement?.blur?.();
 }
 
-export default function AdminManageCandidates({ isEmbedded }: { isEmbedded?: boolean } = {}) {
+export default function AdminManageCandidates({
+  isEmbedded,
+}: { isEmbedded?: boolean } = {}) {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isMobile = width < 760;
@@ -137,6 +139,20 @@ export default function AdminManageCandidates({ isEmbedded }: { isEmbedded?: boo
     }, 0);
 
     return maxNumber + 1;
+  };
+
+  const getElectionStatus = (
+    election: ElectionRow,
+  ): "draft" | "active" | "closed" => {
+    const now = Date.now();
+    const startsAt = new Date(election.starts_at).getTime();
+    const endsAt = new Date(election.ends_at).getTime();
+
+    if (now > endsAt) {
+      return "closed";
+    }
+
+    return now >= startsAt && now <= endsAt ? "active" : "draft";
   };
 
   const openAddPartyModal = (electionId: string) => {
@@ -645,9 +661,36 @@ export default function AdminManageCandidates({ isEmbedded }: { isEmbedded?: boo
                       ]}
                     >
                       <View style={styles.electionMeta}>
-                        <Text style={styles.electionTitle}>
-                          {election.title}
-                        </Text>
+                        <View style={styles.electionTitleRow}>
+                          <Text style={styles.electionTitle}>
+                            {election.title}
+                          </Text>
+                          <View
+                            style={[
+                              styles.statusBadge,
+                              getElectionStatus(election) === "active" &&
+                                styles.statusBadgeActive,
+                              getElectionStatus(election) === "draft" &&
+                                styles.statusBadgeDraft,
+                              getElectionStatus(election) === "closed" &&
+                                styles.statusBadgeClosed,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.statusBadgeText,
+                                getElectionStatus(election) === "active" &&
+                                  styles.statusBadgeActiveText,
+                                getElectionStatus(election) === "draft" &&
+                                  styles.statusBadgeDraftText,
+                                getElectionStatus(election) === "closed" &&
+                                  styles.statusBadgeClosedText,
+                              ]}
+                            >
+                              {getElectionStatus(election).toUpperCase()}
+                            </Text>
+                          </View>
+                        </View>
                         <Text style={styles.electionSubInfo}>
                           Candidates: {candidateRows.length}
                         </Text>
@@ -839,6 +882,41 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#111827",
     marginBottom: 4,
+  },
+  electionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 4,
+  },
+  statusBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: "#e5e7eb",
+  },
+  statusBadgeActive: {
+    backgroundColor: "#d1fae5",
+  },
+  statusBadgeDraft: {
+    backgroundColor: "#fef3c7",
+  },
+  statusBadgeClosed: {
+    backgroundColor: "#fee2e2",
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#374151",
+  },
+  statusBadgeActiveText: {
+    color: "#065f46",
+  },
+  statusBadgeDraftText: {
+    color: "#92400e",
+  },
+  statusBadgeClosedText: {
+    color: "#991b1b",
   },
   electionSubInfo: {
     fontSize: 12,

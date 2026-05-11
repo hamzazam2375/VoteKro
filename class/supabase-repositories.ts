@@ -489,10 +489,14 @@ export class SupabaseVoterRegistryRepository
       .eq("election_id", electionId)
       .eq("voter_id", voterId)
       .select("*")
-      .single();
+      .maybeSingle();
 
     if (error) {
       this.throwOnError("Failed to mark voter as voted", error);
+    }
+
+    if (!data) {
+      throw new Error("Voter registry entry not found for update");
     }
 
     return data as VoterRegistryRow;

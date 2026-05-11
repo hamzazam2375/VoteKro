@@ -19,6 +19,7 @@ import type {
     IVoteLedgerRepository,
     IVoterRegistryRepository,
 } from "@/class/service-contracts";
+import { SupabaseVoteLedgerRepository } from "@/class/supabase-repositories";
 
 export class VotingService extends BaseService {
   private readonly emailService = new EmailService();
@@ -257,15 +258,20 @@ export class VotingService extends BaseService {
     // Verify voter eligibility before casting vote
     await this.verifyVoterEligibility(input.electionId);
 
-    // Mark voter as having voted (for duplicate prevention)
-    await this.voterRegistryRepository.markAsVoted(input.electionId, userId);
+    // If using Supabase RPC ledger, the RPC performs the registry update atomically.
+    // For RocksDB ledger we must mark locally first to prevent duplicates.
+    if (!(this.voteLedgerRepository instanceof SupabaseVoteLedgerRepository)) {
+      // Mark voter as having voted (for duplicate prevention)
+      await this.voterRegistryRepository.markAsVoted(input.electionId, userId);
+    }
 
-    // Cast vote ANONYMOUSLY - vote is stored without voter identity
-    // voterId is intentionally not passed to maintain anonymity
+    // Cast vote ANONYMOUSLY - voterId is used for authentication but not stored
+    // Vote choice is stored without voter identity to maintain anonymity
     const voteBlock = await this.voteLedgerRepository.castVoteSecure(
       input.electionId,
       input.candidateId,
       input.nonce,
+      userId,
     );
 
     // Generate unique verification token for vote verification

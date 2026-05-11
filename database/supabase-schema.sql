@@ -1,6 +1,11 @@
-
+-- =========================================================
+-- EXTENSIONS
+-- =========================================================
 create extension if not exists pgcrypto;
 
+-- =========================================================
+-- USER ROLE TYPE
+-- =========================================================
 do $$
 begin
   if not exists (
@@ -12,11 +17,12 @@ begin
   ) then
     create type public.user_role as enum ('admin', 'voter', 'auditor');
   end if;
-
-
 end
 $$;
 
+-- =========================================================
+-- PROFILES
+-- =========================================================
 create table if not exists public.profiles (
   user_id uuid primary key references auth.users (id) on delete cascade,
   full_name text not null,
@@ -25,17 +31,21 @@ create table if not exists public.profiles (
   is_verified boolean not null default false,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
-  constraint voter_hash_length check (voter_code_hash is null or char_length(voter_code_hash) = 64)
+  constraint voter_hash_length check (
+    voter_code_hash is null or char_length(voter_code_hash) = 64
+  )
 );
 
+-- =========================================================
+-- PROFILE FUNCTIONS
+-- =========================================================
 create or replace function public.get_profile_by_user_id(p_user_id uuid)
 returns public.profiles
 language sql
 security definer
 set search_path = public
 as $$
-  select *
-  from public.profiles
+  select * from public.profiles
   where user_id = p_user_id
   limit 1;
 $$;
@@ -46,8 +56,7 @@ language sql
 security definer
 set search_path = public
 as $$
-  select *
-  from public.profiles
+  select * from public.profiles
   where role = p_role
   limit 1;
 $$;
@@ -63,6 +72,9 @@ as $$
   where role = p_role;
 $$;
 
+-- =========================================================
+-- ELECTIONS
+-- =========================================================
 create table if not exists public.elections (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -76,6 +88,9 @@ create table if not exists public.elections (
   constraint election_window_valid check (ends_at > starts_at)
 );
 
+-- =========================================================
+-- CANDIDATES
+-- =========================================================
 create table if not exists public.candidates (
   id uuid primary key default gen_random_uuid(),
   election_id uuid not null references public.elections (id) on delete cascade,
@@ -86,7 +101,9 @@ create table if not exists public.candidates (
   unique (election_id, candidate_number)
 );
 
--- Tracks election eligibility and vote status while keeping vote choice anonymous.
+-- =========================================================
+-- VOTER REGISTRY
+-- =========================================================
 create table if not exists public.voter_registry (
   id uuid primary key default gen_random_uuid(),
   election_id uuid not null references public.elections (id) on delete cascade,
@@ -98,7 +115,9 @@ create table if not exists public.voter_registry (
   unique (election_id, voter_id)
 );
 
--- Immutable blockchain-style ledger of encrypted votes.
+-- =========================================================
+-- BLOCKCHAIN STYLE VOTE LEDGER
+-- =========================================================
 create table if not exists public.vote_blocks (
   id uuid primary key default gen_random_uuid(),
   election_id uuid not null references public.elections (id) on delete cascade,
@@ -112,13 +131,23 @@ create table if not exists public.vote_blocks (
   created_at timestamptz not null default timezone('utc', now()),
   unique (election_id, block_index),
   unique (current_hash),
-  constraint hash_length_check check (char_length(previous_hash) = 64 and char_length(current_hash) = 64),
-  constraint commitment_length_check check (char_length(vote_commitment) = 64),
-  constraint nonce_length_check check (char_length(nonce) > 0)
+  constraint hash_length_check check (
+    char_length(previous_hash) = 64 and char_length(current_hash) = 64
+  ),
+  constraint commitment_length_check check (
+    char_length(vote_commitment) = 64
+  ),
+  constraint nonce_length_check check (
+    char_length(nonce) > 0
+  )
 );
 
-create index if not exists idx_vote_blocks_election_idx on public.vote_blocks (election_id, block_index);
+create index if not exists idx_vote_blocks_election_idx
+on public.vote_blocks (election_id, block_index);
 
+-- =========================================================
+-- AUDIT LOGS
+-- =========================================================
 create table if not exists public.audit_logs (
   id uuid primary key default gen_random_uuid(),
   actor_id uuid references public.profiles (user_id),
@@ -129,6 +158,9 @@ create table if not exists public.audit_logs (
   created_at timestamptz not null default timezone('utc', now())
 );
 
+-- =========================================================
+-- UPDATED_AT TRIGGER
+-- =========================================================
 create or replace function public.touch_updated_at()
 returns trigger
 language plpgsql
@@ -147,6 +179,9 @@ create or replace trigger trg_elections_updated_at
 before update on public.elections
 for each row execute function public.touch_updated_at();
 
+-- =========================================================
+-- BLOCK HASH FUNCTION (FIXED DIGEST ISSUE)
+-- =========================================================
 create or replace function public.compute_block_hash(
   p_block_index bigint,
   p_encrypted_vote text,
@@ -160,19 +195,24 @@ immutable
 as $$
   select encode(
     digest(
-      concat_ws('|', 
-        p_block_index::text, 
-        p_encrypted_vote, 
-        p_vote_commitment, 
-        p_previous_hash, 
-        to_char(p_created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
-      ),
+      (
+        concat_ws('|',
+          p_block_index::text,
+          p_encrypted_vote,
+          p_vote_commitment,
+          p_previous_hash,
+          to_char(p_created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+        )
+      )::bytea,
       'sha256'
     ),
     'hex'
   );
 $$;
 
+-- =========================================================
+-- APPEND BLOCK FUNCTION
+-- =========================================================
 create or replace function public.append_vote_block(
   p_election_id uuid,
   p_voter_id uuid,
@@ -237,161 +277,3 @@ begin
   return v_block;
 end;
 $$;
-
-drop function if exists public.cast_vote_secure(uuid, text, text);
-drop function if exists public.cast_vote_secure(uuid, text, text, text);
-
-create or replace function public.cast_vote_secure(
-  p_election_id uuid,
-  p_candidate_id uuid,
-  p_nonce text default null,
-  p_encryption_key text default null
-)
-returns public.vote_blocks
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_uid uuid := auth.uid();
-  v_election public.elections;
-  v_block public.vote_blocks;
-  v_secret text;
-  v_nonce text;
-  v_plain_vote text;
-  v_encrypted_vote text;
-  v_vote_commitment text;
-begin
-  if v_uid is null then
-    raise exception 'Not authenticated';
-  end if;
-
-  -- Try to get encryption key from parameter, then from app setting, then fail
-  v_secret := coalesce(
-    nullif(trim(coalesce(p_encryption_key, '')), ''),
-    current_setting('app.vote_encryption_key', true)
-  );
-  
-  if v_secret is null or char_length(trim(v_secret)) = 0 then
-    raise exception 'Vote encryption key is not configured. Set app.vote_encryption_key or pass encryption key as parameter.';
-  end if;
-
-  select *
-  into v_election
-  from public.elections e
-  where e.id = p_election_id;
-
-  if not found then
-    raise exception 'Election not found';
-  end if;
-
-  if v_election.status <> 'open'
-     timezone('utc', now()) > v_election.ends_at then
-    raise exception 'Election is not accepting votes right now';
-  end if;
-
-  if not exists (
-    select 1
-    from public.candidates c
-    where c.id = p_candidate_id
-      and c.election_id = p_election_id
-  ) then
-    raise exception 'Candidate is invalid for this election';
-  end if;
-
-  insert into public.voter_registry (election_id, voter_id, is_eligible, has_voted)
-  values (p_election_id, v_uid, true, false)
-  on conflict (election_id, voter_id) do nothing;
-
-  update public.voter_registry vr
-  set has_voted = true,
-      voted_at = timezone('utc', now())
-  where vr.election_id = p_election_id
-    and vr.voter_id = v_uid
-    and vr.is_eligible = true
-    and vr.has_voted = false;
-
-  if not found then
-    raise exception 'Voter not eligible or already voted';
-  end if;
-
-  v_nonce := coalesce(nullif(trim(p_nonce), ''), encode(gen_random_bytes(16), 'hex'));
-  v_vote_commitment := encode(digest(concat_ws('|', p_election_id::text, p_candidate_id::text, v_nonce), 'sha256'), 'hex');
-
-  v_plain_vote := jsonb_build_object(
-    'election_id', p_election_id,
-    'candidate_id', p_candidate_id,
-    'voter_id', v_uid,
-    'submitted_at', timezone('utc', now())
-  )::text;
-
-  v_encrypted_vote := encode(
-    pgp_sym_encrypt(v_plain_vote, v_secret, 'cipher-algo=aes256,compress-algo=1'),
-    'base64'
-  );
-
-  v_block := public.append_vote_block(p_election_id, v_encrypted_vote, v_vote_commitment, v_nonce);
-
-  insert into public.audit_logs (actor_id, action, target_table, target_id, metadata)
-  values (
-    v_uid,
-    'CAST_VOTE',
-    'vote_blocks',
-    v_block.id::text,
-    jsonb_build_object(
-      'election_id', p_election_id,
-      'candidate_id', p_candidate_id,
-      'block_index', v_block.block_index
-    )
-  );
-
-  return v_block;
-end;
-$$;
-
-create or replace function public.verify_chain(p_election_id uuid)
-returns table (
-  is_valid boolean,
-  invalid_block_index bigint,
-  reason text
-)
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  rec record;
-  v_expected_prev text := repeat('0', 64);
-  v_expected_hash text;
-begin
-  for rec in
-    select *
-    from public.vote_blocks vb
-    where vb.election_id = p_election_id
-    order by vb.block_index asc
-  loop
-    if rec.previous_hash <> v_expected_prev then
-      return query select false, rec.block_index, 'previous_hash mismatch';
-      return;
-    end if;
-
-    v_expected_hash := public.compute_block_hash(
-      rec.block_index,
-      rec.encrypted_vote,
-      rec.vote_commitment,
-      rec.previous_hash,
-      rec.created_at
-    );
-
-    if rec.current_hash <> v_expected_hash then
-      return query select false, rec.block_index, 'current_hash mismatch';
-      return;
-    end if;
-
-    v_expected_prev := rec.current_hash;
-  end loop;
-
-  return query select true, null::bigint, null::text;
-end;
-$$;
-

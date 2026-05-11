@@ -702,6 +702,7 @@ export default function AuditorElections() {
                           </Text>
                         </LinearGradient>
                       </Pressable>
+<<<<<<< HEAD
 
                       <Pressable
                         onPress={() => selectedElection && handleDownloadCSV(selectedElection)}
@@ -713,6 +714,8 @@ export default function AuditorElections() {
                         <Text style={styles.exportIcon}>⬇️</Text>
                         <Text style={styles.exportText}>Export Report</Text>
                       </Pressable>
+=======
+>>>>>>> 92170e94eedc6c2d24890160e8135d6e8a9f89fa
                     </View>
                   </View>
 
@@ -894,6 +897,7 @@ function ElectionCard({
             <Text style={styles.secondaryButtonIcon}>👁️</Text>
             <Text style={styles.secondaryButtonText}>Details</Text>
           </Pressable>
+<<<<<<< HEAD
 
           <Pressable
             onPress={() => onDownloadCSV(election)}
@@ -905,6 +909,8 @@ function ElectionCard({
             <Text style={styles.secondaryButtonIcon}>⬇️</Text>
             <Text style={styles.secondaryButtonText}>Download CSV</Text>
           </Pressable>
+=======
+>>>>>>> 92170e94eedc6c2d24890160e8135d6e8a9f89fa
         </View>
       </View>
     </LinearGradient>
@@ -1038,10 +1044,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderColor: "#e0e7ff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.05)",
     elevation: 2,
   },
   // Card Header
@@ -1221,10 +1224,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderRadius: 16,
     padding: 0,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
+    boxShadow: "0px 10px 20px rgba(0, 0, 0, 0.3)",
     elevation: 10,
   },
   modalHeader: {
