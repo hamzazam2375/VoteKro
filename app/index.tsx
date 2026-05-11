@@ -367,157 +367,6 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-<<<<<<< Updated upstream
-    container: {
-        flex: 1,
-        backgroundColor: '#f0f4f9',
-    },
-    scrollContent: {
-        paddingBottom: 56,
-    },
-    heroSection: {
-        minHeight: 640,
-        justifyContent: 'center',
-        overflow: 'hidden',
-    },
-    heroSectionCompact: {
-        minHeight: 580,
-    },
-    heroSectionMobile: {
-        minHeight: 560,
-    },
-    backgroundBlobTopRight: {
-        position: 'absolute',
-        width: 340,
-        height: 240,
-        borderBottomLeftRadius: 220,
-        borderBottomRightRadius: 80,
-        borderTopLeftRadius: 80,
-        borderTopRightRadius: 0,
-        right: 0,
-        top: 96,
-        backgroundColor: '#c9d8eb',
-        opacity: 0.9,
-    },
-    backgroundBlobBottomLeft: {
-        position: 'absolute',
-        width: 340,
-        height: 220,
-        borderTopRightRadius: 220,
-        borderTopLeftRadius: 40,
-        borderBottomRightRadius: 0,
-        borderBottomLeftRadius: 0,
-        left: 0,
-        bottom: 0,
-        backgroundColor: '#c7d6e7',
-        opacity: 0.7,
-    },
-    hero: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 22,
-        minHeight: 560,
-        zIndex: 1,
-    },
-    heroCompact: {
-        paddingHorizontal: 18,
-    },
-    heroMobile: {
-        justifyContent: 'flex-start',
-        paddingTop: 72,
-    },
-    heroTitleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    title: {
-        color: '#0f2851',
-        fontSize: 54,
-        fontWeight: '800',
-        lineHeight: 62,
-        textAlign: 'center',
-        letterSpacing: -0.8,
-    },
-    titleSecondLine: {
-        marginTop: 0,
-        marginBottom: 18,
-    },
-    titleMobile: {
-        fontSize: 40,
-        lineHeight: 48,
-    },
-    titleCompact: {
-        fontSize: 46,
-        lineHeight: 54,
-    },
-    subtitle: {
-        color: '#5a6f87',
-        fontSize: 18,
-        lineHeight: 28,
-        maxWidth: 760,
-        textAlign: 'center',
-        marginBottom: 28,
-        fontWeight: '400',
-    },
-    subtitleCompact: {
-        maxWidth: 660,
-        fontSize: 17,
-        lineHeight: 26,
-    },
-    subtitleMobile: {
-        fontSize: 16,
-        lineHeight: 24,
-        marginBottom: 26,
-    },
-    heroTrustRow: {
-        marginTop: 14,
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        gap: 10,
-    },
-    heroTrustRowMobile: {
-        flexDirection: 'column',
-        width: '100%',
-        alignItems: 'center',
-    },
-    heroTrustChip: {
-        backgroundColor: '#eaf2ff',
-        borderColor: '#c4d7f7',
-        borderWidth: 1,
-        borderRadius: 999,
-        paddingVertical: 8,
-        paddingHorizontal: 14,
-    },
-    heroTrustChipText: {
-        color: '#264c8d',
-        fontSize: 13,
-        fontWeight: '700',
-    },
-    organizerBanner: {
-        width: '100%',
-        maxWidth: 760,
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: '#b8ccee',
-        backgroundColor: '#eef4ff',
-        paddingVertical: 16,
-        paddingHorizontal: 18,
-        marginBottom: 20,
-        boxShadow: '0px 6px 10px rgba(47, 100, 230, 0.1)',
-        elevation: 2,
-    },
-    organizerBannerMobile: {
-        paddingVertical: 14,
-        paddingHorizontal: 14,
-    },
-    organizerBannerTopRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 6,
-    },
     organizerBannerTopRowMobile: {
         flexDirection: 'column',
         alignItems: 'flex-start',
@@ -963,7 +812,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-=======
   container: {
     flex: 1,
     backgroundColor: "#f0f4f9",
@@ -1568,5 +1416,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
->>>>>>> Stashed changes
 });

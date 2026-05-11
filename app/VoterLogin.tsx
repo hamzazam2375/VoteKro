@@ -8,51 +8,109 @@ import { PasswordField } from "@/components/password-field";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 export default function VoterLoginScreen() {
   const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
   const [step, setStep] = useState<"login" | "face-verification">("login");
+
   const [storedEmbedding, setStoredEmbedding] = useState<number[]>([]);
   const [userIdForVerification, setUserIdForVerification] = useState<
     string | null
   >(null);
+
   const [faceAttempts, setFaceAttempts] = useState(0);
+
   const maxFaceAttempts = 3;
+
+  // STRICT SECURITY SETTINGS
+  const FACE_DISTANCE_THRESHOLD = 0.45;
+  const MIN_SIMILARITY_PERCENT = 70;
+
+  const resetVerificationState = () => {
+    setStep("login");
+    setStoredEmbedding([]);
+    setUserIdForVerification(null);
+    setFaceAttempts(0);
+  };
+
+  // Proper Euclidean distance calculation
+  const compareEmbeddingsSecurely = (
+    embedding1: number[],
+    embedding2: number[],
+  ) => {
+    if (embedding1.length !== embedding2.length) {
+      throw new Error("Embedding dimensions do not match");
+    }
+
+    let sum = 0;
+
+    for (let i = 0; i < embedding1.length; i++) {
+      const diff = embedding1[i] - embedding2[i];
+      sum += diff * diff;
+    }
+
+    const distance = Math.sqrt(sum);
+
+    // Convert to similarity %
+    // Lower distance = higher similarity
+    const similarity = Math.max(
+      0,
+      Math.min(100, Math.round((1 - distance) * 100)),
+    );
+
+    const isMatch =
+      distance < FACE_DISTANCE_THRESHOLD &&
+      similarity >= MIN_SIMILARITY_PERCENT;
+
+    return {
+      isMatch,
+      distance,
+      similarity,
+      message: isMatch
+        ? `Face verified (${similarity}% match)`
+        : `Face mismatch (${similarity}% similarity)`,
+    };
+  };
 
   const handleLogin = async () => {
     setIsLoading(true);
     setErrorMessage("");
+
     try {
-      // Only sign out if there's an existing session to avoid AuthSessionMissingError
+      // Clear previous session
       const { data: sessionData } = await supabase.auth.getSession();
+
       if (sessionData?.session) {
         await serviceFactory.authService.signOut();
       }
 
+      // Login with password first
       const profile = await serviceFactory.authService.loginForRole(
         email,
         password,
         "voter",
       );
 
-      // Check if voter has a stored face embedding
+      // Fetch stored embedding
       const embeddingRow = await faceRepository.getEmbeddingByEmail(email);
 
       if (embeddingRow && embeddingRow.embedding.length > 0) {
-        // Has embedding — require face verification
         setStoredEmbedding(embeddingRow.embedding);
         setUserIdForVerification(profile.user_id);
         setFaceAttempts(0);
@@ -61,16 +119,11 @@ export default function VoterLoginScreen() {
         return;
       }
 
-      // Fallback: check old voter_faces table
+      // Legacy support
       const hasFace = await faceRepository.hasFaceRegistered(profile.user_id);
+
       if (hasFace) {
-        // Has face image but no embedding yet
-        // Store the user info and show face capture
-        // We'll generate the stored face's embedding when the live capture comes back
-        console.log(
-          "Legacy face found. Will generate embedding during verification.",
-        );
-        setStoredEmbedding([]); // Empty — will generate on-the-fly
+        setStoredEmbedding([]);
         setUserIdForVerification(profile.user_id);
         setFaceAttempts(0);
         setStep("face-verification");
@@ -78,11 +131,13 @@ export default function VoterLoginScreen() {
         return;
       }
 
-      // No face registered, proceed to dashboard
+      // No face registered
       router.push(serviceFactory.authService.getDashboardRoute(profile.role));
     } catch (error) {
       const alertContent = serviceFactory.authService.getLoginErrorAlert(error);
+
       setErrorMessage(alertContent.message);
+
       Alert.alert(alertContent.title, alertContent.message);
     } finally {
       setIsLoading(false);
@@ -90,37 +145,42 @@ export default function VoterLoginScreen() {
   };
 
   const handleFaceVerification = async (result: FaceCaptureResult) => {
-    setFaceAttempts((prev) => prev + 1);
-
     try {
-      // Check if the live capture has a valid embedding
-      if (result.embedding.length === 0) {
+      const newAttempts = faceAttempts + 1;
+      setFaceAttempts(newAttempts);
+
+      // Ensure embedding exists
+      if (!result.embedding || result.embedding.length === 0) {
         Alert.alert(
           "Face Detection Failed",
-          "Could not generate face embedding. Please try again.",
+          "Could not detect a valid face. Please try again.",
         );
         return;
       }
 
       let referenceEmbedding = storedEmbedding;
 
-      // If no stored embedding yet (legacy face), generate it now from stored image
+      // Legacy embedding generation
       if (referenceEmbedding.length === 0 && userIdForVerification) {
         try {
           const storedFace = await faceRepository.getPrimaryFace(
             userIdForVerification,
           );
+
           if (storedFace?.face_image_base64) {
-            console.log("Generating embedding from stored legacy face...");
             const imageData = storedFace.face_image_base64.startsWith("data:")
               ? storedFace.face_image_base64
               : `data:image/jpeg;base64,${storedFace.face_image_base64}`;
+
             const embResult =
               await faceRecognitionService.generateEmbedding(imageData);
+
             if (embResult.detected && embResult.embedding.length > 0) {
               referenceEmbedding = embResult.embedding;
+
               setStoredEmbedding(referenceEmbedding);
-              // Also persist for future logins
+
+              // Save generated embedding
               await faceRepository.storeEmbedding(
                 email,
                 referenceEmbedding,
@@ -135,55 +195,73 @@ export default function VoterLoginScreen() {
       }
 
       if (referenceEmbedding.length === 0) {
+        await serviceFactory.authService.signOut();
+
         Alert.alert(
           "Verification Error",
-          "Could not load stored face data for comparison. Please contact admin.",
+          "Stored face data could not be loaded.",
         );
+
+        resetVerificationState();
+
         return;
       }
 
-      // Compare embeddings using cosine similarity
-      const comparison = faceRecognitionService.compareEmbeddings(
+      // SECURE COMPARISON
+      const comparison = compareEmbeddingsSecurely(
         referenceEmbedding,
         result.embedding,
-        0.6, // maximum Euclidean distance for a match
       );
+
+      console.log("Face Distance:", comparison.distance);
+      console.log("Similarity:", comparison.similarity);
 
       if (comparison.isMatch) {
-        // Close camera before navigating
-        setStep("login");
-        setStoredEmbedding([]);
-        setUserIdForVerification(null);
+        Alert.alert("✓ Verified", comparison.message);
 
-        Alert.alert(
-          "✓ Verified",
-          `Face verification successful! (${(comparison.similarity * 100).toFixed(1)}% match)`,
-        );
+        resetVerificationState();
+
         router.push(serviceFactory.authService.getDashboardRoute("voter"));
-      } else {
-        const remaining = maxFaceAttempts - faceAttempts;
-        if (remaining <= 0) {
-          Alert.alert(
-            "Verification Failed",
-            "Maximum face verification attempts exceeded. Please try logging in again.",
-          );
-          setStep("login");
-          setStoredEmbedding([]);
-          setUserIdForVerification(null);
-          setFaceAttempts(0);
-        } else {
-          Alert.alert(
-            "Face Mismatch",
-            `Face does not match (${(comparison.similarity * 100).toFixed(1)}% similarity). ${remaining} attempt(s) remaining.`,
-          );
-        }
+
+        return;
       }
+
+      // Face mismatch
+      const remainingAttempts = maxFaceAttempts - newAttempts;
+
+      // Immediately sign out mismatched session
+      await serviceFactory.authService.signOut();
+
+      if (remainingAttempts <= 0) {
+        Alert.alert(
+          "Verification Failed",
+          "Maximum face verification attempts exceeded. Login cancelled.",
+        );
+
+        resetVerificationState();
+
+        return;
+      }
+
+      Alert.alert(
+        "Face Mismatch",
+        `${comparison.message}
+
+Distance: ${comparison.distance.toFixed(4)}
+
+${remainingAttempts} attempt(s) remaining.`,
+      );
     } catch (error) {
       console.error("Face verification error:", error);
+
+      await serviceFactory.authService.signOut();
+
       Alert.alert(
         "Verification Error",
-        "An error occurred during face verification. Please try again.",
+        "An error occurred during face verification.",
       );
+
+      resetVerificationState();
     }
   };
 
@@ -196,14 +274,12 @@ export default function VoterLoginScreen() {
           onFaceCapture={(captureResult) => {
             void handleFaceVerification(captureResult);
           }}
-          onCancel={() => {
-            setStep("login");
-            setStoredEmbedding([]);
-            setUserIdForVerification(null);
-            setFaceAttempts(0);
+          onCancel={async () => {
+            await serviceFactory.authService.signOut();
+            resetVerificationState();
           }}
           title="Face Verification Required"
-          subtitle="Position your face to verify your identity for voting"
+          subtitle="Position your face clearly in front of the camera"
         />
       )}
 
@@ -224,6 +300,7 @@ export default function VoterLoginScreen() {
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Voter Email</Text>
+
               <TextInput
                 style={styles.input}
                 placeholder="Enter your registered email"
@@ -269,6 +346,7 @@ export default function VoterLoginScreen() {
 
             <View style={styles.footerRow}>
               <Text style={styles.footerText}>Admin or auditor account? </Text>
+
               <Pressable onPress={() => router.push("/AdminLogin")}>
                 <Text style={styles.footerLink}>Go to login</Text>
               </Pressable>
@@ -285,6 +363,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f7fb",
   },
+
   scrollContent: {
     flexGrow: 1,
     justifyContent: "center",
@@ -292,6 +371,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 20,
   },
+
   card: {
     backgroundColor: "#fbfdff",
     borderRadius: 18,
@@ -303,6 +383,7 @@ const styles = StyleSheet.create({
     boxShadow: "0px 6px 12px rgba(27, 43, 74, 0.08)",
     elevation: 4,
   },
+
   titleContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -310,14 +391,17 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 10,
   },
+
   voteIcon: {
     fontSize: 28,
   },
+
   title: {
     fontSize: 28,
     fontWeight: "800",
     color: "#0d1b3f",
   },
+
   subtitle: {
     fontSize: 14,
     lineHeight: 22,
@@ -325,15 +409,18 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 18,
   },
+
   inputContainer: {
     marginBottom: 14,
   },
+
   label: {
     fontSize: 13,
     fontWeight: "600",
     color: "#0f1f3f",
     marginBottom: 7,
   },
+
   input: {
     backgroundColor: "#ffffff",
     borderWidth: 1,
@@ -344,6 +431,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#1a2438",
   },
+
   loginButton: {
     backgroundColor: "#2f64e6",
     paddingVertical: 12,
@@ -353,17 +441,21 @@ const styles = StyleSheet.create({
     boxShadow: "0px 4px 8px rgba(47, 100, 230, 0.16)",
     elevation: 3,
   },
+
   loginButtonPressed: {
     opacity: 0.9,
   },
+
   loginButtonDisabled: {
     opacity: 0.6,
   },
+
   loginButtonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "700",
   },
+
   errorBox: {
     marginTop: 12,
     backgroundColor: "#fdecec",
@@ -373,20 +465,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
+
   errorText: {
     color: "#8f2222",
     fontSize: 13,
     lineHeight: 18,
   },
+
   footerRow: {
     flexDirection: "row",
     justifyContent: "center",
     marginTop: 14,
   },
+
   footerText: {
     fontSize: 13,
     color: "#5c6f89",
   },
+
   footerLink: {
     fontSize: 13,
     color: "#2f64e6",
