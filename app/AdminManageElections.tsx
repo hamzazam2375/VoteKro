@@ -2,23 +2,25 @@ import type { ElectionRow, ProfileRow } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
 import DateTimePicker, {
-  type DateTimePickerEvent,
+    type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
-export default function AdminManageElections({ isEmbedded }: { isEmbedded?: boolean } = {}) {
+export default function AdminManageElections({
+  isEmbedded,
+}: { isEmbedded?: boolean } = {}) {
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -131,8 +133,6 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
       return;
     }
 
-    const status = getStatusFromDates(startsAtIso, endsAtIso);
-
     try {
       await serviceFactory.adminService.updateElection({
         electionId: selectedElection.id,
@@ -140,7 +140,6 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
         description: editDescription.trim() || undefined,
         startsAtIso,
         endsAtIso,
-        status,
       });
       Alert.alert("Success", "Election updated successfully");
       setShowEditModal(false);
@@ -176,7 +175,9 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
   };
 
   const handleEndElection = (election: ElectionRow) => {
-    if (election.status === "closed") {
+    const now = Date.now();
+    const endsAt = new Date(election.ends_at).getTime();
+    if (endsAt <= now) {
       Alert.alert("Info", "This election is already closed.");
       return;
     }
@@ -197,10 +198,7 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
 
   const confirmEndElection = async (election: ElectionRow) => {
     try {
-      await serviceFactory.adminService.updateElectionStatus(
-        election.id,
-        "closed",
-      );
+      await serviceFactory.adminService.updateElectionStatus(election.id);
 
       Alert.alert("Success", "Election ended successfully");
       void loadData();
@@ -222,6 +220,10 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
       month: "short",
       day: "numeric",
     });
+  };
+
+  const formatElectionTitle = (title: string) => {
+    return title.trim().replace(/\s+/g, " ");
   };
 
   const toDateInputValue = (value: string) => {
@@ -285,30 +287,7 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
     return date.toISOString();
   };
 
-  const getStatusFromDates = (
-    startsAtIso: string,
-    endsAtIso: string,
-  ): ElectionRow["status"] => {
-    const now = Date.now();
-    const startsAt = new Date(startsAtIso).getTime();
-    const endsAt = new Date(endsAtIso).getTime();
-
-    if (startsAt > now) {
-      return "draft";
-    }
-
-    if (endsAt < now) {
-      return "closed";
-    }
-
-    return "active";
-  };
-
   const getElectionStatus = (election: ElectionRow) => {
-    if (election.status === "closed") {
-      return { label: "Closed", color: "#6b7280" };
-    }
-
     const now = Date.now();
     const startsAt = new Date(election.starts_at).getTime();
     const endsAt = new Date(election.ends_at).getTime();
@@ -509,7 +488,6 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
                 return (
                   <View key={election.id} style={styles.electionCard}>
                     <View style={styles.electionHeader}>
-                      <Text style={styles.electionTitle}>{election.title}</Text>
                       <View style={styles.electionActions}>
                         <Pressable
                           style={styles.editBtn}
@@ -533,6 +511,9 @@ export default function AdminManageElections({ isEmbedded }: { isEmbedded?: bool
                         </Pressable>
                       </View>
                     </View>
+                    <Text style={styles.electionTitle}>
+                      {formatElectionTitle(election.title)}
+                    </Text>
                     {election.description && (
                       <Text style={styles.electionDescription}>
                         {election.description}
@@ -674,16 +655,16 @@ const styles = StyleSheet.create({
   },
   electionHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 8,
-    gap: 12,
+    justifyContent: "flex-end",
+    marginBottom: 10,
   },
   electionTitle: {
     fontSize: 26,
     fontWeight: "600",
     color: "#111827",
-    flex: 1,
+    marginBottom: 10,
+    lineHeight: 31,
   },
   statusBadge: {
     marginTop: 4,

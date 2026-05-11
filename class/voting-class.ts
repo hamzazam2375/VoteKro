@@ -1,17 +1,24 @@
-import { BaseService } from '@/class/base-service';
-import { sha256 } from '@/class/crypto';
-import type { CandidateRow, ElectionRow, VerifyChainResultRow, VoteBlockRow, VoterRegistryRow, VoteVerificationReceipt } from '@/class/database-types';
-import { EmailService } from '@/class/email-service';
-import { AuthenticationError, ValidationError } from '@/class/errors';
+import { BaseService } from "@/class/base-service";
+import { sha256 } from "@/class/crypto";
 import type {
-  CastVoteInput,
-  IAuthRepository,
-  ICandidateRepository,
-  IElectionRepository,
-  IProfileRepository,
-  IVoteLedgerRepository,
-  IVoterRegistryRepository,
-} from '@/class/service-contracts';
+    CandidateRow,
+    ElectionRow,
+    VerifyChainResultRow,
+    VoteBlockRow,
+    VoterRegistryRow,
+    VoteVerificationReceipt,
+} from "@/class/database-types";
+import { EmailService } from "@/class/email-service";
+import { AuthenticationError, ValidationError } from "@/class/errors";
+import type {
+    CastVoteInput,
+    IAuthRepository,
+    ICandidateRepository,
+    IElectionRepository,
+    IProfileRepository,
+    IVoteLedgerRepository,
+    IVoterRegistryRepository,
+} from "@/class/service-contracts";
 
 export class VotingService extends BaseService {
   private readonly emailService = new EmailService();
@@ -22,7 +29,7 @@ export class VotingService extends BaseService {
     private readonly candidateRepository: ICandidateRepository,
     private readonly voterRegistryRepository: IVoterRegistryRepository,
     private readonly voteLedgerRepository: IVoteLedgerRepository,
-    private readonly profileRepository: IProfileRepository
+    private readonly profileRepository: IProfileRepository,
   ) {
     super();
   }
@@ -30,10 +37,6 @@ export class VotingService extends BaseService {
   async getActiveElections(now = new Date()): Promise<ElectionRow[]> {
     const elections = await this.electionRepository.listAll();
     return elections.filter((election) => {
-      if (election.status !== 'open') {
-        return false;
-      }
-
       const startsAt = new Date(election.starts_at).getTime();
       const endsAt = new Date(election.ends_at).getTime();
       const current = now.getTime();
@@ -43,13 +46,17 @@ export class VotingService extends BaseService {
 
   async getRemainingVotingTime(
     electionId: string,
-    now = new Date()
-  ): Promise<{ remainingMs: number; remainingTime: string; votingActive: boolean }> {
-    this.requireNonEmpty(electionId, 'Election id');
+    now = new Date(),
+  ): Promise<{
+    remainingMs: number;
+    remainingTime: string;
+    votingActive: boolean;
+  }> {
+    this.requireNonEmpty(electionId, "Election id");
 
     const election = await this.electionRepository.findById(electionId);
     if (!election) {
-      throw new ValidationError('Election not found');
+      throw new ValidationError("Election not found");
     }
 
     const startsAt = new Date(election.starts_at).getTime();
@@ -60,8 +67,12 @@ export class VotingService extends BaseService {
     if (currentTime < startsAt) {
       const timeUntilStart = startsAt - currentTime;
       const days = Math.floor(timeUntilStart / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((timeUntilStart % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((timeUntilStart % (1000 * 60 * 60)) / (1000 * 60));
+      const hours = Math.floor(
+        (timeUntilStart % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
+      );
+      const minutes = Math.floor(
+        (timeUntilStart % (1000 * 60 * 60)) / (1000 * 60),
+      );
 
       return {
         remainingMs: 0,
@@ -74,8 +85,12 @@ export class VotingService extends BaseService {
     if (currentTime <= endsAt) {
       const remainingMs = endsAt - currentTime;
       const days = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+      const hours = Math.floor(
+        (remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
+      );
+      const minutes = Math.floor(
+        (remainingMs % (1000 * 60 * 60)) / (1000 * 60),
+      );
       const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
 
       return {
@@ -88,17 +103,20 @@ export class VotingService extends BaseService {
     // Voting has ended
     return {
       remainingMs: 0,
-      remainingTime: 'Voting has ended',
+      remainingTime: "Voting has ended",
       votingActive: false,
     };
   }
 
-  async isVotingWindowOpen(electionId: string, now = new Date()): Promise<boolean> {
-    this.requireNonEmpty(electionId, 'Election id');
+  async isVotingWindowOpen(
+    electionId: string,
+    now = new Date(),
+  ): Promise<boolean> {
+    this.requireNonEmpty(electionId, "Election id");
 
     try {
       const election = await this.electionRepository.findById(electionId);
-      if (!election || election.status !== 'open') {
+      if (!election) {
         return false;
       }
 
@@ -117,76 +135,90 @@ export class VotingService extends BaseService {
   }
 
   async getElectionCandidates(electionId: string): Promise<CandidateRow[]> {
-    this.requireNonEmpty(electionId, 'Election id');
+    this.requireNonEmpty(electionId, "Election id");
     return this.candidateRepository.listByElection(electionId);
   }
 
-  async getMyRegistryStatus(electionId: string): Promise<VoterRegistryRow | null> {
-    this.requireNonEmpty(electionId, 'Election id');
+  async getMyRegistryStatus(
+    electionId: string,
+  ): Promise<VoterRegistryRow | null> {
+    this.requireNonEmpty(electionId, "Election id");
 
     const userId = await this.authRepository.getCurrentUserId();
     if (!userId) {
       return null;
     }
 
-    return this.voterRegistryRepository.getByElectionAndVoter(electionId, userId);
+    return this.voterRegistryRepository.getByElectionAndVoter(
+      electionId,
+      userId,
+    );
   }
 
-  async verifyVoterEligibility(electionId: string, now = new Date()): Promise<VoterRegistryRow> {
-    this.requireNonEmpty(electionId, 'Election id');
+  async verifyVoterEligibility(
+    electionId: string,
+    now = new Date(),
+  ): Promise<VoterRegistryRow> {
+    this.requireNonEmpty(electionId, "Election id");
 
     // Get current authenticated user
     const userId = await this.authRepository.getCurrentUserId();
     if (!userId) {
-      throw new AuthenticationError('User is not authenticated');
+      throw new AuthenticationError("User is not authenticated");
     }
 
     // Get the election
     const election = await this.electionRepository.findById(electionId);
     if (!election) {
-      throw new ValidationError('Election not found');
-    }
-
-    // Verify election is active
-    if (election.status !== 'open') {
-      throw new ValidationError('Election is not active. Current status: ' + election.status);
+      throw new ValidationError("Election not found");
     }
 
     // Validate voting time window (must be within start and end times)
     await this.validateVotingTimeWindow(election, now);
 
     // Get voter's registration status for this election
-    const voterRegistry = await this.voterRegistryRepository.getByElectionAndVoter(electionId, userId);
+    const voterRegistry =
+      await this.voterRegistryRepository.getByElectionAndVoter(
+        electionId,
+        userId,
+      );
 
     if (!voterRegistry) {
-      throw new ValidationError('Voter is not registered for this election');
+      throw new ValidationError("Voter is not registered for this election");
     }
 
     // Verify voter is eligible (approved)
     if (!voterRegistry.is_eligible) {
-      throw new ValidationError('Voter is not approved for this election');
+      throw new ValidationError("Voter is not approved for this election");
     }
 
     // Verify voter has not already voted
     if (voterRegistry.has_voted) {
-      throw new ValidationError('Voter has already voted in this election');
+      throw new ValidationError("Voter has already voted in this election");
     }
 
     return voterRegistry;
   }
 
-  private async validateVotingTimeWindow(election: ElectionRow, now = new Date()): Promise<void> {
+  private async validateVotingTimeWindow(
+    election: ElectionRow,
+    now = new Date(),
+  ): Promise<void> {
     const startsAt = new Date(election.starts_at).getTime();
     const endsAt = new Date(election.ends_at).getTime();
     const currentTime = now.getTime();
 
     // Check if voting has not started yet
     if (currentTime < startsAt) {
-      const hoursRemaining = Math.floor((startsAt - currentTime) / (1000 * 60 * 60));
-      const minutesRemaining = Math.floor(((startsAt - currentTime) % (1000 * 60 * 60)) / (1000 * 60));
+      const hoursRemaining = Math.floor(
+        (startsAt - currentTime) / (1000 * 60 * 60),
+      );
+      const minutesRemaining = Math.floor(
+        ((startsAt - currentTime) % (1000 * 60 * 60)) / (1000 * 60),
+      );
 
       throw new ValidationError(
-        `Voting has not started yet. The election will start in ${hoursRemaining} hours and ${minutesRemaining} minutes. Start time: ${new Date(startsAt).toLocaleString()}`
+        `Voting has not started yet. The election will start in ${hoursRemaining} hours and ${minutesRemaining} minutes. Start time: ${new Date(startsAt).toLocaleString()}`,
       );
     }
 
@@ -194,10 +226,12 @@ export class VotingService extends BaseService {
     if (currentTime > endsAt) {
       const timeOverdue = currentTime - endsAt;
       const hoursOverdue = Math.floor(timeOverdue / (1000 * 60 * 60));
-      const minutesOverdue = Math.floor((timeOverdue % (1000 * 60 * 60)) / (1000 * 60));
+      const minutesOverdue = Math.floor(
+        (timeOverdue % (1000 * 60 * 60)) / (1000 * 60),
+      );
 
       throw new ValidationError(
-        `Voting period has ended. The election ended ${hoursOverdue} hours and ${minutesOverdue} minutes ago. End time was: ${new Date(endsAt).toLocaleString()}`
+        `Voting period has ended. The election ended ${hoursOverdue} hours and ${minutesOverdue} minutes ago. End time was: ${new Date(endsAt).toLocaleString()}`,
       );
     }
   }
@@ -205,19 +239,19 @@ export class VotingService extends BaseService {
   private async generateVerificationToken(
     electionId: string,
     voteCommitment: string,
-    nonce: string
+    nonce: string,
   ): Promise<string> {
     // Generate unique verification token: SHA256(electionId|voteCommitment|nonce)
     return sha256(`${electionId}|${voteCommitment}|${nonce}`);
   }
 
   async castVote(input: CastVoteInput): Promise<VoteBlockRow> {
-    this.requireNonEmpty(input.electionId, 'Election id');
-    this.requireNonEmpty(input.candidateId, 'Candidate id');
+    this.requireNonEmpty(input.electionId, "Election id");
+    this.requireNonEmpty(input.candidateId, "Candidate id");
 
     const userId = await this.authRepository.getCurrentUserId();
     if (!userId) {
-      throw new AuthenticationError('User is not authenticated');
+      throw new AuthenticationError("User is not authenticated");
     }
 
     // Verify voter eligibility before casting vote
@@ -228,13 +262,17 @@ export class VotingService extends BaseService {
 
     // Cast vote ANONYMOUSLY - vote is stored without voter identity
     // voterId is intentionally not passed to maintain anonymity
-    const voteBlock = await this.voteLedgerRepository.castVoteSecure(input.electionId, input.candidateId, input.nonce);
+    const voteBlock = await this.voteLedgerRepository.castVoteSecure(
+      input.electionId,
+      input.candidateId,
+      input.nonce,
+    );
 
     // Generate unique verification token for vote verification
     const verificationToken = await this.generateVerificationToken(
       input.electionId,
       voteBlock.vote_commitment,
-      voteBlock.nonce
+      voteBlock.nonce,
     );
 
     // Send confirmation email with verification token
@@ -243,27 +281,27 @@ export class VotingService extends BaseService {
         userId,
         input.electionId,
         input.candidateId,
-        verificationToken
+        verificationToken,
       );
     } catch (error) {
       // Log error but don't fail the vote casting if email fails
-      console.error('Failed to send vote confirmation email:', error);
+      console.error("Failed to send vote confirmation email:", error);
     }
 
     return voteBlock;
   }
 
   async verifyElectionChain(electionId: string): Promise<VerifyChainResultRow> {
-    this.requireNonEmpty(electionId, 'Election id');
+    this.requireNonEmpty(electionId, "Election id");
     return this.voteLedgerRepository.verifyChain(electionId);
   }
 
   async verifyVoteInBlockchain(
     electionId: string,
-    verificationToken: string
+    verificationToken: string,
   ): Promise<VoteVerificationReceipt> {
-    this.requireNonEmpty(electionId, 'Election id');
-    this.requireNonEmpty(verificationToken, 'Verification token');
+    this.requireNonEmpty(electionId, "Election id");
+    this.requireNonEmpty(verificationToken, "Verification token");
 
     // Get all votes for this election
     const votes = await this.voteLedgerRepository.listLedger(electionId);
@@ -276,7 +314,7 @@ export class VotingService extends BaseService {
       const generatedToken = await this.generateVerificationToken(
         electionId,
         vote.vote_commitment,
-        vote.nonce
+        vote.nonce,
       );
 
       if (generatedToken === verificationToken) {
@@ -287,15 +325,16 @@ export class VotingService extends BaseService {
 
     if (!matchedVote) {
       throw new ValidationError(
-        'Vote not found in blockchain. Please verify your verification token is correct.'
+        "Vote not found in blockchain. Please verify your verification token is correct.",
       );
     }
 
     // Verify the entire election chain is valid
-    const chainVerification = await this.voteLedgerRepository.verifyChain(electionId);
+    const chainVerification =
+      await this.voteLedgerRepository.verifyChain(electionId);
     if (!chainVerification.is_valid) {
       throw new ValidationError(
-        `Blockchain integrity check failed at block ${chainVerification.invalid_block_index}. Reason: ${chainVerification.reason}`
+        `Blockchain integrity check failed at block ${chainVerification.invalid_block_index}. Reason: ${chainVerification.reason}`,
       );
     }
 
@@ -314,32 +353,35 @@ export class VotingService extends BaseService {
     userId: string,
     electionId: string,
     candidateId: string,
-    verificationToken: string
+    verificationToken: string,
   ): Promise<void> {
     // Get voter profile for email
     const profile = await this.profileRepository.getByUserId(userId);
     if (!profile?.user_id) {
-      throw new ValidationError('Voter profile not found');
+      throw new ValidationError("Voter profile not found");
     }
 
     // Get election details
     const election = await this.electionRepository.findById(electionId);
     if (!election) {
-      throw new ValidationError('Election not found');
+      throw new ValidationError("Election not found");
     }
 
     // Get candidate details
-    const candidates = await this.candidateRepository.listByElection(electionId);
+    const candidates =
+      await this.candidateRepository.listByElection(electionId);
     const candidate = candidates.find((c) => c.id === candidateId);
     if (!candidate) {
-      throw new ValidationError('Candidate not found');
+      throw new ValidationError("Candidate not found");
     }
 
     // Get voter email from auth
-    const { data: { user } } = await (await import('@/class/supabase-client')).supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await (await import("@/class/supabase-client")).supabase.auth.getUser();
     const voterEmail = user?.email;
     if (!voterEmail) {
-      throw new ValidationError('Voter email not found');
+      throw new ValidationError("Voter email not found");
     }
 
     // Send confirmation email
@@ -350,8 +392,8 @@ export class VotingService extends BaseService {
         profile.full_name,
         election.title,
         candidate.display_name,
-        candidate.party_name || 'Independent',
-        verificationToken
+        candidate.party_name || "Independent",
+        verificationToken,
       ),
     });
   }
@@ -361,7 +403,7 @@ export class VotingService extends BaseService {
     electionTitle: string,
     candidateName: string,
     partyName: string,
-    verificationToken: string
+    verificationToken: string,
   ): string {
     return `
       <html>

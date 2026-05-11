@@ -31,8 +31,9 @@ export default function AdminDashboard() {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [registeredVotersCount, setRegisteredVotersCount] = useState(0);
+  const [auditorsCount, setAuditorsCount] = useState(0);
   const [elections, setElections] = useState<ElectionRow[]>([]);
-  const [totalVotesCast, setTotalVotesCast] = useState(0);
+  const [totalCandidatesCount, setTotalCandidatesCount] = useState(0);
   const [candidateCounts, setCandidateCounts] = useState<
     Record<string, number>
   >({});
@@ -54,6 +55,7 @@ export default function AdminDashboard() {
       const overview = await serviceFactory.adminService.getDashboardOverview();
       setProfile(overview.profile);
       setRegisteredVotersCount(overview.registeredVotersCount);
+      setAuditorsCount(overview.auditorsCount);
 
       const electionRows = await serviceFactory.adminService.listElections();
       setElections(electionRows);
@@ -69,6 +71,9 @@ export default function AdminDashboard() {
       );
 
       setCandidateCounts(Object.fromEntries(countEntries));
+      setTotalCandidatesCount(
+        countEntries.reduce((sum, [, count]) => sum + count, 0),
+      );
 
       const voteEntries = await Promise.all(
         electionRows.map(async (election) => {
@@ -85,9 +90,6 @@ export default function AdminDashboard() {
 
       const votesByElection = Object.fromEntries(voteEntries);
       setVoteCounts(votesByElection);
-      setTotalVotesCast(
-        Object.values(votesByElection).reduce((sum, count) => sum + count, 0),
-      );
     } catch (error) {
       Alert.alert(
         "Error",
@@ -363,8 +365,7 @@ export default function AdminDashboard() {
               <Pressable
                 style={[
                   styles.sidebarButton,
-                  currentPage === "edit-profile" &&
-                    styles.sidebarButtonActive,
+                  currentPage === "edit-profile" && styles.sidebarButtonActive,
                 ]}
                 onPress={() => {
                   setCurrentPage("edit-profile");
@@ -462,8 +463,19 @@ export default function AdminDashboard() {
                       isMobile ? styles.cardFullWidth : styles.cardThirdWidth,
                     ]}
                   >
-                    <Text style={styles.statLabel}>Total Votes Cast</Text>
-                    <Text style={styles.statNumber}>{totalVotesCast}</Text>
+                    <Text style={styles.statLabel}>Total Candidates</Text>
+                    <Text style={styles.statNumber}>
+                      {totalCandidatesCount}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.statCard,
+                      isMobile ? styles.cardFullWidth : styles.cardThirdWidth,
+                    ]}
+                  >
+                    <Text style={styles.statLabel}>Total Auditors</Text>
+                    <Text style={styles.statNumber}>{auditorsCount}</Text>
                   </View>
                 </View>
 
@@ -707,7 +719,9 @@ export default function AdminDashboard() {
                 <AuditorSignup isEmbedded={true} />
               </View>
             )}
-            {currentPage === "edit-profile" && <AdminEditProfile isEmbedded={true} />}
+            {currentPage === "edit-profile" && (
+              <AdminEditProfile isEmbedded={true} />
+            )}
           </View>
         </ScrollView>
       </View>

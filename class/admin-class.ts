@@ -1,22 +1,22 @@
 import { AuthService } from "@/class/auth-class";
 import { BaseService } from "@/class/base-service";
 import type {
-  CandidateRow,
-  ElectionRow,
-  ProfileRow,
-  VoterRegistryRow,
+    CandidateRow,
+    ElectionRow,
+    ProfileRow,
+    VoterRegistryRow,
 } from "@/class/database-types";
 import { EmailService } from "@/class/email-service";
 import { ValidationError } from "@/class/errors";
 import type {
-  AddCandidateInput,
-  CreateElectionInput,
-  ICandidateRepository,
-  IElectionRepository,
-  IProfileRepository,
-  IVoterRegistryRepository,
-  UpdateCandidateInput,
-  UpdateElectionInput,
+    AddCandidateInput,
+    CreateElectionInput,
+    ICandidateRepository,
+    IElectionRepository,
+    IProfileRepository,
+    IVoterRegistryRepository,
+    UpdateCandidateInput,
+    UpdateElectionInput,
 } from "@/class/service-contracts";
 
 type RegisterUserInput = {
@@ -39,17 +39,17 @@ export class AdminService extends BaseService {
 
   async getDashboardOverview(): Promise<{
     profile: ProfileRow;
-    auditorExists: boolean;
+    auditorsCount: number;
     registeredVotersCount: number;
   }> {
     const profile = await this.authService.getRequiredProfile("admin");
-    let auditorProfile: ProfileRow | null = null;
+    let auditorsCount = 0;
     let registeredVotersCount = 0;
     try {
-      auditorProfile = await this.profileRepository.getByRole("auditor");
+      auditorsCount = await this.profileRepository.countByRole("auditor");
     } catch (error) {
-      // This lookup is only used for UI hints; failing it should not block admin access.
-      console.warn("Unable to determine whether an auditor exists:", error);
+      // Keep dashboard available even if count lookup fails.
+      console.warn("Unable to count auditors:", error);
     }
 
     try {
@@ -61,7 +61,7 @@ export class AdminService extends BaseService {
 
     return {
       profile,
-      auditorExists: !!auditorProfile,
+      auditorsCount,
       registeredVotersCount,
     };
   }
@@ -271,13 +271,22 @@ export class AdminService extends BaseService {
     return this.voterRegistryRepository.registerEligible(electionId, voterId);
   }
 
-  async updateElectionStatus(
-    electionId: string,
-    status: ElectionRow["status"],
-  ): Promise<ElectionRow> {
+  async updateElectionStatus(electionId: string): Promise<ElectionRow> {
     await this.authService.getRequiredProfile("admin");
     this.requireNonEmpty(electionId, "Election id");
-    return this.electionRepository.updateStatus(electionId, status);
+
+    const election = await this.electionRepository.findById(electionId);
+    if (!election) {
+      throw new NotFoundError("Election not found");
+    }
+
+    return this.electionRepository.update({
+      electionId,
+      title: election.title,
+      description: election.description ?? undefined,
+      startsAtIso: election.starts_at,
+      endsAtIso: new Date().toISOString(),
+    });
   }
 
   async listElections(): Promise<ElectionRow[]> {

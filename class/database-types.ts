@@ -1,5 +1,10 @@
-export type UserRole = 'admin' | 'voter' | 'auditor';
-export type ElectionStatus = 'draft' | 'open' | 'closed' | 'published' | 'active';
+export type UserRole = "admin" | "voter" | "auditor";
+export type ElectionStatus =
+  | "draft"
+  | "open"
+  | "closed"
+  | "published"
+  | "active";
 
 export interface ProfileRow {
   user_id: string;
@@ -17,7 +22,7 @@ export interface ElectionRow {
   description: string | null;
   starts_at: string;
   ends_at: string;
-  status: ElectionStatus;
+  status?: ElectionStatus;
   created_by: string;
   created_at: string;
   updated_at: string;

@@ -275,7 +275,6 @@ export class SupabaseElectionRepository
         description: input.description ?? null,
         starts_at: input.startsAtIso,
         ends_at: input.endsAtIso,
-        status: "draft",
         created_by: createdBy,
       })
       .select("*")
@@ -283,24 +282,6 @@ export class SupabaseElectionRepository
 
     if (error) {
       this.throwOnError("Failed to create election", error);
-    }
-
-    return data as ElectionRow;
-  }
-
-  async updateStatus(
-    electionId: string,
-    status: ElectionRow["status"],
-  ): Promise<ElectionRow> {
-    const { data, error } = await supabase
-      .from("elections")
-      .update({ status })
-      .eq("id", electionId)
-      .select("*")
-      .single();
-
-    if (error) {
-      this.throwOnError("Failed to update election status", error);
     }
 
     return data as ElectionRow;
@@ -314,7 +295,6 @@ export class SupabaseElectionRepository
         description: input.description ?? null,
         starts_at: input.startsAtIso,
         ends_at: input.endsAtIso,
-        status: input.status,
       })
       .eq("id", input.electionId)
       .select("*")
