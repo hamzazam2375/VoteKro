@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,6 +27,7 @@ export default function AuditorDashboard() {
   const metricsColumns = width >= 900 ? 2 : width >= 520 ? 2 : 1;
   const metricsItemWidth = `${Math.floor(100 / metricsColumns) - 1}%`;
   const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
     totalBlocks: 0,
@@ -179,8 +181,32 @@ export default function AuditorDashboard() {
             { label: "Logout", onPress: handleLogout, variant: "outline" },
           ]}
         />
+        {isMobile && (
+          <View style={styles.mobileMenuRow}>
+            <Pressable
+              style={styles.mobileMenuButton}
+              onPress={() => setSidebarOpen((previous) => !previous)}
+            >
+              <Text style={styles.mobileMenuButtonText}>☰ Menu</Text>
+            </Pressable>
+          </View>
+        )}
         <View style={styles.mainContent}>
           {!isMobile && <AuditorSidebar profileName={profile?.full_name} />}
+          {isMobile && sidebarOpen && (
+            <>
+              <Pressable
+                style={styles.sidebarOverlay}
+                onPress={() => setSidebarOpen(false)}
+              />
+              <View style={styles.mobileSidebar}>
+                <AuditorSidebar
+                  profileName={profile?.full_name}
+                  onNavigate={() => setSidebarOpen(false)}
+                />
+              </View>
+            </>
+          )}
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#1a73e8" />
             <Text style={styles.loadingText}>Loading...</Text>
@@ -198,9 +224,33 @@ export default function AuditorDashboard() {
           { label: "Logout", onPress: handleLogout, variant: "outline" },
         ]}
       />
+      {isMobile && (
+        <View style={styles.mobileMenuRow}>
+          <Pressable
+            style={styles.mobileMenuButton}
+            onPress={() => setSidebarOpen((previous) => !previous)}
+          >
+            <Text style={styles.mobileMenuButtonText}>☰ Menu</Text>
+          </Pressable>
+        </View>
+      )}
 
       <View style={styles.mainContent}>
         {!isMobile && <AuditorSidebar profileName={profile?.full_name} />}
+        {isMobile && sidebarOpen && (
+          <>
+            <Pressable
+              style={styles.sidebarOverlay}
+              onPress={() => setSidebarOpen(false)}
+            />
+            <View style={styles.mobileSidebar}>
+              <AuditorSidebar
+                profileName={profile?.full_name}
+                onNavigate={() => setSidebarOpen(false)}
+              />
+            </View>
+          </>
+        )}
 
         <ScrollView
           style={styles.content}
@@ -469,6 +519,49 @@ const styles = StyleSheet.create({
   mainContent: {
     flex: 1,
     flexDirection: "row",
+    position: "relative",
+  },
+  mobileMenuRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#ffffff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e8ebf2",
+  },
+  mobileMenuButton: {
+    alignSelf: "flex-start",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#1a73e8",
+    borderRadius: 10,
+    backgroundColor: "#f2f7ff",
+  },
+  mobileMenuButtonText: {
+    color: "#1a73e8",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  sidebarOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+    zIndex: 300,
+  },
+  mobileSidebar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 240,
+    maxWidth: "84%",
+    zIndex: 400,
+    backgroundColor: "#ffffff",
+    borderRightWidth: 1,
+    borderRightColor: "#e0e0e0",
   },
   content: {
     flex: 1,

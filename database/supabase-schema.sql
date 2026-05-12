@@ -195,15 +195,16 @@ immutable
 as $$
   select encode(
     digest(
-      (
+      convert_to(
         concat_ws('|',
           p_block_index::text,
           p_encrypted_vote,
           p_vote_commitment,
           p_previous_hash,
           to_char(p_created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
-        )
-      )::bytea,
+        ),
+        'UTF8'
+      ),
       'sha256'
     ),
     'hex'
@@ -355,8 +356,24 @@ begin
     raise exception 'Voter not eligible or already voted';
   end if;
 
-  v_nonce := coalesce(nullif(trim(p_nonce), ''), encode(gen_random_bytes(16), 'hex'));
-  v_vote_commitment := encode(digest(concat_ws('|', p_election_id::text, p_candidate_id::text, v_nonce), 'sha256'), 'hex');
+  -- Avoid hard dependency on gen_random_bytes() (pgcrypto install differences).
+  -- 32 hex chars from md5(random/timestamp/uid) is enough entropy for vote nonce.
+  v_nonce := coalesce(
+    nullif(trim(p_nonce), ''),
+    md5(
+      random()::text
+      || clock_timestamp()::text
+      || coalesce(v_uid::text, '')
+      || p_election_id::text
+    )
+  );
+  v_vote_commitment := encode(
+    digest(
+      convert_to(concat_ws('|', p_election_id::text, p_candidate_id::text, v_nonce), 'UTF8'),
+      'sha256'
+    ),
+    'hex'
+  );
 
   v_plain_vote := jsonb_build_object(
     'election_id', p_election_id,

@@ -60,8 +60,9 @@ database/supabase-schema.sql
 EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 EXPO_PUBLIC_CAST_VOTE_EDGE_URL=
-EXPO_PUBLIC_ROCKSDB_LEDGER_URL=
 ```
+
+Votes are always written to Supabase `public.vote_blocks` via the `cast_vote_secure` RPC.
 
 For voter registration email approval flow, run SQL and deploy edge functions:
 
@@ -93,13 +94,7 @@ supabase functions deploy complete-voter-registration --no-verify-jwt
 4. Confirm the login is rejected with a mismatch message.
 5. If a wrong person still passes, increase the threshold a little and re-enroll the voter.
 
-Optional (free local RocksDB blockchain ledger):
-
-1. Start the RocksDB service in `rocksdb-ledger/`.
-2. Set `EXPO_PUBLIC_ROCKSDB_LEDGER_URL` (for example `http://localhost:8787`).
-3. App will route vote cast, ledger list, and chain verification through the RocksDB service.
-
-4. Start the app
+Optional: a standalone RocksDB demo API lives under `rocksdb-ledger/` for local experiments only; the Expo app reads the ledger from Supabase.
 
 ```bash
 npx expo start
@@ -129,4 +124,4 @@ import { AdminService, VotingService, AuditorService } from "@/lib/services";
 ## Framework
 
 - Frontend - React Native
-- Node.js/TypeScript for serverless functions + Express.js for the RocksDB ledger API + PostgreSQL for the database.
+- Node.js/TypeScript for serverless functions + PostgreSQL (Supabase) for the database; optional RocksDB demo under `rocksdb-ledger/`.

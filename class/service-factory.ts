@@ -2,8 +2,6 @@ import { AdminService } from '@/class/admin-class';
 import { AuditorService } from '@/class/auditor-class';
 import { AuthService } from '@/class/auth-class';
 import { EmailService } from '@/class/email-service';
-import { env } from '@/class/env';
-import { RocksDbVoteLedgerRepository } from '@/class/rocksdb-ledger-repository';
 import {
     SupabaseAuditLogRepository,
     SupabaseAuthRepository,
@@ -21,9 +19,8 @@ export class ServiceFactory {
   readonly electionRepository = new SupabaseElectionRepository();
   readonly candidateRepository = new SupabaseCandidateRepository();
   private readonly voterRegistryRepository = new SupabaseVoterRegistryRepository();
-  private readonly voteLedgerRepository = env.rocksDbLedgerUrl.trim().length > 0
-    ? new RocksDbVoteLedgerRepository(env.rocksDbLedgerUrl.replace(/\/$/, ''))
-    : new SupabaseVoteLedgerRepository();
+  /** Votes always persist in Supabase `vote_blocks` via `cast_vote_secure`. */
+  private readonly voteLedgerRepository = new SupabaseVoteLedgerRepository();
   private readonly auditLogRepository = new SupabaseAuditLogRepository();
   private readonly emailServiceInstance = new EmailService();
 

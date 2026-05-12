@@ -478,7 +478,8 @@ export default function VoterDashboard() {
         );
       }
 
-      const useSupabaseServerTally = env.rocksDbLedgerUrl.trim() === "";
+      // Ledger is always Supabase `vote_blocks`; server RPC decrypt matches cast_vote_secure.
+      const useSupabaseServerTally = true;
 
       const serverTallyRows = useSupabaseServerTally
         ? await serviceFactory.votingService.tallyDecryptedVoteBlocksForElection(

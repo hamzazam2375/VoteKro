@@ -279,6 +279,24 @@ export class VotingService extends BaseService {
     return sha256(`${electionId}|${voteCommitment}|${nonce}`);
   }
 
+  private generateClientNonce(): string {
+    // 16 random bytes as hex (32 chars); used when DB-side nonce generation is unavailable.
+    const cryptoObj = globalThis.crypto as
+      | { getRandomValues: (arr: Uint8Array) => Uint8Array }
+      | undefined;
+    if (cryptoObj?.getRandomValues) {
+      const bytes = new Uint8Array(16);
+      cryptoObj.getRandomValues(bytes);
+      return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    }
+
+    // Fallback for environments without Web Crypto.
+    return `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`.slice(
+      0,
+      32,
+    );
+  }
+
   async castVote(input: CastVoteInput): Promise<VoteBlockRow> {
     this.requireNonEmpty(input.electionId, "Election id");
     this.requireNonEmpty(input.candidateId, "Candidate id");
@@ -300,10 +318,11 @@ export class VotingService extends BaseService {
 
     // Cast vote ANONYMOUSLY - voterId is used for authentication but not stored
     // Vote choice is stored without voter identity to maintain anonymity
+    const nonce = input.nonce?.trim() || this.generateClientNonce();
     const voteBlock = await this.voteLedgerRepository.castVoteSecure(
       input.electionId,
       input.candidateId,
-      input.nonce,
+      nonce,
       userId,
     );
 

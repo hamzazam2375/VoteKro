@@ -45,25 +45,34 @@ if (!allDepsPresent) {
 // ============================================================================
 console.log('\n2️⃣  Checking Environment Configuration...');
 
-const envPath = path.join(__dirname, '..', '.env');
+const envPath = path.join(__dirname, '.env');
+const rootEnvPath = path.join(__dirname, '..', '.env');
+const envContent = fs.existsSync(envPath)
+  ? fs.readFileSync(envPath, 'utf8')
+  : fs.existsSync(rootEnvPath)
+    ? fs.readFileSync(rootEnvPath, 'utf8')
+    : '';
+
 if (fs.existsSync(envPath)) {
-  console.log('  ✅ .env file exists');
-  
-  const envContent = fs.readFileSync(envPath, 'utf8');
+  console.log('  ✅ rocksdb-ledger/.env exists');
+} else if (fs.existsSync(rootEnvPath)) {
+  console.log('  ℹ️  Using repo root .env (create rocksdb-ledger/.env for server-only vars)');
+} else {
+  console.log('  ❌ No .env at rocksdb-ledger/.env or repo root');
+}
+
+if (envContent) {
   const envVars = {
-    'EXPO_PUBLIC_ROCKSDB_LEDGER_URL': false,
     'PORT': false,
     'ROCKSDB_PATH': false,
     'ROCKSDB_LEDGER_SECRET': false
   };
-  
+
   for (const [key, _] of Object.entries(envVars)) {
     const hasVar = envContent.includes(key + '=');
     const status = hasVar ? '✅' : '❌';
     console.log(`  ${status} ${key}`);
   }
-} else {
-  console.log('  ❌ .env file not found at', envPath);
 }
 
 // ============================================================================
@@ -183,12 +192,10 @@ if (fs.existsSync(frontendPath)) {
   
   const frontendContent = fs.readFileSync(frontendPath, 'utf8');
   const features = {
-    'Fetch from rocksDbUrl': /rocksDbUrl/,
-    'Ledger endpoint call': /\/ledger\//,
-    'Verify chain call': /\/verify-chain\//,
+    'Supabase ledger via getLedger': /getLedger/,
     'Block state management': /setBlocks/,
-    'Chain validation': /chainValid/,
-    'Voter name mapping': /voterNameMap/,
+    'Chain validation': /verifyBlockchain/,
+    'Metrics state': /setMetrics/,
   };
   
   for (const [name, pattern] of Object.entries(features)) {

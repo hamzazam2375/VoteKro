@@ -17,6 +17,5 @@ export const env = {
   supabaseUrl,
   supabaseAnonKey,
   castVoteEdgeFunctionUrl: process.env.EXPO_PUBLIC_CAST_VOTE_EDGE_URL ?? "",
-  rocksDbLedgerUrl: process.env.EXPO_PUBLIC_ROCKSDB_LEDGER_URL ?? "",
   voteEncryptionKey: process.env.EXPO_PUBLIC_VOTE_ENCRYPTION_KEY ?? "",
 };

@@ -702,7 +702,6 @@ export default function AuditorElections() {
                           </Text>
                         </LinearGradient>
                       </Pressable>
-<<<<<<< HEAD
 
                       <Pressable
                         onPress={() => selectedElection && handleDownloadCSV(selectedElection)}
@@ -714,8 +713,6 @@ export default function AuditorElections() {
                         <Text style={styles.exportIcon}>⬇️</Text>
                         <Text style={styles.exportText}>Export Report</Text>
                       </Pressable>
-=======
->>>>>>> 92170e94eedc6c2d24890160e8135d6e8a9f89fa
                     </View>
                   </View>
 
@@ -895,7 +892,6 @@ function ElectionCard({
             <Text style={styles.secondaryButtonIcon}>👁️</Text>
             <Text style={styles.secondaryButtonText}>Details</Text>
           </Pressable>
-<<<<<<< HEAD
 
           <Pressable
             onPress={() => onDownloadCSV(election)}
@@ -907,8 +903,6 @@ function ElectionCard({
             <Text style={styles.secondaryButtonIcon}>⬇️</Text>
             <Text style={styles.secondaryButtonText}>Download CSV</Text>
           </Pressable>
-=======
->>>>>>> 92170e94eedc6c2d24890160e8135d6e8a9f89fa
         </View>
       </View>
     </LinearGradient>

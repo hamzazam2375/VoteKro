@@ -102,8 +102,6 @@ const AuditorBlockchainLedger: React.FC = () => {
     reason: null,
     tamperedCount: 0,
   });
-  const rocksDbUrl = process.env.EXPO_PUBLIC_ROCKSDB_LEDGER_URL || "http://localhost:8787";
-
   const handleLogout = async () => {
     try {
       await serviceFactory.authService.signOut();
@@ -229,7 +227,7 @@ const AuditorBlockchainLedger: React.FC = () => {
     };
 
     fetchBlockchain();
-  }, [selectedElection, rocksDbUrl]);
+  }, [selectedElection]);
 
   const handleViewDetails = (block: VoteBlock) => {
     setSelectedBlock(block);

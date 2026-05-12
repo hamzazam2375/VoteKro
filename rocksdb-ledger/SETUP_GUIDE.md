@@ -79,17 +79,28 @@ ROCKSDB_LEDGER_SECRET=<your-secret-key>
 
 ---
 
-## 🎯 Frontend Integration
+## 🎯 Frontend (VoteKro app)
 
-The Auditor Ledger View (`AuditorBlockchainLedger.tsx`) automatically connects to:
+The main app loads vote blocks from **Supabase** (`vote_blocks` via `AuditorService.getLedger`). It does not use `EXPO_PUBLIC_ROCKSDB_LEDGER_URL`.
+
+This directory is only an optional standalone HTTP API over RocksDB for local experiments.
+
+---
+
+## Legacy: direct HTTP ledger (optional)
+
+If you call this server from a custom client, use:
 
 ```
 http://localhost:8787/ledger/:electionId
 ```
 
-The frontend reads the URL from `.env`:
+Configure the **RocksDB server** with a `rocksdb-ledger/.env` (or export vars) such as:
+
 ```
-EXPO_PUBLIC_ROCKSDB_LEDGER_URL=http://localhost:8787
+PORT=8787
+ROCKSDB_PATH=./data/ledger
+ROCKSDB_LEDGER_SECRET=<your-secret-key>
 ```
 
 ---
