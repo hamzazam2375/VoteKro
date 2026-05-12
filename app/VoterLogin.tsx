@@ -50,6 +50,21 @@ export default function VoterLoginScreen() {
     setFaceAttempts(0);
   };
 
+  const waitForSession = async (timeoutMs = 2500): Promise<boolean> => {
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < timeoutMs) {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        return true;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+
+    return false;
+  };
+
   // Proper Euclidean distance calculation
   const compareEmbeddingsSecurely = (
     embedding1: number[],
@@ -94,19 +109,19 @@ export default function VoterLoginScreen() {
     setErrorMessage("");
 
     try {
-      // Clear previous session
-      const { data: sessionData } = await supabase.auth.getSession();
-
-      if (sessionData?.session) {
-        await serviceFactory.authService.signOut();
-      }
-
       // Login with password first
       const profile = await serviceFactory.authService.loginForRole(
         email,
         password,
         "voter",
       );
+
+      const sessionReady = await waitForSession();
+      if (!sessionReady) {
+        throw new Error(
+          "Authentication session was not ready. Please try again.",
+        );
+      }
 
       // Fetch stored embedding
       const embeddingRow = await faceRepository.getEmbeddingByEmail(email);
@@ -220,6 +235,7 @@ export default function VoterLoginScreen() {
       if (comparison.isMatch) {
         Alert.alert("✓ Verified", comparison.message);
 
+        // Verified - no need to wait again, session is already ready from login
         resetVerificationState();
 
         router.push(serviceFactory.authService.getDashboardRoute("voter"));
@@ -227,13 +243,13 @@ export default function VoterLoginScreen() {
         return;
       }
 
-      // Face mismatch
+      // Face mismatch - DO NOT SIGN OUT, keep session for retry
       const remainingAttempts = maxFaceAttempts - newAttempts;
 
-      // Immediately sign out mismatched session
-      await serviceFactory.authService.signOut();
-
       if (remainingAttempts <= 0) {
+        // Only sign out after max attempts exhausted
+        await serviceFactory.authService.signOut();
+
         Alert.alert(
           "Verification Failed",
           "Maximum face verification attempts exceeded. Login cancelled.",
@@ -244,6 +260,7 @@ export default function VoterLoginScreen() {
         return;
       }
 
+      // Show mismatch alert but keep session alive for retry
       Alert.alert(
         "Face Mismatch",
         `${comparison.message}
