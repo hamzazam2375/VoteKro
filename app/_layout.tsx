@@ -23,60 +23,68 @@ export default function RootLayout() {
     <>
       <View style={stackHostStyle}>
         <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="AdminSignup" options={{ headerShown: false }} />
-        <Stack.Screen name="AdminLogin" options={{ headerShown: false }} />
-        <Stack.Screen name="VoterLogin" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="AdminCreateElection"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="AdminManageElections"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="AdminManageCandidates"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="AdminViewResults"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen name="AuditorSignup" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="AuditorDashboard"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="AuditorElections"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen name="AuditorReports" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="AuditorViewProfile"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="AuditorVerifyVotes"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="AuditorBlockchainLedger"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen name="VoterSignup" options={{ headerShown: false }} />
-        <Stack.Screen name="AdminDashboard" options={{ headerShown: false }} />
-        <Stack.Screen name="VoterDashboard" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="CastVote/[electionId]"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="ElectionResults/[electionId]"
-          options={{ headerShown: false }}
-        />
-      </Stack>
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="AdminLogin" options={{ headerShown: false }} />
+          <Stack.Screen name="VoterLogin" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="AdminCreateElection"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AdminManageElections"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AdminManageCandidates"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AdminViewResults"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen name="AuditorSignup" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="AuditorDashboard"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AuditorElections"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AuditorReports"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AuditorViewProfile"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AuditorVerifyVotes"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="AuditorBlockchainLedger"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen name="VoterSignup" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="AdminDashboard"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="VoterDashboard"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="CastVote/[electionId]"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="ElectionResults/[electionId]"
+            options={{ headerShown: false }}
+          />
+        </Stack>
       </View>
       {ToastContainer ? (
         <ToastContainer

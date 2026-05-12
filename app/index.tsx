@@ -36,8 +36,8 @@ const featureHighlights = [
 const electionSetupSteps = [
   {
     number: "01",
-    title: "Create Admin Account",
-    body: "Click Sign Up, choose Admin, and complete your profile to start managing elections.",
+    title: "Open Admin Login",
+    body: "Use the admin login to access the organizer dashboard and begin setup.",
   },
   {
     number: "02",
@@ -94,8 +94,8 @@ export default function HomeScreen() {
   const isMobile = width < 768;
   const isCompact = width < 1024;
 
-  const handleSignUp = () => {
-    router.push("/AdminSignup" as Href);
+  const handleAdminLogin = () => {
+    router.push("/AdminLogin" as Href);
   };
 
   const handleAdminAuditorLogin = () => {
@@ -108,11 +108,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <Navbar
-        actions={[
-          { label: "Sign Up", onPress: handleSignUp, variant: "solid" },
-        ]}
-      />
+      <Navbar actions={[]} />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -210,8 +206,8 @@ export default function HomeScreen() {
             First Time Setting Up an Election?
           </Text>
           <Text style={styles.aboutBody}>
-            This path is for new users who want to run an election. Start with
-            Admin Sign Up, then follow these setup steps in order.
+            This path is for organizers who want to run an election. Start with
+            Admin Login, then follow these setup steps in order.
           </Text>
           <View
             style={[
@@ -241,7 +237,7 @@ export default function HomeScreen() {
               styles.aboutButton,
               pressed && styles.aboutButtonPressed,
             ]}
-            onPress={handleSignUp}
+            onPress={handleAdminLogin}
           >
             <Text style={styles.aboutButtonText}>Start Election Setup</Text>
           </Pressable>
@@ -322,7 +318,7 @@ export default function HomeScreen() {
                     role.title === "Voter"
                       ? handleVoterContinue
                       : role.title === "Election Organizer"
-                        ? handleSignUp
+                        ? handleAdminLogin
                         : handleAdminAuditorLogin
                   }
                 >
