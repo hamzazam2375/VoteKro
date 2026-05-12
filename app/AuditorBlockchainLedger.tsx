@@ -7,7 +7,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    FlatList,
     Pressable,
     RefreshControl,
     ScrollView,
@@ -64,6 +63,7 @@ export default function AuditorBlockchainLedger() {
   const [error, setError] = useState<string | null>(null);
   const [searchBlockId, setSearchBlockId] = useState('');
   const [showElectionPicker, setShowElectionPicker] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [metrics, setMetrics] = useState<BlockChainMetrics>({
     totalBlocks: 0,
     isValid: false,
@@ -172,8 +172,32 @@ export default function AuditorBlockchainLedger() {
   return (
     <View style={styles.container}>
       <Navbar actions={[{ label: 'Logout', onPress: handleLogout, variant: 'outline' }]} />
+      {isMobile && (
+        <View style={styles.mobileMenuRow}>
+          <Pressable
+            style={styles.mobileMenuButton}
+            onPress={() => setSidebarOpen((previous) => !previous)}
+          >
+            <Text style={styles.mobileMenuButtonText}>☰ Menu</Text>
+          </Pressable>
+        </View>
+      )}
       <View style={styles.mainContent}>
         {!isMobile && <AuditorSidebar profileName={profile?.full_name || undefined} />}
+        {isMobile && sidebarOpen && (
+          <>
+            <Pressable
+              style={styles.sidebarOverlay}
+              onPress={() => setSidebarOpen(false)}
+            />
+            <View style={styles.mobileSidebar}>
+              <AuditorSidebar
+                profileName={profile?.full_name}
+                onNavigate={() => setSidebarOpen(false)}
+              />
+            </View>
+          </>
+        )}
 
         <ScrollView
           style={styles.content}
@@ -266,12 +290,9 @@ export default function AuditorBlockchainLedger() {
                 <Text style={styles.loadingText}>Loading ledger...</Text>
               </View>
             ) : filteredBlocks.length > 0 ? (
-              <FlatList
-                data={filteredBlocks}
-                renderItem={renderBlockItem}
-                keyExtractor={(item) => item.id}
-                scrollEnabled={false}
-              />
+              <View>
+                {filteredBlocks.map((item) => renderBlockItem({ item }))}
+              </View>
             ) : (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateText}>No blocks found for this election.</Text>
@@ -287,9 +308,50 @@ export default function AuditorBlockchainLedger() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    height: '100%',
     overflow: 'hidden',
     backgroundColor: '#f5f5f5',
+  },
+  mobileMenuRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e8ebf2',
+  },
+  mobileMenuButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#1a73e8',
+    borderRadius: 10,
+    backgroundColor: '#f2f7ff',
+  },
+  mobileMenuButtonText: {
+    color: '#1a73e8',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  sidebarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    zIndex: 300,
+  },
+  mobileSidebar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 240,
+    maxWidth: '84%',
+    zIndex: 400,
+    backgroundColor: '#ffffff',
+    borderRightWidth: 1,
+    borderRightColor: '#e0e0e0',
   },
   mainContent: {
     flex: 1,

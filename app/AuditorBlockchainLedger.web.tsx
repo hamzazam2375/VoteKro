@@ -439,15 +439,16 @@ const AuditorBlockchainLedger: React.FC = () => {
   );
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#f5f5f5", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100vh", backgroundColor: "#f5f5f5", display: "flex", flexDirection: "column" }}>
       <Navbar actions={[{ label: 'Logout', onPress: handleLogout, variant: 'outline' }]} />
-      <div style={{ display: "flex", flex: 1 }}>
+      <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         {!isMobile && <AuditorSidebar />}
         <div style={{ 
           padding: "20px", 
           backgroundColor: "#f5f5f5", 
           flex: 1,
           minWidth: 0,
+          minHeight: 0,
           overflowY: "auto",
           overflowX: "hidden",
         }}>

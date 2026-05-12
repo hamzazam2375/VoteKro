@@ -1,5 +1,5 @@
 import type { VoteBlockRow } from '@/class/database-types';
-import { sha256 } from '@/class/sha256-util';
+import { sha256 } from '@/class/crypto';
 
 /**
  * Represents the validation status of a single block
@@ -38,13 +38,13 @@ export interface FullBlockchainVerification {
 
 /**
  * Calculate hash for a block using SHA-256
- * Hash = SHA256(index + timestamp + encryptedVote + previousHash)
+ * Hash = SHA256(blockIndex | encryptedVote | voteCommitment | previousHash | createdAt)
  *
  * @param block - The vote block to calculate hash for
- * @returns SHA-256 hash as hex string
+ * @returns Promise<SHA-256 hash as hex string>
  * @throws Error if block is missing required fields
  */
-export function calculateBlockHash(block: VoteBlockRow): string {
+export async function calculateBlockHash(block: VoteBlockRow): Promise<string> {
   // Validate required fields
   if (!block || typeof block !== 'object') {
     throw new Error('Block is null, undefined, or not an object');
@@ -66,8 +66,14 @@ export function calculateBlockHash(block: VoteBlockRow): string {
     throw new Error('Block missing required field: previous_hash');
   }
   
-  const data = `${block.block_index}|${block.created_at}|${block.encrypted_vote}|${block.previous_hash}`;
-  return sha256(data);
+  if (!block.vote_commitment) {
+    throw new Error('Block missing required field: vote_commitment');
+  }
+  
+  // ✅ FIXED: Match the exact order used when storing blocks in supabase-repositories.ts
+  // Order: blockIndex | encryptedVote | voteCommitment | previousHash | createdAt
+  const data = `${block.block_index}|${block.encrypted_vote}|${block.vote_commitment}|${block.previous_hash}|${block.created_at}`;
+  return await sha256(data);
 }
 
 /**
@@ -75,10 +81,10 @@ export function calculateBlockHash(block: VoteBlockRow): string {
  * Recalculates the hash and compares with stored hash
  *
  * @param block - The block to verify
- * @returns true if hash is valid, false otherwise
+ * @returns Promise<true if hash is valid, false otherwise>
  * @throws Error if block is invalid or missing required fields
  */
-export function verifyBlockHash(block: VoteBlockRow): boolean {
+export async function verifyBlockHash(block: VoteBlockRow): Promise<boolean> {
   if (!block || typeof block !== 'object') {
     throw new Error('Block is null, undefined, or not an object');
   }
@@ -87,9 +93,23 @@ export function verifyBlockHash(block: VoteBlockRow): boolean {
     throw new Error('Block missing required field: current_hash');
   }
   
-  const recalculatedHash = calculateBlockHash(block);
+  const recalculatedHash = await calculateBlockHash(block);
   return recalculatedHash === block.current_hash;
 }
+
+/**
+ * ✅ IMPORTANT: Ensures hash formula consistency
+ * This is the CANONICAL hash formula used throughout the auditor system:
+ * Hash = SHA256(blockIndex | encryptedVote | voteCommitment | previousHash | createdAt)
+ * 
+ * MUST be used in:
+ * 1. SupabaseVoteLedgerRepository.castVoteSecure() - when storing blocks
+ * 2. SupabaseVoteLedgerRepository.verifyChain() - when doing quick verification
+ * 3. AuditorService.verifyFullBlockchainIntegrity() - for full audits
+ * 
+ * If you need to calculate block hashes ANYWHERE in the codebase, use calculateBlockHash()
+ */
+export const BLOCK_HASH_FORMULA = 'SHA256(blockIndex | encryptedVote | voteCommitment | previousHash | createdAt)';
 
 /**
  * Verify hash linkage between two blocks
@@ -108,9 +128,9 @@ export function verifyHashLink(currentBlock: VoteBlockRow, previousBlock: VoteBl
  * Genesis block should have previousHash = '0' * 64
  *
  * @param genesisBlock - The first block
- * @returns true if genesis block is valid, false otherwise
+ * @returns Promise<true if genesis block is valid, false otherwise>
  */
-export function verifyGenesisBlock(genesisBlock: VoteBlockRow): boolean {
+export async function verifyGenesisBlock(genesisBlock: VoteBlockRow): Promise<boolean> {
   if (genesisBlock.block_index !== 0) {
     return false;
   }
@@ -118,13 +138,14 @@ export function verifyGenesisBlock(genesisBlock: VoteBlockRow): boolean {
   // Genesis block should have previousHash of all zeros
   const expectedPreviousHash = '0'.repeat(64);
   const validPreviousHash = genesisBlock.previous_hash === expectedPreviousHash;
-  const validHash = verifyBlockHash(genesisBlock);
+  const validHash = await verifyBlockHash(genesisBlock);
 
   return validPreviousHash && validHash;
 }
 
 /**
  * Perform full blockchain integrity verification with comprehensive tamper detection
+ * ⚠️ ASYNC FUNCTION - must be awaited
  * Checks:
  * ✓ Hash correctness (recalculation and comparison)
  * ✓ Hash chain linkage
@@ -138,10 +159,10 @@ export function verifyGenesisBlock(genesisBlock: VoteBlockRow): boolean {
  * instead of silently failing
  *
  * @param blocks - Array of blocks to verify
- * @returns FullBlockchainVerification result with detailed tamper detection
+ * @returns Promise<FullBlockchainVerification result with detailed tamper detection>
  * @throws Error if blocks are invalid, null, or malformed
  */
-export function verifyFullBlockchain(blocks: VoteBlockRow[]): FullBlockchainVerification {
+export async function verifyFullBlockchain(blocks: VoteBlockRow[]): Promise<FullBlockchainVerification> {
   const allBlocksStatus: BlockVerificationStatus[] = [];
   const invalidBlocks: BlockVerificationStatus[] = [];
   const tamperedBlockIndices: number[] = [];
@@ -274,7 +295,7 @@ export function verifyFullBlockchain(blocks: VoteBlockRow[]): FullBlockchainVeri
 
     try {
       // 🔍 TAMPER CHECK 5: Hash correctness
-      const recalculatedHash = calculateBlockHash(currentBlock);
+      const recalculatedHash = await calculateBlockHash(currentBlock);
       blockStatus.recalculatedHash = recalculatedHash;
       blockStatus.hashValid = recalculatedHash === currentBlock.current_hash;
 

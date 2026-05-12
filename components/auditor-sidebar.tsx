@@ -23,6 +23,7 @@ export function AuditorSidebar({ onNavigate, compact = false, profileName }: Aud
   const navigationItems: SidebarItem[] = [
     { label: 'View Profile', icon: '👤', route: '/AuditorViewProfile' },
     { label: 'Overview', icon: '📊', route: '/AuditorDashboard' },
+    { label: 'Elections', icon: '🗳️', route: '/AuditorElections' },
     { label: 'Blockchain', icon: '⛓️', route: '/AuditorBlockchainLedger' },
     { label: 'Reports', icon: '📋', route: '/AuditorReports' },
   ];
@@ -97,9 +98,10 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     paddingVertical: 20,
     paddingHorizontal: 12,
-    overflow: 'visible',
+    overflow: 'hidden',
     position: 'relative',
     zIndex: 50,
+    minHeight: '100%',
   },
   sidebarCompact: {
     width: 80,
@@ -107,10 +109,11 @@ const styles = StyleSheet.create({
   },
   navContainer: {
     flex: 1,
+    minHeight: 0,
   },
   navContent: {
     gap: 8,
-    flex: 1,
+    paddingBottom: 8,
   },
   navItem: {
     flexDirection: 'row',
@@ -152,6 +155,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#edf0f5',
+    marginTop: 'auto',
   },
   sidebarFooterCompact: {
     paddingHorizontal: 0,

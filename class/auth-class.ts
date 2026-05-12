@@ -176,7 +176,13 @@ export class AuthService extends BaseService {
     if (errorMessage.includes("Invalid login credentials")) {
       return {
         title: "Login Failed",
-        message: "Invalid email or password. Please try again.",
+        message: 
+          "Invalid email or password.\n\n" +
+          "TROUBLESHOOTING:\n" +
+          "1. Check email spelling\n" +
+          "2. Verify account exists in Supabase\n" +
+          "3. If new account, run: database/create-test-users.sql\n" +
+          "4. See SUPABASE_AUTH_TROUBLESHOOTING.md for full guide",
       };
     }
 

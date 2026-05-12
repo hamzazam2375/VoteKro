@@ -46,13 +46,40 @@ export class SupabaseAuthRepository
   implements IAuthRepository
 {
   async signIn(email: string, password: string): Promise<void> {
-    const { error } = await supabase.auth.signInWithPassword({
+    console.log("🔐 SignIn Attempt:", {
+      email,
+      timestamp: new Date().toISOString(),
+      supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL?.substring(0, 50),
+    });
+
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+
     if (error) {
+      console.error("❌ SignIn Failed:", {
+        message: error.message,
+        status: (error as any).status,
+        code: (error as any).code,
+        email,
+      });
+
+      // Provide helpful debugging information
+      if (error.message.includes("Invalid login credentials")) {
+        console.error(
+          "⚠️ Debug Tips:",
+          "1. Check if user exists in Supabase Dashboard → Authentication",
+          "2. Verify email is Confirmed status",
+          "3. Check if profile exists in public.profiles table",
+          "4. Run: database/create-test-users.sql to create test accounts",
+        );
+      }
+
       this.throwOnError("Failed to sign in", error);
     }
+
+    console.log("✓ SignIn Successful for:", email);
   }
 
   async signUp(email: string, password: string): Promise<string> {

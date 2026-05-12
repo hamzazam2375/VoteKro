@@ -41,6 +41,7 @@ const styles = StyleSheet.create({
   mainContent: {
     flex: 1,
     flexDirection: 'row',
+    minHeight: '100%',
   },
   content: {
     flex: 1,

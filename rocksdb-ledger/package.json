@@ -1,0 +1,20 @@
+{
+  "name": "rocksdb-ledger",
+  "version": "1.0.0",
+  "description": "Optional RocksDB demo API for local voting ledger experiments",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": ["rocksdb", "ledger", "voting"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "rocksdb": "^8.0.0",
+    "express": "^4.18.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}

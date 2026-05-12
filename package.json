@@ -8,7 +8,9 @@
     "ios": "expo start --ios --port 8083",
     "web": "expo start --web --port 8083",
     "lint": "expo lint",
-    "build:web": "npx expo export -p web"
+    "build:web": "npx expo export -p web",
+    "rocksdb:install": "cd rocksdb-ledger && npm install",
+    "rocksdb:start": "cd rocksdb-ledger && npm start"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.1",

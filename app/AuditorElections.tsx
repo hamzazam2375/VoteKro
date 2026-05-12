@@ -912,7 +912,6 @@ function ElectionCard({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    height: "100%",
     overflow: "hidden",
     backgroundColor: "#f5f7fa",
   },
@@ -1036,8 +1035,11 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderColor: "#e0e7ff",
-    boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.05)",
     elevation: 2,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
   },
   // Card Header
   cardHeaderRow: {
@@ -1216,8 +1218,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     borderRadius: 16,
     padding: 0,
-    boxShadow: "0px 10px 20px rgba(0, 0, 0, 0.3)",
     elevation: 10,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
   },
   modalHeader: {
     flexDirection: "row",

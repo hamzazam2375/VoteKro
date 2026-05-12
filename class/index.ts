@@ -18,6 +18,16 @@ export {
 export { FaceRepository, faceRepository } from "@/class/face-repository";
 export { VotingService } from "@/class/voting-class";
 
+export {
+    calculateBlockHash,
+    verifyBlockHash,
+    verifyHashLink,
+    verifyGenesisBlock,
+    verifyFullBlockchain,
+    getVerificationReport,
+    BLOCK_HASH_FORMULA
+} from "@/class/blockchain-verification";
+
 export { ServiceFactory, serviceFactory } from "@/class/service-factory";
 export { supabase } from "@/class/supabase-client";
 
@@ -53,4 +63,9 @@ export type {
 } from "@/class/face-recognition";
 
 export type { VoterFaceRow, VoterFaceEmbeddingRow, FaceImage } from "@/class/face-repository";
+
+export type {
+    BlockVerificationStatus,
+    FullBlockchainVerification
+} from "@/class/blockchain-verification";
 

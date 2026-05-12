@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,17 +16,13 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function AuditorDashboard() {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isMobile = width < 760;
-  // Responsive columns: 1,2,3,4 depending on width
-  const statsColumns =
-    width >= 1200 ? 4 : width >= 900 ? 3 : width >= 520 ? 2 : 1;
-  const statsItemWidth = `${Math.floor(100 / statsColumns) - 1}%`;
-  const metricsColumns = width >= 900 ? 2 : width >= 520 ? 2 : 1;
-  const metricsItemWidth = `${Math.floor(100 / metricsColumns) - 1}%`;
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,15 +76,14 @@ export default function AuditorDashboard() {
 
       for (const election of elections) {
         try {
-          // Get vote count from database (real votes, not dummy)
-          const voteCounts = await serviceFactory.auditorService.countVotesFromLedger(election.id);
-          const totalVotes = Object.values(voteCounts).reduce((sum, count) => sum + count, 0);
-
-          // Get blockchain verification
+          // Get blockchain verification (totalBlocks = total vote records)
           const verification =
             await serviceFactory.auditorService.verifyFullBlockchainIntegrity(
               election.id,
             );
+          
+          // Total votes = total blocks (each block is one vote record)
+          const totalVotes = verification.totalBlocks;
           totalBlocksCount += verification.totalBlocks;
 
           // Add election details
@@ -175,37 +171,57 @@ export default function AuditorDashboard() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <Navbar
-          homeRoute="/AuditorDashboard"
-          actions={[
-            { label: "Logout", onPress: handleLogout, variant: "outline" },
-          ]}
-        />
-        {isMobile && (
-          <View style={styles.mobileMenuRow}>
+        {isMobile ? (
+          <View
+            style={[
+              styles.mobileHeader,
+              Platform.OS === "web" && styles.headerStackWeb,
+              { paddingTop: insets.top + 10 },
+            ]}
+          >
             <Pressable
-              style={styles.mobileMenuButton}
-              onPress={() => setSidebarOpen((previous) => !previous)}
+              style={styles.mobileHamburger}
+              onPress={() => setSidebarOpen(!sidebarOpen)}
             >
-              <Text style={styles.mobileMenuButtonText}>☰ Menu</Text>
+              <Text style={styles.mobileHamburgerIcon}>☰</Text>
             </Pressable>
+            <Pressable
+              style={styles.mobileLogoButton}
+              onPress={() => router.replace("/AuditorDashboard")}
+            >
+              <Text style={styles.mobileLogo}>VoteKro</Text>
+            </Pressable>
+            <Pressable style={styles.mobileLogoutButton} onPress={handleLogout}>
+              <Text style={styles.mobileLogoutText}>Logout</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={Platform.OS === "web" ? styles.headerStackWeb : undefined}>
+            <Navbar
+              homeRoute="/AuditorDashboard"
+              actions={[
+                { label: "Logout", onPress: handleLogout, variant: "outline" },
+              ]}
+            />
           </View>
         )}
         <View style={styles.mainContent}>
-          {!isMobile && <AuditorSidebar profileName={profile?.full_name} />}
+          {/* Overlay Backdrop - Mobile Only */}
           {isMobile && sidebarOpen && (
-            <>
-              <Pressable
-                style={styles.sidebarOverlay}
-                onPress={() => setSidebarOpen(false)}
+            <Pressable
+              style={styles.sidebarOverlay}
+              onPress={() => setSidebarOpen(false)}
+            />
+          )}
+
+          {/* Sidebar Navigation */}
+          {(!isMobile || sidebarOpen) && (
+            <View style={[styles.sidebar, isMobile && styles.sidebarMobile]}>
+              <AuditorSidebar
+                profileName={profile?.full_name}
+                onNavigate={() => setSidebarOpen(false)}
               />
-              <View style={styles.mobileSidebar}>
-                <AuditorSidebar
-                  profileName={profile?.full_name}
-                  onNavigate={() => setSidebarOpen(false)}
-                />
-              </View>
-            </>
+            </View>
           )}
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#1a73e8" />
@@ -218,38 +234,58 @@ export default function AuditorDashboard() {
 
   return (
     <View style={styles.container}>
-      <Navbar
-        homeRoute="/AuditorDashboard"
-        actions={[
-          { label: "Logout", onPress: handleLogout, variant: "outline" },
-        ]}
-      />
-      {isMobile && (
-        <View style={styles.mobileMenuRow}>
+      {isMobile ? (
+        <View
+          style={[
+            styles.mobileHeader,
+            Platform.OS === "web" && styles.headerStackWeb,
+            { paddingTop: insets.top + 10 },
+          ]}
+        >
           <Pressable
-            style={styles.mobileMenuButton}
-            onPress={() => setSidebarOpen((previous) => !previous)}
+            style={styles.mobileHamburger}
+            onPress={() => setSidebarOpen(!sidebarOpen)}
           >
-            <Text style={styles.mobileMenuButtonText}>☰ Menu</Text>
+            <Text style={styles.mobileHamburgerIcon}>☰</Text>
           </Pressable>
+          <Pressable
+            style={styles.mobileLogoButton}
+            onPress={() => router.replace("/AuditorDashboard")}
+          >
+            <Text style={styles.mobileLogo}>VoteKro</Text>
+          </Pressable>
+          <Pressable style={styles.mobileLogoutButton} onPress={handleLogout}>
+            <Text style={styles.mobileLogoutText}>Logout</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View style={Platform.OS === "web" ? styles.headerStackWeb : undefined}>
+          <Navbar
+            homeRoute="/AuditorDashboard"
+            actions={[
+              { label: "Logout", onPress: handleLogout, variant: "outline" },
+            ]}
+          />
         </View>
       )}
 
       <View style={styles.mainContent}>
-        {!isMobile && <AuditorSidebar profileName={profile?.full_name} />}
+        {/* Overlay Backdrop - Mobile Only */}
         {isMobile && sidebarOpen && (
-          <>
-            <Pressable
-              style={styles.sidebarOverlay}
-              onPress={() => setSidebarOpen(false)}
+          <Pressable
+            style={styles.sidebarOverlay}
+            onPress={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Sidebar Navigation */}
+        {(!isMobile || sidebarOpen) && (
+          <View style={[styles.sidebar, isMobile && styles.sidebarMobile]}>
+            <AuditorSidebar
+              profileName={profile?.full_name}
+              onNavigate={() => setSidebarOpen(false)}
             />
-            <View style={styles.mobileSidebar}>
-              <AuditorSidebar
-                profileName={profile?.full_name}
-                onNavigate={() => setSidebarOpen(false)}
-              />
-            </View>
-          </>
+          </View>
         )}
 
         <ScrollView
@@ -270,7 +306,7 @@ export default function AuditorDashboard() {
             <View
               style={[styles.statsGrid, isMobile && styles.statsGridMobile]}
             >
-              <View style={[styles.cardItem, { width: statsItemWidth } as any]}>
+              <View style={styles.cardItem}>
                 <StatCard
                   label="Total Blocks"
                   value={stats.totalBlocks.toString()}
@@ -280,7 +316,7 @@ export default function AuditorDashboard() {
                   subtext="Verified"
                 />
               </View>
-              <View style={[styles.cardItem, { width: statsItemWidth } as any]}>
+              <View style={styles.cardItem}>
                 <StatCard
                   label="Elections"
                   value={stats.activeElections.toString()}
@@ -290,7 +326,7 @@ export default function AuditorDashboard() {
                   subtext="Active"
                 />
               </View>
-              <View style={[styles.cardItem, { width: statsItemWidth } as any]}>
+              <View style={styles.cardItem}>
                 <StatCard
                   label="Verification Rate"
                   value={`${stats.verificationRate}%`}
@@ -300,7 +336,7 @@ export default function AuditorDashboard() {
                   subtext="Accurate"
                 />
               </View>
-              <View style={[styles.cardItem, { width: statsItemWidth } as any]}>
+              <View style={styles.cardItem}>
                 <StatCard
                   label="Anomalies"
                   value={stats.anomalies.toString()}
@@ -324,7 +360,6 @@ export default function AuditorDashboard() {
                 <View
                   style={[
                     styles.metricItem,
-                    { width: metricsItemWidth } as any,
                   ]}
                 >
                   <MetricCard
@@ -339,7 +374,6 @@ export default function AuditorDashboard() {
                 <View
                   style={[
                     styles.metricItem,
-                    { width: metricsItemWidth } as any,
                   ]}
                 >
                   <MetricCard
@@ -512,7 +546,7 @@ export default function AuditorDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    height: "100%",
+    height: "100vh",
     overflow: "hidden",
     backgroundColor: "#f5f5f5",
   },
@@ -520,27 +554,31 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     position: "relative",
+    overflow: "visible",
+    minHeight: 0,
   },
-  mobileMenuRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  sidebar: {
+    width: 240,
     backgroundColor: "#ffffff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e8ebf2",
-  },
-  mobileMenuButton: {
-    alignSelf: "flex-start",
-    paddingVertical: 8,
+    borderRightWidth: 1,
+    borderRightColor: "#e0e0e0",
+    paddingVertical: 20,
     paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: "#1a73e8",
-    borderRadius: 10,
-    backgroundColor: "#f2f7ff",
+    flexDirection: "column",
+    justifyContent: "space-between",
+    overflow: "hidden",
+    minHeight: 0,
   },
-  mobileMenuButtonText: {
-    color: "#1a73e8",
-    fontSize: 14,
-    fontWeight: "700",
+  sidebarMobile: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    bottom: 0,
+    zIndex: 999,
+    width: 240,
+    maxWidth: "80%",
+    borderRightWidth: 1,
+    elevation: 10,
   },
   sidebarOverlay: {
     position: "absolute",
@@ -548,8 +586,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.35)",
-    zIndex: 300,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 500,
   },
   mobileSidebar: {
     position: "absolute",
@@ -557,14 +595,19 @@ const styles = StyleSheet.create({
     left: 0,
     bottom: 0,
     width: 240,
-    maxWidth: "84%",
-    zIndex: 400,
+    zIndex: 1000,
     backgroundColor: "#ffffff",
     borderRightWidth: 1,
     borderRightColor: "#e0e0e0",
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   content: {
     flex: 1,
+    minHeight: 0,
   },
   contentContainer: {
     padding: 20,
@@ -573,6 +616,7 @@ const styles = StyleSheet.create({
   innerWrapper: {
     width: "100%",
     maxWidth: 1200,
+    alignSelf: "center",
   },
   loadingContainer: {
     flex: 1,
@@ -588,6 +632,7 @@ const styles = StyleSheet.create({
   // Header Section
   headerSection: {
     marginBottom: 24,
+    width: "100%",
   },
   pageTitle: {
     fontSize: 28,
@@ -606,6 +651,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 14,
     marginBottom: 28,
+    width: "100%",
   },
   statsGridMobile: {
     flexDirection: "column",
@@ -613,6 +659,7 @@ const styles = StyleSheet.create({
   // Sections
   section: {
     marginBottom: 28,
+    width: "100%",
   },
   sectionTitle: {
     fontSize: 16,
@@ -625,6 +672,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 14,
+    width: "100%",
   },
   metricsGridMobile: {
     flexDirection: "column",
@@ -640,13 +688,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 14,
+    width: "100%",
   },
   statusCardsGridMobile: {
     flexDirection: "column",
   },
   statusCard: {
     flex: 1,
-    minWidth: "48%",
+    minWidth: 250,
     padding: 16,
     borderRadius: 12,
     backgroundColor: "#ffffff",
@@ -654,16 +703,18 @@ const styles = StyleSheet.create({
     borderColor: "#e0e7ff",
   },
   statusCardFullWidth: {
-    minWidth: "100%",
+    flex: 1,
     width: "100%",
   },
   statusCardMobile: {
-    minWidth: "100%",
+    width: "100%",
     marginBottom: 12,
   },
   // Responsive card item wrappers
   cardItem: {
     padding: 0,
+    flex: 1,
+    minWidth: 150,
   },
   cardItemDesktop: {
     width: "23%",
@@ -673,6 +724,8 @@ const styles = StyleSheet.create({
   },
   metricItem: {
     padding: 0,
+    flex: 1,
+    minWidth: 200,
   },
   metricItemDesktop: {
     width: "48%",
@@ -716,6 +769,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 14,
+    width: "100%",
   },
   anomaliesCount: {
     fontSize: 12,
@@ -735,6 +789,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     minHeight: 80,
+    width: "100%",
   },
   noAnomaliesText: {
     fontSize: 14,
@@ -771,6 +826,7 @@ const styles = StyleSheet.create({
   },
   blockchainDetailsContainer: {
     gap: 12,
+    width: "100%",
   },
   blockchainDetailBlock: {
     backgroundColor: "#ffffff",
@@ -778,8 +834,12 @@ const styles = StyleSheet.create({
     padding: 16,
     borderLeftWidth: 4,
     borderLeftColor: "#4caf50",
-    boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
     elevation: 3,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    width: "100%",
   },
   blockchainDetailBlockWarning: {
     borderLeftColor: "#ff9800",
@@ -834,5 +894,52 @@ const styles = StyleSheet.create({
     color: "#999",
     textAlign: "center",
     paddingVertical: 20,
+  },
+  // Mobile Header Styles
+  mobileHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  headerStackWeb: {
+    zIndex: 2147480000,
+    position: "relative" as const,
+  },
+  mobileHamburger: {
+    padding: 6,
+    marginRight: 8,
+  },
+  mobileHamburgerIcon: {
+    fontSize: 26,
+    color: "#1a73e8",
+    fontWeight: "700",
+  },
+  mobileLogoButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    flex: 1,
+    alignItems: "center",
+  },
+  mobileLogo: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1a73e8",
+  },
+  mobileLogoutButton: {
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: "#1a73e8",
+  },
+  mobileLogoutText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1a73e8",
   },
 });
