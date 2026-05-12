@@ -156,9 +156,8 @@ export default function VoterDashboard() {
 
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
-            userProfile = await serviceFactory.authService.getRequiredProfile(
-              "voter",
-            );
+            userProfile =
+              await serviceFactory.authService.getRequiredProfile("voter");
             profileLoadError = null;
             break;
           } catch (error) {
@@ -830,6 +829,13 @@ export default function VoterDashboard() {
             icon: "📜",
             active: currentView === "history",
             onPress: () => setCurrentView("history"),
+          },
+          {
+            key: "profile",
+            label: "View Profile",
+            icon: "👤",
+            active: false,
+            onPress: () => router.push("/VoterViewProfile"),
           },
         ]}
       >

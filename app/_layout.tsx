@@ -77,6 +77,10 @@ export default function RootLayout() {
             options={{ headerShown: false }}
           />
           <Stack.Screen
+            name="VoterViewProfile"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
             name="CastVote/[electionId]"
             options={{ headerShown: false }}
           />
