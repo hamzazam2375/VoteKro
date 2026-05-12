@@ -1,5 +1,5 @@
 import type { VoteBlockRow } from '@/class/database-types';
-import { sha256 } from '@/class/crypto';
+import { sha256, normalizeTimestamp } from '@/class/crypto';
 
 /**
  * Represents the validation status of a single block
@@ -70,9 +70,14 @@ export async function calculateBlockHash(block: VoteBlockRow): Promise<string> {
     throw new Error('Block missing required field: vote_commitment');
   }
   
+  // ✅ IMPORTANT: Normalize timestamp to handle database precision variations
+  // Supabase timestamptz might return different precision (with/without milliseconds)
+  // This ensures consistent hash calculation regardless of DB formatting
+  const normalizedCreatedAt = normalizeTimestamp(block.created_at);
+  
   // ✅ FIXED: Match the exact order used when storing blocks in supabase-repositories.ts
   // Order: blockIndex | encryptedVote | voteCommitment | previousHash | createdAt
-  const data = `${block.block_index}|${block.encrypted_vote}|${block.vote_commitment}|${block.previous_hash}|${block.created_at}`;
+  const data = `${block.block_index}|${block.encrypted_vote}|${block.vote_commitment}|${block.previous_hash}|${normalizedCreatedAt}`;
   return await sha256(data);
 }
 

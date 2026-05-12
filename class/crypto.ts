@@ -27,3 +27,25 @@ export const verifyHash = async (payload: string, expectedHash: string): Promise
   const actual = await sha256(payload);
   return actual === expectedHash;
 };
+
+/**
+ * Normalize ISO timestamp to consistent format for hashing
+ * Ensures timestamps from database (with varying precision) match calculation format
+ * 
+ * @param timestamp - ISO timestamp string (e.g., "2024-01-15T10:30:45.123Z" or "2024-01-15T10:30:45Z")
+ * @returns Normalized timestamp with milliseconds: "YYYY-MM-DDTHH:mm:ss.SSSZ"
+ */
+export const normalizeTimestamp = (timestamp: string): string => {
+  try {
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) {
+      throw new Error('Invalid timestamp');
+    }
+    // Format to ISO string with milliseconds: YYYY-MM-DDTHH:mm:ss.SSSZ
+    return date.toISOString();
+  } catch (error) {
+    console.warn(`Failed to normalize timestamp "${timestamp}":`, error);
+    // Return as-is if normalization fails
+    return timestamp;
+  }
+};
