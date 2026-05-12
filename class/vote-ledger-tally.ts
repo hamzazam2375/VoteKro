@@ -28,8 +28,7 @@ function base64ToUint8Array(b64: string): Uint8Array {
 }
 
 /**
- * Decrypts PostgreSQL `pgp_sym_encrypt` payloads from the ledger (when
- * EXPO_PUBLIC_VOTE_ENCRYPTION_KEY matches the server key) and tallies by candidate_id.
+ * Decrypts PostgreSQL payload (base64 JSON) from the ledger and tallies by candidate_id.
  */
 export async function tallyVotesFromEncryptedLedger(
   ledger: VoteBlockRow[],
@@ -40,17 +39,6 @@ export async function tallyVotesFromEncryptedLedger(
   myVoteBlock: VoteBlockRow | null;
   decryptWorked: boolean;
 }> {
-  const key = env.voteEncryptionKey?.trim();
-  if (!key || ledger.length === 0) {
-    return {
-      counts: new Map(),
-      myCandidateId: null,
-      myVoteBlock: null,
-      decryptWorked: false,
-    };
-  }
-
-  const openpgp = await import("openpgp");
   const counts = new Map<string, number>();
   let myCandidateId: string | null = null;
   let myVoteBlock: VoteBlockRow | null = null;
@@ -63,16 +51,13 @@ export async function tallyVotesFromEncryptedLedger(
     }
 
     try {
-      const binaryMessage = base64ToUint8Array(raw);
-      const message = await openpgp.readMessage({ binaryMessage });
-      const { data: decrypted } = await openpgp.decrypt({
-        message,
-        passwords: [key],
-        format: "utf8",
-      });
-
-      const payload = JSON.parse(String(decrypted)) as VotePlainPayload;
+      const plainStr = typeof atob === "function" 
+        ? atob(raw) 
+        : Buffer.from(raw, 'base64').toString('utf8');
+      
+      const payload = JSON.parse(plainStr);
       const candidateId = payload.candidate_id;
+
       if (!candidateId || typeof candidateId !== "string") {
         continue;
       }
@@ -89,7 +74,7 @@ export async function tallyVotesFromEncryptedLedger(
         myVoteBlock = vote;
       }
     } catch {
-      // Skip blocks we cannot decrypt (wrong key, legacy format, etc.)
+      // Skip blocks we cannot decrypt
     }
   }
 

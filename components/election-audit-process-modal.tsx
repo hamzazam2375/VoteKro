@@ -11,6 +11,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface AuditProcessModalProps {
   visible: boolean;
@@ -180,7 +181,7 @@ function AutoAuditResultsView({ auditResults }: AutoAuditResultsViewProps) {
 
       <View style={styles.successBox}>
         <Text style={styles.successBoxText}>
-          The automatic audit has been completed and all results have been recorded. Click "Complete Audit" below to finalize and submit.
+          The automatic audit has been completed and all results have been recorded. Click &quot;Complete Audit&quot; below to finalize and submit.
         </Text>
       </View>
     </View>
@@ -337,7 +338,7 @@ export function ElectionAuditProcessModal({
           chainsIntegrity: blockchainValid ? '100%' : '0%',
           summary: blockchainValid ? 'Blockchain integrity confirmed' : 'Blockchain integrity issues detected'
         };
-      } catch (err) {
+      } catch {
         results.blockchainCheck = {
           valid: false,
           error: 'Failed to verify blockchain'
@@ -359,7 +360,7 @@ export function ElectionAuditProcessModal({
           accuracy: '100%',
           summary: `${voteCount || 0} votes verified successfully`
         };
-      } catch (err) {
+      } catch {
         results.voteCount = {
           error: 'Failed to count votes'
         };
@@ -381,7 +382,7 @@ export function ElectionAuditProcessModal({
           riskLevel: tamperReport?.riskLevel || 'LOW_RISK',
           summary: tamperReport?.summary || 'No anomalies detected'
         };
-      } catch (err) {
+      } catch {
         results.anomalyReview = {
           totalAnomalies: 0,
           summary: 'Anomaly scan completed'

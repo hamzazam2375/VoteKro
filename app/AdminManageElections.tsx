@@ -11,6 +11,7 @@ import {
     Alert,
     Modal,
     Pressable,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -20,7 +21,11 @@ import {
 
 export default function AdminManageElections({
   isEmbedded,
-}: { isEmbedded?: boolean } = {}) {
+  onNavigate,
+}: { 
+  isEmbedded?: boolean;
+  onNavigate?: (page: any) => void;
+} = {}) {
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -141,17 +146,35 @@ export default function AdminManageElections({
         startsAtIso,
         endsAtIso,
       });
-      Alert.alert("Success", "Election updated successfully");
+      if (Platform.OS === "web") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
+          const { toast } = require("react-toastify");
+          toast.success("Election updated successfully!");
+        } catch {
+          Alert.alert("Success", "Election updated successfully");
+        }
+      } else {
+        Alert.alert("Success", "Election updated successfully");
+      }
       setShowEditModal(false);
       void loadData();
     } catch (error) {
-      Alert.alert(
-        "Error",
-        serviceFactory.authService.getErrorMessage(
-          error,
-          "Failed to update election",
-        ),
+      const message = serviceFactory.authService.getErrorMessage(
+        error,
+        "Failed to update election",
       );
+      if (Platform.OS === "web") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
+          const { toast } = require("react-toastify");
+          toast.error(message);
+        } catch {
+          Alert.alert("Error", message);
+        }
+      } else {
+        Alert.alert("Error", message);
+      }
     }
   };
 
@@ -160,17 +183,35 @@ export default function AdminManageElections({
 
     try {
       await serviceFactory.adminService.deleteElection(selectedElection.id);
-      Alert.alert("Success", "Election deleted successfully");
+      if (Platform.OS === "web") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
+          const { toast } = require("react-toastify");
+          toast.success("Election deleted successfully!");
+        } catch {
+          Alert.alert("Success", "Election deleted successfully");
+        }
+      } else {
+        Alert.alert("Success", "Election deleted successfully");
+      }
       setShowDeleteModal(false);
       void loadData();
     } catch (error) {
-      Alert.alert(
-        "Error",
-        serviceFactory.authService.getErrorMessage(
-          error,
-          "Failed to delete election",
-        ),
+      const message = serviceFactory.authService.getErrorMessage(
+        error,
+        "Failed to delete election",
       );
+      if (Platform.OS === "web") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
+          const { toast } = require("react-toastify");
+          toast.error(message);
+        } catch {
+          Alert.alert("Error", message);
+        }
+      } else {
+        Alert.alert("Error", message);
+      }
     }
   };
 
@@ -179,6 +220,16 @@ export default function AdminManageElections({
     const endsAt = new Date(election.ends_at).getTime();
     if (endsAt <= now) {
       Alert.alert("Info", "This election is already closed.");
+      return;
+    }
+
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(
+        `Are you sure you want to end "${election.title}"? Voters will no longer be able to cast votes once it is closed.`
+      );
+      if (confirmed) {
+        void confirmEndElection(election);
+      }
       return;
     }
 
@@ -200,16 +251,34 @@ export default function AdminManageElections({
     try {
       await serviceFactory.adminService.updateElectionStatus(election.id);
 
-      Alert.alert("Success", "Election ended successfully");
+      if (Platform.OS === "web") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
+          const { toast } = require("react-toastify");
+          toast.success("Election ended successfully!");
+        } catch {
+          Alert.alert("Success", "Election ended successfully");
+        }
+      } else {
+        Alert.alert("Success", "Election ended successfully");
+      }
       void loadData();
     } catch (error) {
-      Alert.alert(
-        "Error",
-        serviceFactory.authService.getErrorMessage(
-          error,
-          "Failed to end election",
-        ),
+      const message = serviceFactory.authService.getErrorMessage(
+        error,
+        "Failed to end election",
       );
+      if (Platform.OS === "web") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
+          const { toast } = require("react-toastify");
+          toast.error(message);
+        } catch {
+          Alert.alert("Error", message);
+        }
+      } else {
+        Alert.alert("Error", message);
+      }
     }
   };
 
@@ -476,7 +545,13 @@ export default function AdminManageElections({
               </Text>
               <Pressable
                 style={styles.createBtn}
-                onPress={() => router.push("/AdminCreateElection")}
+                onPress={() => {
+                  if (onNavigate) {
+                    onNavigate("create-election");
+                  } else {
+                    router.push("/AdminCreateElection");
+                  }
+                }}
               >
                 <Text style={styles.createBtnText}>Create Election</Text>
               </Pressable>

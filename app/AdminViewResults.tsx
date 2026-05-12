@@ -1,22 +1,22 @@
 import type {
-    CandidateRow,
-    ElectionRow,
-    ProfileRow,
+  CandidateRow,
+  ElectionRow,
+  ProfileRow,
 } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
 import { PageBackground } from "@/constants/theme";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
-    useWindowDimensions,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
 } from "react-native";
 
 type CandidateResult = {
@@ -139,16 +139,6 @@ export default function AdminViewResults({
     }, [loadData]),
   );
 
-  const toSeededVotes = (candidate: CandidateRow) => {
-    const seedBase = `${candidate.id}-${candidate.display_name}-${candidate.candidate_number}`;
-    let hash = 0;
-    for (let index = 0; index < seedBase.length; index += 1) {
-      hash = (hash * 31 + seedBase.charCodeAt(index)) % 100000;
-    }
-
-    return 60 + (hash % 170);
-  };
-
   const getElectionStatus = (election: ElectionRow) => {
     const now = new Date().getTime();
     const startTime = new Date(election.starts_at).getTime();
@@ -167,30 +157,72 @@ export default function AdminViewResults({
     return elections.filter((election) => election.id === selectedElectionId);
   }, [elections, selectedElectionId]);
 
-  const electionResults = useMemo(() => {
-    return visibleElections.map((election) => {
-      const candidates = candidatesByElection[election.id] ?? [];
-      const votes = candidates.map((candidate) => ({
-        candidate,
-        votes: toSeededVotes(candidate),
-      }));
+  const [electionResults, setElectionResults] = useState<{
+    election: ElectionRow;
+    results: CandidateResult[];
+    totalVotes: number;
+  }[]>([]);
 
-      const totalVotes = votes.reduce((sum, item) => sum + item.votes, 0);
-      const results: CandidateResult[] = votes
-        .map((item) => ({
-          candidate: item.candidate,
-          votes: item.votes,
-          percentage: totalVotes > 0 ? (item.votes / totalVotes) * 100 : 0,
-        }))
-        .sort((left, right) => right.votes - left.votes);
+  const loadElectionResults = useCallback(async () => {
+    const resultsData = await Promise.all(
+      visibleElections.map(async (election) => {
+        const candidates = candidatesByElection[election.id] ?? [];
 
-      return {
-        election,
-        results,
-        totalVotes,
-      };
-    });
-  }, [candidatesByElection, visibleElections]);
+        let ledger: any[] = [];
+        try {
+          ledger = await serviceFactory.auditorService.getLedger(election.id);
+        } catch {
+          console.warn("Failed to get ledger for election", election.id);
+        }
+
+        const counts: Record<string, number> = {};
+        for (const candidate of candidates) counts[candidate.id] = 0;
+
+        for (const vote of ledger) {
+          try {
+            const raw = vote.encrypted_vote?.trim();
+            if (!raw) continue;
+            const plainStr = typeof atob === "function"
+              ? atob(raw)
+              : Buffer.from(raw, 'base64').toString('utf8');
+            const parsed = JSON.parse(plainStr);
+            if (parsed && parsed.candidate_id) {
+              counts[parsed.candidate_id] = (counts[parsed.candidate_id] || 0) + 1;
+            }
+          } catch {
+            // Ignore parse errors
+          }
+        }
+
+        const votes = candidates.map((candidate) => ({
+          candidate,
+          votes: counts[candidate.id] || 0,
+        }));
+
+        const totalVotes = votes.reduce((sum, item) => sum + item.votes, 0);
+        const results: CandidateResult[] = votes
+          .map((item) => ({
+            candidate: item.candidate,
+            votes: item.votes,
+            percentage: totalVotes > 0 ? (item.votes / totalVotes) * 100 : 0,
+          }))
+          .sort((left, right) => right.votes - left.votes);
+
+        return {
+          election,
+          results,
+          totalVotes,
+        };
+      })
+    );
+    setElectionResults(resultsData);
+  }, [visibleElections, candidatesByElection]);
+
+  useEffect(() => {
+    void loadElectionResults();
+  }, [loadElectionResults]);
+
+
 
   const setElectionMode = (electionId: string, mode: "graph" | "stats") => {
     setViewModes((currentModes) => ({
@@ -273,7 +305,7 @@ export default function AdminViewResults({
                   style={[
                     styles.mobileFilterText,
                     selectedElectionId === "all" &&
-                      styles.mobileFilterTextActive,
+                    styles.mobileFilterTextActive,
                   ]}
                 >
                   All

@@ -274,7 +274,18 @@ export default function AdminCreateElectionScreen({
         endsAtIso,
       });
 
-      Alert.alert("Success", "Election created successfully");
+      if (Platform.OS === "web") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
+          const { toast } = require("react-toastify");
+          toast.success("Election created successfully!");
+        } catch {
+          Alert.alert("Success", "Election created successfully");
+        }
+      } else {
+        Alert.alert("Success", "Election created successfully");
+      }
+
       router.replace("/AdminDashboard");
     } catch (submitError) {
       const message = serviceFactory.authService.getErrorMessage(
@@ -282,7 +293,18 @@ export default function AdminCreateElectionScreen({
         "Failed to create election",
       );
       setError(message);
-      Alert.alert("Error", message);
+
+      if (Platform.OS === "web") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
+          const { toast } = require("react-toastify");
+          toast.error(message);
+        } catch {
+          Alert.alert("Error", message);
+        }
+      } else {
+        Alert.alert("Error", message);
+      }
     } finally {
       setIsSubmitting(false);
     }

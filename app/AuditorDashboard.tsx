@@ -40,14 +40,14 @@ export default function AuditorDashboard() {
     systemHealthSubtext: "All systems operational",
     systemHealthStatus: "● Healthy",
     anomaliesList: [] as string[],
-    electionBlockchainDetails: [] as Array<{
+    electionBlockchainDetails: [] as {
       electionId: string;
       electionTitle: string;
       totalVotes: number;
       totalBlocks: number;
       verificationStatus: string;
       isValid: boolean;
-    }>,
+    }[],
   });
 
   const loadDashboardData = useCallback(async () => {
@@ -68,14 +68,14 @@ export default function AuditorDashboard() {
       let totalBlocksCount = 0;
       let totalAnomalies = 0;
       const anomaliesList: string[] = [];
-      const electionBlockchainDetails: Array<{
+      const electionBlockchainDetails: {
         electionId: string;
         electionTitle: string;
         totalVotes: number;
         totalBlocks: number;
         verificationStatus: string;
         isValid: boolean;
-      }> = [];
+      }[] = [];
 
       for (const election of elections) {
         try {
@@ -778,10 +778,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderLeftWidth: 4,
     borderLeftColor: "#4caf50",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
     elevation: 3,
   },
   blockchainDetailBlockWarning: {

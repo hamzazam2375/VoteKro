@@ -146,18 +146,7 @@ export default function AdminDashboard() {
   }, [navigation, isLoggingOut]);
 
   const handleLogout = () => {
-    // RN Web's Alert polyfill can leave invisible overlays after other dialogs (e.g. face capture),
-    // which blocks header buttons. Use the native confirm on web instead.
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      if (window.confirm("Are you sure you want to logout?")) {
-        void doLogout();
-      }
-      return;
-    }
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Logout", style: "destructive", onPress: () => void doLogout() },
-    ]);
+    void doLogout();
   };
 
   const doLogout = async () => {
@@ -755,7 +744,10 @@ export default function AdminDashboard() {
               </View>
             )}
             {currentPage === "manage-elections" && (
-              <AdminManageElections isEmbedded={true} />
+              <AdminManageElections
+                isEmbedded={true}
+                onNavigate={(page) => setCurrentPage(page)}
+              />
             )}
             {currentPage === "manage-candidates" && (
               <AdminManageCandidates isEmbedded={true} />

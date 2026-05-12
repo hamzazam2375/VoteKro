@@ -12,6 +12,7 @@ import {
     Alert,
     Modal,
     Pressable,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -63,6 +64,7 @@ export default function AdminManageCandidates({
 
   const [showDeleteCandidateModal, setShowDeleteCandidateModal] =
     useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -215,6 +217,9 @@ export default function AdminManageCandidates({
       return;
     }
 
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
     const partyLabel = affiliation
       ? `${partyName} (${affiliation})`
       : partyName;
@@ -238,7 +243,18 @@ export default function AdminManageCandidates({
       setAddCandidateParty(partyLabel);
     }
 
-    Alert.alert("Success", "Party added to election list");
+    if (Platform.OS === "web") {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
+        const { toast } = require("react-toastify");
+        toast.success("Party added to election list");
+      } catch {
+        Alert.alert("Success", "Party added to election list");
+      }
+    } else {
+      Alert.alert("Success", "Party added to election list");
+    }
+    setIsSubmitting(false);
     closeAddPartyModal();
   };
 
@@ -255,6 +271,9 @@ export default function AdminManageCandidates({
       return;
     }
 
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
     try {
       await serviceFactory.adminService.addCandidate({
         electionId,
@@ -263,72 +282,133 @@ export default function AdminManageCandidates({
         candidateNumber: getNextCandidateNumber(electionId),
       });
 
-      Alert.alert("Success", "Candidate added successfully");
+      if (Platform.OS === "web") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
+          const { toast } = require("react-toastify");
+          toast.success("Candidate added successfully!");
+        } catch {
+          Alert.alert("Success", "Candidate added successfully");
+        }
+      } else {
+        Alert.alert("Success", "Candidate added successfully");
+      }
       closeAddCandidateModal();
       void loadData();
     } catch (error) {
-      Alert.alert(
-        "Error",
-        serviceFactory.authService.getErrorMessage(
-          error,
-          "Failed to add candidate",
-        ),
+      const message = serviceFactory.authService.getErrorMessage(
+        error,
+        "Failed to add candidate",
       );
+      if (Platform.OS === "web") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
+          const { toast } = require("react-toastify");
+          toast.error(message);
+        } catch {
+          Alert.alert("Error", message);
+        }
+      } else {
+        Alert.alert("Error", message);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleEditCandidate = async () => {
-    if (!selectedCandidate) {
+  const handleUpdateCandidate = async () => {
+    if (!selectedCandidate) return;
+
+    const trimmedName = editCandidateName.trim();
+    if (!trimmedName) {
+      Alert.alert("Error", "Candidate name is required");
       return;
     }
 
-    const candidateName = editCandidateName.trim();
-    const partyName = editCandidateParty.trim();
-
-    if (!candidateName) {
-      Alert.alert("Missing information", "Candidate name is required.");
-      return;
-    }
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
     try {
       await serviceFactory.adminService.updateCandidate({
         candidateId: selectedCandidate.id,
-        displayName: candidateName,
-        partyName: partyName || undefined,
+        displayName: trimmedName,
+        partyName: editCandidateParty.trim() || undefined,
       });
 
-      Alert.alert("Success", "Candidate updated successfully");
+      if (Platform.OS === "web") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
+          const { toast } = require("react-toastify");
+          toast.success("Candidate updated successfully!");
+        } catch {
+          Alert.alert("Success", "Candidate updated successfully");
+        }
+      } else {
+        Alert.alert("Success", "Candidate updated successfully");
+      }
       closeEditCandidateModal();
       void loadData();
     } catch (error) {
-      Alert.alert(
-        "Error",
-        serviceFactory.authService.getErrorMessage(
-          error,
-          "Failed to update candidate",
-        ),
+      const message = serviceFactory.authService.getErrorMessage(
+        error,
+        "Failed to update candidate",
       );
+      if (Platform.OS === "web") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
+          const { toast } = require("react-toastify");
+          toast.error(message);
+        } catch {
+          Alert.alert("Error", message);
+        }
+      } else {
+        Alert.alert("Error", message);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleDeleteCandidate = async () => {
-    if (!selectedCandidate) {
-      return;
-    }
+    if (!selectedCandidate) return;
+
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
     try {
       await serviceFactory.adminService.deleteCandidate(selectedCandidate.id);
-      Alert.alert("Success", "Candidate deleted successfully");
+
+      if (Platform.OS === "web") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
+          const { toast } = require("react-toastify");
+          toast.success("Candidate removed from election");
+        } catch {
+          Alert.alert("Success", "Candidate removed from election");
+        }
+      } else {
+        Alert.alert("Success", "Candidate removed from election");
+      }
       closeDeleteCandidateModal();
       void loadData();
     } catch (error) {
-      Alert.alert(
-        "Error",
-        serviceFactory.authService.getErrorMessage(
-          error,
-          "Failed to delete candidate",
-        ),
+      const message = serviceFactory.authService.getErrorMessage(
+        error,
+        "Failed to delete candidate",
       );
+      if (Platform.OS === "web") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
+          const { toast } = require("react-toastify");
+          toast.error(message);
+        } catch {
+          Alert.alert("Error", message);
+        }
+      } else {
+        Alert.alert("Error", message);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -519,10 +599,15 @@ export default function AdminManageCandidates({
             />
 
             <Pressable
-              style={styles.primaryActionBtn}
+              style={[styles.primaryActionBtn, isSubmitting && styles.btnDisabled]}
               onPress={() => void handleAddCandidate()}
+              disabled={isSubmitting}
             >
-              <Text style={styles.primaryActionText}>Save Candidate</Text>
+              {isSubmitting ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.primaryActionText}>Save Candidate</Text>
+              )}
             </Pressable>
           </View>
         </View>
@@ -565,10 +650,15 @@ export default function AdminManageCandidates({
             />
 
             <Pressable
-              style={styles.primaryActionBtn}
-              onPress={() => void handleEditCandidate()}
+              style={[styles.primaryActionBtn, isSubmitting && styles.btnDisabled]}
+              onPress={() => void handleUpdateCandidate()}
+              disabled={isSubmitting}
             >
-              <Text style={styles.primaryActionText}>Update Candidate</Text>
+              {isSubmitting ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.primaryActionText}>Update Candidate</Text>
+              )}
             </Pressable>
           </View>
         </View>
@@ -595,10 +685,15 @@ export default function AdminManageCandidates({
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </Pressable>
               <Pressable
-                style={styles.modalDeleteBtn}
+                style={[styles.modalDeleteBtn, isSubmitting && styles.btnDisabled]}
                 onPress={() => void handleDeleteCandidate()}
+                disabled={isSubmitting}
               >
-                <Text style={styles.modalDeleteText}>Delete</Text>
+                {isSubmitting ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.modalDeleteText}>Delete</Text>
+                )}
               </Pressable>
             </View>
           </View>
@@ -1201,5 +1296,8 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 13,
     fontWeight: "700",
+  },
+  btnDisabled: {
+    opacity: 0.6,
   },
 });

@@ -24,7 +24,19 @@ export default function ElectionResultsPage() {
                 for (const candidate of c) map.set(candidate.id, 0);
 
                 for (const vote of ledger) {
-                    map.set(vote.encrypted_vote, (map.get(vote.encrypted_vote) ?? 0) + 1);
+                    try {
+                        const raw = vote.encrypted_vote?.trim();
+                        if (!raw) continue;
+                        const plainStr = typeof atob === "function" 
+                            ? atob(raw) 
+                            : Buffer.from(raw, 'base64').toString('utf8');
+                        const parsed = JSON.parse(plainStr);
+                        if (parsed && parsed.candidate_id) {
+                            map.set(parsed.candidate_id, (map.get(parsed.candidate_id) ?? 0) + 1);
+                        }
+                    } catch {
+                        // Ignore parse errors
+                    }
                 }
 
                 const obj: Record<string, number> = {};
