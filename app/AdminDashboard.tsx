@@ -5,15 +5,15 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
+    ActivityIndicator,
+    Alert,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    useWindowDimensions,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AdminCreateElection from "./AdminCreateElection";
@@ -52,9 +52,9 @@ export default function AdminDashboard() {
   >("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [intervalId, setIntervalId] = useState<ReturnType<typeof setInterval> | null>(
-    null,
-  );
+  const [intervalId, setIntervalId] = useState<ReturnType<
+    typeof setInterval
+  > | null>(null);
 
   const loadDashboardOverview = useCallback(async () => {
     // Don't load data if logout is in progress
@@ -467,7 +467,7 @@ export default function AdminDashboard() {
               <>
                 {/* Dashboard Title */}
                 <View style={styles.titleSection}>
-                  <Text style={styles.dashboardTitle}>Admin Dashboard</Text>
+                  <Text style={styles.dashboardTitle}>🏛️ Admin Dashboard</Text>
                   <Text style={styles.dashboardSubtitle}>
                     Manage elections and monitor voting activity
                   </Text>

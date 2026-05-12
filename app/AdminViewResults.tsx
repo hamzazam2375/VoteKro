@@ -1,7 +1,7 @@
 import type {
-  CandidateRow,
-  ElectionRow,
-  ProfileRow,
+    CandidateRow,
+    ElectionRow,
+    ProfileRow,
 } from "@/class/database-types";
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
@@ -9,14 +9,14 @@ import { PageBackground } from "@/constants/theme";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
+    ActivityIndicator,
+    Alert,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
+    useWindowDimensions,
 } from "react-native";
 
 type CandidateResult = {
@@ -157,11 +157,13 @@ export default function AdminViewResults({
     return elections.filter((election) => election.id === selectedElectionId);
   }, [elections, selectedElectionId]);
 
-  const [electionResults, setElectionResults] = useState<{
-    election: ElectionRow;
-    results: CandidateResult[];
-    totalVotes: number;
-  }[]>([]);
+  const [electionResults, setElectionResults] = useState<
+    {
+      election: ElectionRow;
+      results: CandidateResult[];
+      totalVotes: number;
+    }[]
+  >([]);
 
   const loadElectionResults = useCallback(async () => {
     const resultsData = await Promise.all(
@@ -182,12 +184,14 @@ export default function AdminViewResults({
           try {
             const raw = vote.encrypted_vote?.trim();
             if (!raw) continue;
-            const plainStr = typeof atob === "function"
-              ? atob(raw)
-              : Buffer.from(raw, 'base64').toString('utf8');
+            const plainStr =
+              typeof atob === "function"
+                ? atob(raw)
+                : Buffer.from(raw, "base64").toString("utf8");
             const parsed = JSON.parse(plainStr);
             if (parsed && parsed.candidate_id) {
-              counts[parsed.candidate_id] = (counts[parsed.candidate_id] || 0) + 1;
+              counts[parsed.candidate_id] =
+                (counts[parsed.candidate_id] || 0) + 1;
             }
           } catch {
             // Ignore parse errors
@@ -213,7 +217,7 @@ export default function AdminViewResults({
           results,
           totalVotes,
         };
-      })
+      }),
     );
     setElectionResults(resultsData);
   }, [visibleElections, candidatesByElection]);
@@ -221,8 +225,6 @@ export default function AdminViewResults({
   useEffect(() => {
     void loadElectionResults();
   }, [loadElectionResults]);
-
-
 
   const setElectionMode = (electionId: string, mode: "graph" | "stats") => {
     setViewModes((currentModes) => ({
@@ -285,7 +287,7 @@ export default function AdminViewResults({
       >
         <View style={styles.innerWrapper}>
           <View style={styles.titleSection}>
-            <Text style={styles.pageTitle}>Results</Text>
+            <Text style={styles.pageTitle}>📈 Results</Text>
             <Text style={styles.pageSubtitle}>
               View voting results and statistics
             </Text>
@@ -305,7 +307,7 @@ export default function AdminViewResults({
                   style={[
                     styles.mobileFilterText,
                     selectedElectionId === "all" &&
-                    styles.mobileFilterTextActive,
+                      styles.mobileFilterTextActive,
                   ]}
                 >
                   All
@@ -339,6 +341,11 @@ export default function AdminViewResults({
           {electionResults.map(({ election, results }) => {
             const statusInfo = getElectionStatus(election);
             const winner = results[0];
+            // Check if there's a tie (all candidates have the same votes)
+            const allSameVotes =
+              results.length > 0 &&
+              results.every((r) => r.votes === results[0].votes);
+            const displayWinner = allSameVotes ? null : winner;
             const candidateLabel =
               statusInfo.label === "Closed" ? "👑" : "Leading";
             const viewMode = viewModes[election.id] ?? "graph";
@@ -356,7 +363,8 @@ export default function AdminViewResults({
                       style={styles.electionCandidateText}
                       numberOfLines={1}
                     >
-                      {candidateLabel}: {winner?.candidate.display_name || "—"}
+                      {candidateLabel}:{" "}
+                      {displayWinner?.candidate.display_name || "—"}
                     </Text>
                   </View>
                   <View
@@ -441,7 +449,7 @@ export default function AdminViewResults({
                 <View style={styles.leadingLine}>
                   <Text style={styles.leadingLineLabel}>Leading candidate</Text>
                   <Text style={styles.leadingLineValue} numberOfLines={1}>
-                    {winner?.candidate.display_name || "—"}
+                    {displayWinner?.candidate.display_name || "—"}
                   </Text>
                 </View>
               </View>

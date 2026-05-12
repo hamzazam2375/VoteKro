@@ -11,8 +11,8 @@ import {
     ActivityIndicator,
     Alert,
     Modal,
-    Pressable,
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -520,37 +520,6 @@ export default function AdminManageCandidates({
               placeholderTextColor="#9ca3af"
             />
 
-            <Text style={styles.inputLabel}>Election List</Text>
-            <View style={styles.optionListWrap}>
-              {elections.map((election) => {
-                const selected = addCandidateElectionId === election.id;
-                return (
-                  <Pressable
-                    key={election.id}
-                    style={[
-                      styles.optionChip,
-                      selected && styles.optionChipSelected,
-                    ]}
-                    onPress={() => {
-                      setAddCandidateElectionId(election.id);
-                      const firstParty =
-                        partiesByElection[election.id]?.[0] ?? "";
-                      setAddCandidateParty(firstParty);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.optionChipText,
-                        selected && styles.optionChipTextSelected,
-                      ]}
-                    >
-                      {election.title}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
             <Text style={styles.inputLabel}>Parties List</Text>
             <View style={styles.optionListWrap}>
               {(partiesByElection[addCandidateElectionId] ?? []).length ===
@@ -599,7 +568,10 @@ export default function AdminManageCandidates({
             />
 
             <Pressable
-              style={[styles.primaryActionBtn, isSubmitting && styles.btnDisabled]}
+              style={[
+                styles.primaryActionBtn,
+                isSubmitting && styles.btnDisabled,
+              ]}
               onPress={() => void handleAddCandidate()}
               disabled={isSubmitting}
             >
@@ -650,7 +622,10 @@ export default function AdminManageCandidates({
             />
 
             <Pressable
-              style={[styles.primaryActionBtn, isSubmitting && styles.btnDisabled]}
+              style={[
+                styles.primaryActionBtn,
+                isSubmitting && styles.btnDisabled,
+              ]}
               onPress={() => void handleUpdateCandidate()}
               disabled={isSubmitting}
             >
@@ -685,7 +660,10 @@ export default function AdminManageCandidates({
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </Pressable>
               <Pressable
-                style={[styles.modalDeleteBtn, isSubmitting && styles.btnDisabled]}
+                style={[
+                  styles.modalDeleteBtn,
+                  isSubmitting && styles.btnDisabled,
+                ]}
                 onPress={() => void handleDeleteCandidate()}
                 disabled={isSubmitting}
               >
@@ -791,33 +769,37 @@ export default function AdminManageCandidates({
                         </Text>
                       </View>
 
-                      <View
-                        style={[
-                          styles.actionInputCards,
-                          isMobile && styles.actionInputCardsMobile,
-                        ]}
-                      >
-                        <Pressable
-                          style={styles.addCandidateCardBtn}
-                          onPress={() => openAddCandidateModal(election.id)}
+                      {getElectionStatus(election) !== "closed" && (
+                        <View
+                          style={[
+                            styles.actionInputCards,
+                            isMobile && styles.actionInputCardsMobile,
+                          ]}
                         >
-                          <Text style={styles.addCardBtnTitle}>
-                            Add Candidate
-                          </Text>
-                          <Text style={styles.addCardBtnHint}>
-                            Name, election, party
-                          </Text>
-                        </Pressable>
-                        <Pressable
-                          style={styles.addPartyCardBtn}
-                          onPress={() => openAddPartyModal(election.id)}
-                        >
-                          <Text style={styles.addCardBtnTitle}>Add Party</Text>
-                          <Text style={styles.addCardBtnHint}>
-                            Party and affiliation
-                          </Text>
-                        </Pressable>
-                      </View>
+                          <Pressable
+                            style={styles.addCandidateCardBtn}
+                            onPress={() => openAddCandidateModal(election.id)}
+                          >
+                            <Text style={styles.addCardBtnTitle}>
+                              Add Candidate
+                            </Text>
+                            <Text style={styles.addCardBtnHint}>
+                              Name, election, party
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            style={styles.addPartyCardBtn}
+                            onPress={() => openAddPartyModal(election.id)}
+                          >
+                            <Text style={styles.addCardBtnTitle}>
+                              Add Party
+                            </Text>
+                            <Text style={styles.addCardBtnHint}>
+                              Party and affiliation
+                            </Text>
+                          </Pressable>
+                        </View>
+                      )}
                     </View>
 
                     <View style={styles.candidateListWrap}>
