@@ -9,6 +9,7 @@ import { serviceFactory } from "@/class/service-factory";
 import { supabase } from "@/class/supabase-client";
 import { tallyVotesFromEncryptedLedger } from "@/class/vote-ledger-tally";
 import { DashboardShell } from "@/components/dashboard-shell";
+import { useNavigation } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -35,6 +36,7 @@ type ElectionResultRow = {
 
 export default function VoterDashboard() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { width } = useWindowDimensions();
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [elections, setElections] = useState<ElectionRow[]>([]);
@@ -52,7 +54,6 @@ export default function VoterDashboard() {
   const [voteModalMessage, setVoteModalMessage] = useState<string>("");
   const [showVoteModal, setShowVoteModal] = useState(false);
   const [showElectionDialog, setShowElectionDialog] = useState(false);
-  const dialogCloseRef = useRef<any>(null);
   const prevActiveElementRef = useRef<HTMLElement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmittingVote, setIsSubmittingVote] = useState(false);
@@ -68,6 +69,7 @@ export default function VoterDashboard() {
     Map<string, { hash: string; date: string; candidate: string }>
   >(new Map());
   const searchInputRef = useRef<any>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const displayName = profile?.full_name?.trim() || "Voter";
   const electionCardWidth = Math.min(330, Math.max(250, width - 48));
@@ -219,15 +221,6 @@ export default function VoterDashboard() {
       } catch {
         // ignore
       }
-
-      // focus the close button inside the dialog after it renders
-      setTimeout(() => {
-        try {
-          dialogCloseRef.current?.focus?.();
-        } catch {
-          // no-op
-        }
-      }, 50);
     } else {
       // restore focus to previously focused element
       setTimeout(() => {
@@ -241,11 +234,34 @@ export default function VoterDashboard() {
     }
   }, [showElectionDialog]);
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (event) => {
+      if (!isLoggingOut) {
+        event.preventDefault();
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, isLoggingOut]);
+
   const handleLogout = async () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: () => void doLogout(),
+      },
+    ]);
+  };
+
+  const doLogout = async () => {
     try {
+      setIsLoggingOut(true);
       await serviceFactory.authService.signOut();
-      router.replace("/");
+      router.replace("/VoterLogin");
     } catch (error) {
+      setIsLoggingOut(false);
       Alert.alert(
         "Error",
         serviceFactory.authService.getErrorMessage(error, "Failed to logout"),
@@ -504,8 +520,11 @@ export default function VoterDashboard() {
       const serverTotalVotes =
         serverTallyRows?.reduce((sum, row) => sum + row.voteCount, 0) ?? 0;
 
-      const { counts: decryptedCounts, myCandidateId, myVoteBlock } =
-        await tallyVotesFromEncryptedLedger(ledger, profile?.user_id ?? null);
+      const {
+        counts: decryptedCounts,
+        myCandidateId,
+        myVoteBlock,
+      } = await tallyVotesFromEncryptedLedger(ledger, profile?.user_id ?? null);
 
       const legacyPlainCounts = new Map<string, number>();
       for (const vote of ledger) {
@@ -517,13 +536,17 @@ export default function VoterDashboard() {
         // a JSON payload that contains `candidate_id` (another legacy format).
         const directMatch = candidates.find((c) => c.id === raw);
         if (directMatch) {
-          legacyPlainCounts.set(directMatch.id, (legacyPlainCounts.get(directMatch.id) ?? 0) + 1);
+          legacyPlainCounts.set(
+            directMatch.id,
+            (legacyPlainCounts.get(directMatch.id) ?? 0) + 1,
+          );
           continue;
         }
 
         try {
           const parsed = JSON.parse(raw);
-          const cid = parsed && parsed.candidate_id ? String(parsed.candidate_id) : null;
+          const cid =
+            parsed && parsed.candidate_id ? String(parsed.candidate_id) : null;
           if (cid) {
             legacyPlainCounts.set(cid, (legacyPlainCounts.get(cid) ?? 0) + 1);
             continue;
@@ -643,13 +666,10 @@ export default function VoterDashboard() {
     ? getEffectiveElectionStatus(selectedElection)
     : ("draft" as DashboardElectionStatus);
   const selectedUserVoted = selectedElection
-    ? votedElectionIds.has(selectedElection.id) ||
-      !!registryStatus?.has_voted
+    ? votedElectionIds.has(selectedElection.id) || !!registryStatus?.has_voted
     : false;
   const showVotingPanel =
-    !!selectedElection &&
-    selectedTimeStatus === "active" &&
-    !selectedUserVoted;
+    !!selectedElection && selectedTimeStatus === "active" && !selectedUserVoted;
   const showResultsPanel =
     !!selectedElection &&
     (selectedTimeStatus === "closed" || selectedUserVoted);
@@ -681,14 +701,30 @@ export default function VoterDashboard() {
             <Pressable
               style={styles.modalButton}
               accessibilityRole="button"
-              onPress={() => {
+              onPress={async () => {
                 setShowVoteModal(false);
-                // also close election dialog when user dismisses success/error modal
+                // After a successful vote or already-voted notice, keep the
+                // election dialog open and show the receipt/results so the
+                // user can view the receipt. Also ensure details are fetched
+                // and the election is reflected in history.
                 if (
                   voteModalTitle === "Vote Cast Successfully" ||
                   voteModalTitle === "Already Voted"
                 ) {
-                  setShowElectionDialog(false);
+                  if (selectedElection) {
+                    try {
+                      await fetchVoteDetails(selectedElection.id, {
+                        force: true,
+                      });
+                    } catch (e) {
+                      console.warn(
+                        "Failed to refresh vote details after vote",
+                        e,
+                      );
+                    }
+                    setShowElectionDialog(true);
+                    setCurrentView("history");
+                  }
                 }
               }}
             >
@@ -727,12 +763,16 @@ export default function VoterDashboard() {
           animationType="slide"
           onRequestClose={() => setShowElectionDialog(false)}
         >
-          <View style={styles.dialogOverlay}>
-            <View
+          <Pressable
+            style={styles.dialogOverlay}
+            onPress={() => setShowElectionDialog(false)}
+          >
+            <Pressable
               style={[
                 styles.dialogBox,
                 { maxWidth: Math.min(720, width - 32) },
               ]}
+              onPress={() => null}
             >
               <View style={styles.dialogHeader}>
                 <View style={{ flex: 1 }}>
@@ -743,14 +783,6 @@ export default function VoterDashboard() {
                     {selectedElection?.description ?? ""}
                   </Text>
                 </View>
-                <Pressable
-                  accessibilityLabel="Close election dialog"
-                  accessibilityRole="button"
-                  style={styles.dialogClose}
-                  onPress={() => setShowElectionDialog(false)}
-                >
-                  <Text style={styles.dialogCloseText}>✕</Text>
-                </Pressable>
               </View>
 
               <ScrollView
@@ -973,23 +1005,29 @@ export default function VoterDashboard() {
                   </View>
                 )}
               </ScrollView>
-            </View>
-          </View>
+            </Pressable>
+          </Pressable>
         </Modal>
 
         <ScrollView contentContainerStyle={styles.contentContainer}>
           <View style={styles.contentWrap}>
-            {currentView === "home" ? (
-              <>
-                <Text style={styles.pageSubtitle}>
-                  Cast your vote securely using our blockchain-based system
-                </Text>
-              </>
-            ) : (
-              <Text style={styles.pageSubtitle}>
-                View your voting history and closed elections
+            <View style={styles.viewHeaderRow}>
+              <Text style={styles.viewHeaderIcon}>
+                {currentView === "home" ? "🗳️" : "📜"}
               </Text>
-            )}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.viewHeaderTitle}>
+                  {currentView === "home"
+                    ? "Voting Dashboard"
+                    : "Voting History"}
+                </Text>
+                <Text style={styles.viewHeaderSubtitle}>
+                  {currentView === "home"
+                    ? "Review active elections and cast your vote."
+                    : "Browse completed elections and saved vote records."}
+                </Text>
+              </View>
+            </View>
 
             <View style={styles.searchBarSection}>
               <View style={styles.searchInputContainer}>
@@ -1020,14 +1058,11 @@ export default function VoterDashboard() {
               </View>
             </View>
 
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionIcon}>
-                {currentView === "home" ? "🗳️" : "📚"}
-              </Text>
-              <Text style={styles.sectionTitle}>
-                {currentView === "home" ? "Active Elections" : "Voting History"}
-              </Text>
-            </View>
+            {currentView === "home" ? (
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Active Elections</Text>
+              </View>
+            ) : null}
 
             {filteredElections.length > 0 ? (
               <View style={styles.electionsList}>
@@ -1035,48 +1070,41 @@ export default function VoterDashboard() {
                   const isSelected = election.id === selectedElection?.id;
                   const badgeStatus = getVoterFacingBadgeStatus(election);
                   return (
-                    <Pressable
+                    <View
                       key={election.id}
                       style={[
                         styles.electionSummaryCard,
                         isSelected && styles.electionSummaryCardSelected,
                       ]}
-                      onPress={async () => {
-                        setSelectedElection(election);
-                        if (
-                          currentView === "history" ||
-                          votedElectionIds.has(election.id)
-                        ) {
-                          await fetchVoteDetails(election.id);
-                        }
-                        setShowElectionDialog(true);
-                      }}
                     >
-                      <View style={styles.electionSummaryHeader}>
-                        <Text style={styles.electionSummaryTitle}>
-                          {election.title}
-                        </Text>
-                        <View
-                          style={[
-                            styles.statusPill,
-                            getStatusStyle(badgeStatus),
-                          ]}
-                        >
-                          <Text style={styles.statusPillText}>
-                            {badgeStatus.toUpperCase()}
+                      <View style={styles.electionSummaryContentPressable}>
+                        <View style={styles.electionSummaryHeader}>
+                          <Text style={styles.electionSummaryTitle}>
+                            {election.title}
                           </Text>
+                          <View
+                            style={[
+                              styles.statusPill,
+                              getStatusStyle(badgeStatus),
+                            ]}
+                          >
+                            <Text style={styles.statusPillText}>
+                              {badgeStatus.toUpperCase()}
+                            </Text>
+                          </View>
                         </View>
+                        <Text
+                          style={styles.electionSummaryDescription}
+                          numberOfLines={2}
+                        >
+                          {election.description ?? "No description provided."}
+                        </Text>
+                        <Text style={styles.electionSummaryMeta}>
+                          📅 {formatDate(election.starts_at)} -{" "}
+                          {formatDate(election.ends_at)}
+                        </Text>
                       </View>
-                      <Text
-                        style={styles.electionSummaryDescription}
-                        numberOfLines={2}
-                      >
-                        {election.description ?? "No description provided."}
-                      </Text>
-                      <Text style={styles.electionSummaryMeta}>
-                        📅 {formatDate(election.starts_at)} -{" "}
-                        {formatDate(election.ends_at)}
-                      </Text>
+
                       <View style={styles.electionActionRow}>
                         {badgeStatus === "active" ? (
                           <Pressable
@@ -1100,19 +1128,17 @@ export default function VoterDashboard() {
                           </Pressable>
                         ) : null}
                       </View>
-                    </Pressable>
+                    </View>
                   );
                 })}
               </View>
             ) : (
               <View style={[styles.electionCard, { width: electionCardWidth }]}>
-                <Text style={styles.electionTitle}>
-                  {searchQuery.trim()
-                    ? "No Elections Found"
-                    : currentView === "home"
-                      ? "No Active Elections"
-                      : "No Voting History"}
-                </Text>
+                {searchQuery.trim() ? (
+                  <Text style={styles.electionTitle}>No Elections Found</Text>
+                ) : currentView === "home" ? null : (
+                  <Text style={styles.electionTitle}>No Voting History</Text>
+                )}
                 <Text style={styles.electionDescription}>
                   {searchQuery.trim()
                     ? "Try a different search term or clear the search box to see all elections."
@@ -1195,20 +1221,36 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 980,
   },
+  viewHeaderRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 18,
+  },
+  viewHeaderIcon: {
+    fontSize: 24,
+    lineHeight: 28,
+    marginTop: 2,
+  },
+  viewHeaderTitle: {
+    fontSize: 30,
+    fontWeight: "800",
+    color: "#131f38",
+  },
+  viewHeaderSubtitle: {
+    marginTop: 4,
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#677b94",
+  },
   pageTitle: {
     fontSize: 48,
     fontWeight: "800",
     color: "#131f38",
     marginBottom: 12,
   },
-  pageSubtitle: {
-    fontSize: 21,
-    lineHeight: 30,
-    color: "#677b94",
-    marginBottom: 46,
-  },
   searchBarSection: {
-    marginBottom: 28,
+    marginBottom: 22,
     width: "100%",
   },
   searchInputContainer: {
@@ -1218,19 +1260,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#d9dee7",
     borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     gap: 8,
     boxShadow: "0px 1px 3px rgba(15, 23, 42, 0.06)",
     elevation: 2,
   },
   searchIcon: {
-    fontSize: 18,
+    fontSize: 16,
     color: "#2f64e6",
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     color: "#111827",
     fontWeight: "500",
   },
@@ -1301,14 +1343,11 @@ const styles = StyleSheet.create({
   sectionHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 18,
-  },
-  sectionIcon: {
-    fontSize: 17,
+    gap: 0,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: "800",
     color: "#2f64e6",
   },
@@ -1339,35 +1378,40 @@ const styles = StyleSheet.create({
   },
   electionSummaryTitle: {
     flex: 1,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "800",
     color: "#1b2a47",
   },
   electionSummaryDescription: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 19,
     color: "#60728b",
     marginBottom: 8,
   },
   electionSummaryMeta: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#6a7a90",
   },
   electionActionRow: {
     flexDirection: "row",
     gap: 8,
     marginTop: 12,
+    justifyContent: "flex-end",
+    alignItems: "flex-end",
   },
+
+  electionSummaryContentPressable: {
+    paddingRight: 12,
+  },
+
+  // Move buttons to bottom-right inside the card
   electionPrimaryButton: {
     backgroundColor: "#2f64e6",
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
   },
-  electionPrimaryText: {
-    color: "#fff",
-    fontWeight: "800",
-  },
+
   electionSecondaryButton: {
     backgroundColor: "#ffffff",
     borderWidth: 1,
@@ -1375,6 +1419,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
+  },
+  electionPrimaryText: {
+    color: "#fff",
+    fontWeight: "800",
   },
   electionSecondaryText: {
     color: "#233a67",
@@ -1431,14 +1479,14 @@ const styles = StyleSheet.create({
     height: 4,
   },
   electionTitle: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: "700",
     color: "#2f64e6",
     marginBottom: 10,
   },
   electionDescription: {
-    fontSize: 18,
-    lineHeight: 26,
+    fontSize: 16,
+    lineHeight: 23,
     color: "#5f6f83",
     marginBottom: 16,
   },
@@ -1474,13 +1522,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#e8efff",
   },
   candidateLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     color: "#233a67",
   },
   candidateParty: {
     marginTop: 4,
-    fontSize: 13,
+    fontSize: 12,
     color: "#5f6f83",
   },
   voteAction: {
@@ -1501,12 +1549,12 @@ const styles = StyleSheet.create({
   },
   voteActionText: {
     color: "#ffffff",
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "700",
   },
   infoText: {
     marginTop: 12,
-    fontSize: 14,
+    fontSize: 13,
     color: "#4f5d72",
     lineHeight: 20,
   },
@@ -1568,24 +1616,14 @@ const styles = StyleSheet.create({
     borderBottomColor: "#f2f6fb",
   },
   dialogTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "800",
     color: "#14203a",
   },
   dialogSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#57677e",
     marginTop: 6,
-  },
-  dialogClose: {
-    marginLeft: 12,
-    padding: 8,
-    borderRadius: 8,
-    alignSelf: "flex-start",
-  },
-  dialogCloseText: {
-    fontSize: 18,
-    color: "#677b94",
   },
   dialogContent: {
     paddingHorizontal: 18,

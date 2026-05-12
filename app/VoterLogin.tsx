@@ -41,7 +41,7 @@ export default function VoterLoginScreen() {
 
   // STRICT SECURITY SETTINGS
   const FACE_DISTANCE_THRESHOLD = 0.45;
-  const MIN_SIMILARITY_PERCENT = 60;
+  const MIN_SIMILARITY_PERCENT = 70;
 
   const resetVerificationState = () => {
     setStep("login");

@@ -8,7 +8,6 @@ import type {
     VoterRegistryRow,
     VoteVerificationReceipt,
 } from "@/class/database-types";
-import { EmailService } from "@/class/email-service";
 import { AuthenticationError, ValidationError } from "@/class/errors";
 import type {
     CastVoteInput,
@@ -22,8 +21,6 @@ import type {
     MyDecryptedVoteReceiptRow,
 } from "@/class/service-contracts";
 export class VotingService extends BaseService {
-  private readonly emailService = new EmailService();
-
   constructor(
     private readonly authRepository: IAuthRepository,
     private readonly electionRepository: IElectionRepository,
@@ -285,7 +282,9 @@ export class VotingService extends BaseService {
     if (cryptoObj?.getRandomValues) {
       const bytes = new Uint8Array(16);
       cryptoObj.getRandomValues(bytes);
-      return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+      return Array.from(bytes, (byte) =>
+        byte.toString(16).padStart(2, "0"),
+      ).join("");
     }
 
     // Fallback for environments without Web Crypto.
@@ -323,19 +322,6 @@ export class VotingService extends BaseService {
       voteBlock.vote_commitment,
       voteBlock.nonce,
     );
-
-    // Send confirmation email with verification token
-    try {
-      await this.sendVoteConfirmationEmail(
-        userId,
-        input.electionId,
-        input.candidateId,
-        verificationToken,
-      );
-    } catch (error) {
-      // Log error but don't fail the vote casting if email fails
-      console.error("Failed to send vote confirmation email:", error);
-    }
 
     return voteBlock;
   }
@@ -396,113 +382,5 @@ export class VotingService extends BaseService {
       createdAt: matchedVote.created_at,
       message: `✓ Your vote has been verified in the blockchain at block #${matchedVote.block_index}. The election blockchain is valid and uncompromised.`,
     };
-  }
-
-  private async sendVoteConfirmationEmail(
-    userId: string,
-    electionId: string,
-    candidateId: string,
-    verificationToken: string,
-  ): Promise<void> {
-    // Get voter profile for email
-    const profile = await this.profileRepository.getByUserId(userId);
-    if (!profile?.user_id) {
-      throw new ValidationError("Voter profile not found");
-    }
-
-    // Get election details
-    const election = await this.electionRepository.findById(electionId);
-    if (!election) {
-      throw new ValidationError("Election not found");
-    }
-
-    // Get candidate details
-    const candidates =
-      await this.candidateRepository.listByElection(electionId);
-    const candidate = candidates.find((c) => c.id === candidateId);
-    if (!candidate) {
-      throw new ValidationError("Candidate not found");
-    }
-
-    // Get voter email from auth
-    const {
-      data: { user },
-    } = await (await import("@/class/supabase-client")).supabase.auth.getUser();
-    const voterEmail = user?.email;
-    if (!voterEmail) {
-      throw new ValidationError("Voter email not found");
-    }
-
-    // Send confirmation email
-    await this.emailService.sendEmail({
-      to: voterEmail,
-      subject: `Vote Confirmation - ${election.title}`,
-      html: this.generateVoteConfirmationEmail(
-        profile.full_name,
-        election.title,
-        candidate.display_name,
-        candidate.party_name || "Independent",
-        verificationToken,
-      ),
-    });
-  }
-
-  private generateVoteConfirmationEmail(
-    voterName: string,
-    electionTitle: string,
-    candidateName: string,
-    partyName: string,
-    verificationToken: string,
-  ): string {
-    return `
-      <html>
-        <body style="font-family: Arial, sans-serif; color: #333;">
-          <div style="max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #2c5aa0;">✓ Your Vote Has Been Recorded</h2>
-            <p>Dear ${voterName},</p>
-            <p>Thank you for participating in the election. Your vote has been successfully recorded and secured on the blockchain.</p>
-            
-            <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
-              <h3 style="color: #2c5aa0; margin-top: 0;">Vote Details:</h3>
-              <p><strong>Election:</strong> ${electionTitle}</p>
-              <p><strong>Candidate:</strong> ${candidateName}</p>
-              <p><strong>Party:</strong> ${partyName}</p>
-              <p><strong>Timestamp:</strong> ${new Date().toLocaleString()}</p>
-            </div>
-
-            <div style="background-color: #e8f4f8; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #2c5aa0;">
-              <h3 style="color: #2c5aa0; margin-top: 0;">🔐 Verify Your Vote in Blockchain</h3>
-              <p>You can verify that your vote is securely stored on the blockchain without revealing your identity:</p>
-              
-              <div style="background-color: white; padding: 15px; border-radius: 3px; margin: 10px 0; word-break: break-all;">
-                <p style="margin: 0; font-size: 12px; color: #666;">Verification Token:</p>
-                <p style="margin: 5px 0; font-family: monospace; font-size: 11px; color: #000; font-weight: bold;">
-                  ${verificationToken}
-                </p>
-              </div>
-              
-              <p style="font-size: 13px; color: #555;">
-                Save this token to verify your vote later using the blockchain verification tool in the VoteKro app.
-              </p>
-            </div>
-
-            <p><strong>Important Notes:</strong></p>
-            <ul style="line-height: 1.8;">
-              <li>Your vote is <strong>completely anonymous</strong> - your identity is not linked to your vote on the ledger</li>
-              <li>Your vote is <strong>encrypted</strong> and secured on the blockchain</li>
-              <li>You can only vote once per election - this prevents duplicate voting</li>
-              <li>Use your verification token to prove your vote exists without revealing how you voted</li>
-              <li>The integrity of all votes can be verified using our blockchain verification system</li>
-            </ul>
-
-            <p>If you did not cast this vote or have any concerns, please contact us immediately.</p>
-            
-            <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
-              This is an automated confirmation email from VoteKro. Please do not reply to this email.
-            </p>
-          </div>
-        </body>
-      </html>
-    `;
   }
 }

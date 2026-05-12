@@ -146,7 +146,10 @@ export default function AdminDashboard() {
   }, [navigation, isLoggingOut]);
 
   const handleLogout = () => {
-    void doLogout();
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Logout", style: "destructive", onPress: () => void doLogout() },
+    ]);
   };
 
   const doLogout = async () => {
