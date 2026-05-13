@@ -1,11 +1,11 @@
 import type {
-    AuditLogRow,
-    CandidateRow,
-    ElectionRow,
-    ProfileRow,
-    VerifyChainResultRow,
-    VoteBlockRow,
-    VoterRegistryRow,
+  AuditLogRow,
+  CandidateRow,
+  ElectionRow,
+  ProfileRow,
+  VerifyChainResultRow,
+  VoteBlockRow,
+  VoterRegistryRow,
 } from "@/class/database-types";
 
 export interface CreateElectionInput {
@@ -126,7 +126,7 @@ export interface IVoteLedgerRepository {
   ): Promise<VoteBlockRow>;
   verifyChain(electionId: string): Promise<VerifyChainResultRow>;
   listLedger(electionId: string): Promise<VoteBlockRow[]>;
-  /** Server-side PGP tally; null if unavailable (e.g. RocksDB ledger). */
+  /** Server-side PGP tally; null if unavailable. */
   tallyDecryptedVoteBlocks(
     electionId: string,
     encryptionKey?: string | null,
@@ -140,5 +140,9 @@ export interface IVoteLedgerRepository {
 
 export interface IAuditLogRepository {
   listRecent(limit?: number): Promise<AuditLogRow[]>;
-  recordAuditAction(action: string, targetId: string, metadata?: Record<string, any>): Promise<AuditLogRow>;
+  recordAuditAction(
+    action: string,
+    targetId: string,
+    metadata?: Record<string, any>,
+  ): Promise<AuditLogRow>;
 }

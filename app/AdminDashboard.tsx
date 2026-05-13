@@ -5,15 +5,15 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    useWindowDimensions,
-    View,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AdminCreateElection from "./AdminCreateElection";
@@ -769,7 +769,16 @@ export default function AdminDashboard() {
               </View>
             )}
             {currentPage === "edit-profile" && (
-              <AdminEditProfile isEmbedded={true} />
+              <AdminEditProfile
+                isEmbedded={true}
+                onProfileUpdated={(nextFullName) => {
+                  setProfile((previous) =>
+                    previous
+                      ? { ...previous, full_name: nextFullName }
+                      : previous,
+                  );
+                }}
+              />
             )}
           </View>
         </ScrollView>
