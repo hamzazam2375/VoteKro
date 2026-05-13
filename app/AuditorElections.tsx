@@ -9,7 +9,9 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,6 +20,7 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface ElectionWithStats extends ElectionRow {
   totalVotes: number;
@@ -29,7 +32,9 @@ interface ElectionWithStats extends ElectionRow {
 export default function AuditorElections() {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isMobile = width < 760;
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [elections, setElections] = useState<ElectionWithStats[]>([]);
@@ -257,63 +262,25 @@ export default function AuditorElections() {
     void loadElections();
   };
 
-  const generateAuditCSV = (election: ElectionWithStats): string => {
-    const headers = ['Election Title', 'Status', 'Start Date', 'End Date', 'Total Votes', 'Verified Votes', 'Anomalies Detected', 'Verification Rate', 'Last Audited'];
-    
-    const status = new Date(election.ends_at) <= new Date() ? 'Completed' : 'Active';
-    const verificationRate = election.totalVotes > 0 
-      ? ((election.verifiedVotes / election.totalVotes) * 100).toFixed(1) + '%'
-      : '100%';
-    
-    const rows = [
-      [
-        election.title || '',
-        status,
-        new Date(election.starts_at).toLocaleDateString('en-US'),
-        new Date(election.ends_at).toLocaleDateString('en-US'),
-        election.totalVotes.toString(),
-        election.verifiedVotes.toString(),
-        election.anomalies.toString(),
-        verificationRate,
-        election.lastAuditTime 
-          ? new Date(election.lastAuditTime).toLocaleString('en-US')
-          : 'Not yet audited'
-      ]
-    ];
+  // Prevent back navigation - show logout confirmation instead
+  useEffect(() => {
+    const backAction = () => {
+      handleLogout();
+      return true; // Prevent default back behavior
+    };
 
-    const headerRow = headers.map(h => `"${h}"`).join(',');
-    const dataRows = rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-    
-    return headerRow + '\n' + dataRows;
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+    return () => backHandler.remove();
+  }, []);
+
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Logout", style: "destructive", onPress: () => void doLogout() },
+    ]);
   };
 
-  const downloadCSV = (filename: string, csvContent: string) => {
-    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-      const element = document.createElement('a');
-      element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
-      element.setAttribute('download', filename);
-      element.style.display = 'none';
-      document.body.appendChild(element);
-      element.click();
-      document.body.removeChild(element);
-    } else {
-      Alert.alert('Error', 'Download is only available in web browsers');
-    }
-  };
-
-  const handleDownloadCSV = (election: ElectionWithStats) => {
-    try {
-      const csvContent = generateAuditCSV(election);
-      const filename = `audit-report-${election.title}-${new Date().getTime()}.csv`;
-      downloadCSV(filename, csvContent);
-      Alert.alert('Success', `Audit report for "${election.title}" downloaded successfully!`);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to generate CSV file');
-      console.error('CSV generation error:', error);
-    }
-  };
-
-  const handleLogout = async () => {
+  const doLogout = async () => {
     try {
       await serviceFactory.authService.signOut();
       router.replace("/");
@@ -328,14 +295,58 @@ export default function AuditorElections() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <Navbar
-          homeRoute="/AuditorDashboard"
-          actions={[
-            { label: "Logout", onPress: handleLogout, variant: "outline" },
-          ]}
-        />
+        {isMobile ? (
+          <View
+            style={[
+              styles.mobileHeader,
+              Platform.OS === "web" && styles.headerStackWeb,
+              { paddingTop: insets.top + 10 },
+            ]}
+          >
+            <Pressable
+              style={styles.mobileHamburger}
+              onPress={() => setSidebarOpen(!sidebarOpen)}
+            >
+              <Text style={styles.mobileHamburgerIcon}>☰</Text>
+            </Pressable>
+            <Pressable
+              style={styles.mobileLogoButton}
+              onPress={() => router.replace("/AuditorDashboard")}
+            >
+              <Text style={styles.mobileLogo}>VoteKro</Text>
+            </Pressable>
+            <Pressable style={styles.mobileLogoutButton} onPress={handleLogout}>
+              <Text style={styles.mobileLogoutText}>Logout</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={Platform.OS === "web" ? styles.headerStackWeb : undefined}>
+            <Navbar
+              homeRoute="/AuditorDashboard"
+              actions={[
+                { label: "Logout", onPress: handleLogout, variant: "outline" },
+              ]}
+            />
+          </View>
+        )}
         <View style={styles.mainContent}>
-          {!isMobile && <AuditorSidebar profileName={profile?.full_name} />}
+          {/* Overlay Backdrop - Mobile Only */}
+          {isMobile && sidebarOpen && (
+            <Pressable
+              style={styles.sidebarOverlay}
+              onPress={() => setSidebarOpen(false)}
+            />
+          )}
+
+          {/* Sidebar Navigation */}
+          {(!isMobile || sidebarOpen) && (
+            <View style={[styles.sidebar, isMobile && styles.sidebarMobile]}>
+              <AuditorSidebar
+                profileName={profile?.full_name}
+                onNavigate={() => setSidebarOpen(false)}
+              />
+            </View>
+          )}
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#1a73e8" />
             <Text style={styles.loadingText}>Loading Elections...</Text>
@@ -347,14 +358,59 @@ export default function AuditorElections() {
 
   return (
     <View style={styles.container}>
-      <Navbar
-        homeRoute="/AuditorDashboard"
-        actions={[
-          { label: "Logout", onPress: handleLogout, variant: "outline" },
-        ]}
-      />
+      {isMobile ? (
+        <View
+          style={[
+            styles.mobileHeader,
+            Platform.OS === "web" && styles.headerStackWeb,
+            { paddingTop: insets.top + 10 },
+          ]}
+        >
+          <Pressable
+            style={styles.mobileHamburger}
+            onPress={() => setSidebarOpen(!sidebarOpen)}
+          >
+            <Text style={styles.mobileHamburgerIcon}>☰</Text>
+          </Pressable>
+          <Pressable
+            style={styles.mobileLogoButton}
+            onPress={() => router.replace("/AuditorDashboard")}
+          >
+            <Text style={styles.mobileLogo}>VoteKro</Text>
+          </Pressable>
+          <Pressable style={styles.mobileLogoutButton} onPress={handleLogout}>
+            <Text style={styles.mobileLogoutText}>Logout</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View style={Platform.OS === "web" ? styles.headerStackWeb : undefined}>
+          <Navbar
+            homeRoute="/AuditorDashboard"
+            actions={[
+              { label: "Logout", onPress: handleLogout, variant: "outline" },
+            ]}
+          />
+        </View>
+      )}
+
       <View style={styles.mainContent}>
-        {!isMobile && <AuditorSidebar profileName={profile?.full_name} />}
+        {/* Overlay Backdrop - Mobile Only */}
+        {isMobile && sidebarOpen && (
+          <Pressable
+            style={styles.sidebarOverlay}
+            onPress={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Sidebar Navigation */}
+        {(!isMobile || sidebarOpen) && (
+          <View style={[styles.sidebar, isMobile && styles.sidebarMobile]}>
+            <AuditorSidebar
+              profileName={profile?.full_name}
+              onNavigate={() => setSidebarOpen(false)}
+            />
+          </View>
+        )}
 
         <ScrollView
           style={styles.content}
@@ -365,7 +421,7 @@ export default function AuditorElections() {
             {/* Header Section */}
             <View style={styles.headerSection}>
               <View>
-                <Text style={styles.pageTitle}>Elections</Text>
+                <Text style={styles.pageTitle}>🗳️ Elections</Text>
                 <Text style={styles.pageSubtitle}>
                   Audit and verify elections for integrity
                 </Text>
@@ -431,7 +487,6 @@ export default function AuditorElections() {
                     election={election}
                     onStartAudit={handleStartAudit}
                     onViewDetails={handleViewDetails}
-                    onDownloadCSV={handleDownloadCSV}
                     isMobile={isMobile}
                   />
                 ))}
@@ -702,17 +757,6 @@ export default function AuditorElections() {
                           </Text>
                         </LinearGradient>
                       </Pressable>
-
-                      <Pressable
-                        onPress={() => selectedElection && handleDownloadCSV(selectedElection)}
-                        style={({ pressed }) => [
-                          styles.exportButton,
-                          pressed && styles.exportButtonPressed,
-                        ]}
-                      >
-                        <Text style={styles.exportIcon}>⬇️</Text>
-                        <Text style={styles.exportText}>Export Report</Text>
-                      </Pressable>
                     </View>
                   </View>
 
@@ -742,7 +786,6 @@ interface ElectionCardProps {
   election: ElectionWithStats;
   onStartAudit: (electionId: string) => void;
   onViewDetails: (election: ElectionWithStats) => void;
-  onDownloadCSV: (election: ElectionWithStats) => void;
   isMobile: boolean;
 }
 
@@ -750,7 +793,6 @@ function ElectionCard({
   election,
   onStartAudit,
   onViewDetails,
-  onDownloadCSV,
   isMobile,
 }: ElectionCardProps) {
   const endDate = election.ends_at ? new Date(election.ends_at) : null;
@@ -891,17 +933,6 @@ function ElectionCard({
           >
             <Text style={styles.secondaryButtonIcon}>👁️</Text>
             <Text style={styles.secondaryButtonText}>Details</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => onDownloadCSV(election)}
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              pressed && styles.secondaryButtonPressed,
-            ]}
-          >
-            <Text style={styles.secondaryButtonIcon}>⬇️</Text>
-            <Text style={styles.secondaryButtonText}>Download CSV</Text>
           </Pressable>
         </View>
       </View>
@@ -1513,5 +1544,85 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "500",
     color: "#333333",
+  },
+  // Mobile Header Styles
+  mobileHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  headerStackWeb: {
+    zIndex: 2147480000,
+    position: "relative" as const,
+  },
+  mobileHamburger: {
+    padding: 6,
+    marginRight: 8,
+  },
+  mobileHamburgerIcon: {
+    fontSize: 26,
+    color: "#1a73e8",
+    fontWeight: "700",
+  },
+  mobileLogoButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    flex: 1,
+    alignItems: "center",
+  },
+  mobileLogo: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1a73e8",
+  },
+  mobileLogoutButton: {
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: "#1a73e8",
+  },
+  mobileLogoutText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1a73e8",
+  },
+  // Sidebar Overlay
+  sidebar: {
+    width: 240,
+    backgroundColor: "#ffffff",
+    borderRightWidth: 1,
+    borderRightColor: "#e0e0e0",
+    paddingVertical: 20,
+    paddingHorizontal: 12,
+    flexDirection: "column",
+    justifyContent: "space-between",
+    overflow: "hidden",
+    minHeight: 0,
+  },
+  sidebarMobile: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    bottom: 0,
+    zIndex: 999,
+    width: 240,
+    maxWidth: "80%",
+    borderRightWidth: 1,
+    elevation: 10,
+  },
+  sidebarOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 500,
   },
 });

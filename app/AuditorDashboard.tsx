@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Platform,
   Pressable,
   ScrollView,
@@ -156,7 +157,25 @@ export default function AuditorDashboard() {
     void loadDashboardData();
   }, [loadDashboardData]);
 
-  const handleLogout = async () => {
+  // Prevent back navigation - show logout confirmation instead
+  useEffect(() => {
+    const backAction = () => {
+      handleLogout();
+      return true; // Prevent default back behavior
+    };
+
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+    return () => backHandler.remove();
+  }, []);
+
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Logout", style: "destructive", onPress: () => void doLogout() },
+    ]);
+  };
+
+  const doLogout = async () => {
     try {
       await serviceFactory.authService.signOut();
       router.replace("/");
@@ -296,7 +315,7 @@ export default function AuditorDashboard() {
           <View style={styles.innerWrapper}>
             {/* Dashboard Header */}
             <View style={styles.headerSection}>
-              <Text style={styles.pageTitle}>Overview</Text>
+              <Text style={styles.pageTitle}>📊 Overview</Text>
               <Text style={styles.pageSubtitle}>
                 Audit dashboard and election integrity monitoring
               </Text>
@@ -306,7 +325,7 @@ export default function AuditorDashboard() {
             <View
               style={[styles.statsGrid, isMobile && styles.statsGridMobile]}
             >
-              <View style={styles.cardItem}>
+              <View style={[styles.cardItem, isMobile && styles.cardItemMobile]}>
                 <StatCard
                   label="Total Blocks"
                   value={stats.totalBlocks.toString()}
@@ -316,7 +335,7 @@ export default function AuditorDashboard() {
                   subtext="Verified"
                 />
               </View>
-              <View style={styles.cardItem}>
+              <View style={[styles.cardItem, isMobile && styles.cardItemMobile]}>
                 <StatCard
                   label="Elections"
                   value={stats.activeElections.toString()}
@@ -326,7 +345,7 @@ export default function AuditorDashboard() {
                   subtext="Active"
                 />
               </View>
-              <View style={styles.cardItem}>
+              <View style={[styles.cardItem, isMobile && styles.cardItemMobile]}>
                 <StatCard
                   label="Verification Rate"
                   value={`${stats.verificationRate}%`}
@@ -336,7 +355,7 @@ export default function AuditorDashboard() {
                   subtext="Accurate"
                 />
               </View>
-              <View style={styles.cardItem}>
+              <View style={[styles.cardItem, isMobile && styles.cardItemMobile]}>
                 <StatCard
                   label="Anomalies"
                   value={stats.anomalies.toString()}
@@ -360,6 +379,7 @@ export default function AuditorDashboard() {
                 <View
                   style={[
                     styles.metricItem,
+                    isMobile && styles.metricItemMobile,
                   ]}
                 >
                   <MetricCard
@@ -374,6 +394,7 @@ export default function AuditorDashboard() {
                 <View
                   style={[
                     styles.metricItem,
+                    isMobile && styles.metricItemMobile,
                   ]}
                 >
                   <MetricCard
@@ -714,10 +735,10 @@ const styles = StyleSheet.create({
   cardItem: {
     padding: 0,
     flex: 1,
-    minWidth: 150,
+    minWidth: "48%",
   },
   cardItemDesktop: {
-    width: "23%",
+    width: "48%",
   },
   cardItemMobile: {
     width: "100%",
@@ -725,7 +746,7 @@ const styles = StyleSheet.create({
   metricItem: {
     padding: 0,
     flex: 1,
-    minWidth: 200,
+    minWidth: "48%",
   },
   metricItemDesktop: {
     width: "48%",

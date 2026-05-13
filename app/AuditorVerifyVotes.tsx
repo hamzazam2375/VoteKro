@@ -16,6 +16,8 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -47,7 +49,25 @@ export default function AuditorVerifyVotes() {
     "tamper",
   );
 
-  const handleLogout = async () => {
+  // Prevent back navigation - show logout confirmation instead
+  useEffect(() => {
+    const backAction = () => {
+      handleLogout();
+      return true; // Prevent default back behavior
+    };
+
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", backAction);
+    return () => backHandler.remove();
+  }, []);
+
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Logout", style: "destructive", onPress: () => void doLogout() },
+    ]);
+  };
+
+  const doLogout = async () => {
     try {
       await serviceFactory.authService.signOut();
       router.replace("/");

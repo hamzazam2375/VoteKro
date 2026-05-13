@@ -45,27 +45,27 @@ export default function RootLayout() {
           <Stack.Screen name="AuditorSignup" options={{ headerShown: false }} />
           <Stack.Screen
             name="AuditorDashboard"
-            options={{ headerShown: false }}
+            options={{ headerShown: false, gestureEnabled: false }}
           />
           <Stack.Screen
             name="AuditorElections"
-            options={{ headerShown: false }}
+            options={{ headerShown: false, gestureEnabled: false }}
           />
           <Stack.Screen
             name="AuditorReports"
-            options={{ headerShown: false }}
+            options={{ headerShown: false, gestureEnabled: false }}
           />
           <Stack.Screen
             name="AuditorViewProfile"
-            options={{ headerShown: false }}
+            options={{ headerShown: false, gestureEnabled: false }}
           />
           <Stack.Screen
             name="AuditorVerifyVotes"
-            options={{ headerShown: false }}
+            options={{ headerShown: false, gestureEnabled: false }}
           />
           <Stack.Screen
             name="AuditorBlockchainLedger"
-            options={{ headerShown: false }}
+            options={{ headerShown: false, gestureEnabled: false }}
           />
           <Stack.Screen name="VoterSignup" options={{ headerShown: false }} />
           <Stack.Screen

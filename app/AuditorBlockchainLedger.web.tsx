@@ -21,7 +21,7 @@ import {
 } from "antd";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, useWindowDimensions } from "react-native";
+import { Alert, BackHandler, useWindowDimensions } from "react-native";
 
 interface VoteBlock {
   id: string;
@@ -102,7 +102,26 @@ const AuditorBlockchainLedger: React.FC = () => {
     reason: null,
     tamperedCount: 0,
   });
-  const handleLogout = async () => {
+
+  // Prevent back navigation - show logout confirmation instead
+  useEffect(() => {
+    const backAction = () => {
+      handleLogout();
+      return true; // Prevent default back behavior
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, []);
+
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Logout', style: 'destructive', onPress: () => void doLogout() },
+    ]);
+  };
+
+  const doLogout = async () => {
     try {
       await serviceFactory.authService.signOut();
       router.replace('/');

@@ -7,6 +7,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    BackHandler,
+    Platform,
     Pressable,
     RefreshControl,
     ScrollView,
@@ -16,6 +18,7 @@ import {
     View,
     useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface VoteBlock {
   id: string;
@@ -51,6 +54,7 @@ const verifyBlockchain = (blocks: VoteBlock[]): VoteBlock[] => {
 export default function AuditorBlockchainLedger() {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isMobile = width < 760;
 
   const [profile, setProfile] = useState<ProfileRow | null>(null);
@@ -127,7 +131,25 @@ export default function AuditorBlockchainLedger() {
     void loadLedger();
   }, [selectedElection]);
 
-  const handleLogout = async () => {
+  // Prevent back navigation - show logout confirmation instead
+  useEffect(() => {
+    const backAction = () => {
+      handleLogout();
+      return true; // Prevent default back behavior
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, []);
+
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Logout', style: 'destructive', onPress: () => void doLogout() },
+    ]);
+  };
+
+  const doLogout = async () => {
     try {
       await serviceFactory.authService.signOut();
       router.replace('/');
@@ -158,12 +180,11 @@ export default function AuditorBlockchainLedger() {
 
   const renderBlockItem = ({ item }: { item: VoteBlock }) => (
     <View style={[styles.blockCard, item.isValid === false && styles.blockCardInvalid]}>
-      <Text style={styles.blockTitle}>Block #{item.block_index}</Text>
-      <Text style={styles.blockMeta}>Voter: {item.voter_id?.slice(0, 10) || 'Anonymous'}</Text>
-      <Text style={styles.blockMeta}>Created: {new Date(item.created_at).toLocaleString()}</Text>
-      <Text style={styles.blockHash} numberOfLines={1}>Current: {item.current_hash}</Text>
-      <Text style={styles.blockHash} numberOfLines={1}>Previous: {item.previous_hash}</Text>
-      <Text style={[styles.blockStatus, item.isValid === false ? styles.blockStatusBad : styles.blockStatusGood]}>
+      <Text style={[styles.blockTitle, { fontSize: 13, marginBottom: 4 }]}>#{item.block_index}</Text>
+      <Text style={[styles.blockMeta, { fontSize: 11, marginBottom: 2 }]} numberOfLines={1}>Voter: {item.voter_id?.slice(0, 8) || 'Anon'}</Text>
+      <Text style={[styles.blockMeta, { fontSize: 10, marginBottom: 2 }]} numberOfLines={1}>{new Date(item.created_at).toLocaleDateString()}</Text>
+      <Text style={[styles.blockHash, { fontSize: 9, marginTop: 2 }]} numberOfLines={1}>{item.current_hash.slice(0, 14)}...</Text>
+      <Text style={[styles.blockStatus, item.isValid === false ? styles.blockStatusBad : styles.blockStatusGood, { fontSize: 10, marginTop: 6 }]}>
         {item.isValid === false ? 'Tampered' : 'Valid'}
       </Text>
     </View>
@@ -171,32 +192,57 @@ export default function AuditorBlockchainLedger() {
 
   return (
     <View style={styles.container}>
-      <Navbar actions={[{ label: 'Logout', onPress: handleLogout, variant: 'outline' }]} />
-      {isMobile && (
-        <View style={styles.mobileMenuRow}>
+      {isMobile ? (
+        <View
+          style={[
+            styles.mobileHeader,
+            Platform.OS === "web" && styles.headerStackWeb,
+            { paddingTop: insets.top + 10 },
+          ]}
+        >
           <Pressable
-            style={styles.mobileMenuButton}
-            onPress={() => setSidebarOpen((previous) => !previous)}
+            style={styles.mobileHamburger}
+            onPress={() => setSidebarOpen(!sidebarOpen)}
           >
-            <Text style={styles.mobileMenuButtonText}>☰ Menu</Text>
+            <Text style={styles.mobileHamburgerIcon}>☰</Text>
           </Pressable>
+          <Pressable
+            style={styles.mobileLogoButton}
+            onPress={() => router.replace("/AuditorDashboard")}
+          >
+            <Text style={styles.mobileLogo}>VoteKro</Text>
+          </Pressable>
+          <Pressable style={styles.mobileLogoutButton} onPress={handleLogout}>
+            <Text style={styles.mobileLogoutText}>Logout</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View style={Platform.OS === "web" ? styles.headerStackWeb : undefined}>
+          <Navbar
+            homeRoute="/AuditorDashboard"
+            actions={[{ label: 'Logout', onPress: handleLogout, variant: 'outline' }]}
+          />
         </View>
       )}
       <View style={styles.mainContent}>
         {!isMobile && <AuditorSidebar profileName={profile?.full_name || undefined} />}
+        
+        {/* Overlay Backdrop - Mobile Only */}
         {isMobile && sidebarOpen && (
-          <>
-            <Pressable
-              style={styles.sidebarOverlay}
-              onPress={() => setSidebarOpen(false)}
+          <Pressable
+            style={styles.sidebarOverlay}
+            onPress={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Sidebar Navigation */}
+        {isMobile && sidebarOpen && (
+          <View style={[styles.sidebar, styles.sidebarMobile]}>
+            <AuditorSidebar
+              profileName={profile?.full_name}
+              onNavigate={() => setSidebarOpen(false)}
             />
-            <View style={styles.mobileSidebar}>
-              <AuditorSidebar
-                profileName={profile?.full_name}
-                onNavigate={() => setSidebarOpen(false)}
-              />
-            </View>
-          </>
+          </View>
         )}
 
         <ScrollView
@@ -207,7 +253,7 @@ export default function AuditorBlockchainLedger() {
         >
           <View style={styles.innerWrapper}>
             <View style={styles.headerSection}>
-              <Text style={styles.pageTitle}>Blockchain Ledger</Text>
+              <Text style={styles.pageTitle}>⛓️ Blockchain Ledger</Text>
               <Text style={styles.pageSubtitle}>Auditor view for blockchain integrity monitoring</Text>
             </View>
 
@@ -290,8 +336,12 @@ export default function AuditorBlockchainLedger() {
                 <Text style={styles.loadingText}>Loading ledger...</Text>
               </View>
             ) : filteredBlocks.length > 0 ? (
-              <View>
-                {filteredBlocks.map((item) => renderBlockItem({ item }))}
+              <View style={styles.blocksGrid}>
+                {filteredBlocks.map((item) => (
+                  <View key={item.id}>
+                    {renderBlockItem({ item })}
+                  </View>
+                ))}
               </View>
             ) : (
               <View style={styles.emptyState}>
@@ -311,26 +361,64 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#f5f5f5',
   },
-  mobileMenuRow: {
+  // Mobile Header Styles
+  mobileHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#ffffff",
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#ffffff',
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#e8ebf2',
+    borderBottomColor: "#e0e0e0",
   },
-  mobileMenuButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#1a73e8',
-    borderRadius: 10,
-    backgroundColor: '#f2f7ff',
+  headerStackWeb: {
+    zIndex: 2147480000,
+    position: "relative" as const,
   },
-  mobileMenuButtonText: {
-    color: '#1a73e8',
+  mobileHamburger: {
+    padding: 6,
+    marginRight: 8,
+  },
+  mobileHamburgerIcon: {
+    fontSize: 26,
+    color: "#1a73e8",
+    fontWeight: "700",
+  },
+  mobileLogoButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    flex: 1,
+    alignItems: "center",
+  },
+  mobileLogo: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1a73e8",
+  },
+  mobileLogoutButton: {
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: "#1a73e8",
+  },
+  mobileLogoutText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "600",
+    color: "#1a73e8",
+  },
+  sidebar: {
+    width: 240,
+    backgroundColor: "#ffffff",
+    borderRightWidth: 1,
+    borderRightColor: "#e0e0e0",
+    paddingVertical: 20,
+    paddingHorizontal: 12,
+    flexDirection: "column",
+    justifyContent: "space-between",
+    overflow: "hidden",
+    minHeight: 0,
   },
   sidebarOverlay: {
     position: 'absolute',
@@ -338,8 +426,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    zIndex: 300,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 500,
+  },
+  sidebarMobile: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    zIndex: 999,
+    width: 240,
+    maxWidth: '80%',
+    borderRightWidth: 1,
+    elevation: 10,
   },
   mobileSidebar: {
     position: 'absolute',
@@ -531,11 +630,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
   },
+  blocksGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
   blockCard: {
+    flex: 1,
+    minWidth: '48%',
     backgroundColor: '#ffffff',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 12,
+    padding: 12,
     borderWidth: 1,
     borderColor: '#e6edf7',
   },

@@ -5,7 +5,8 @@ import { Navbar } from '@/components/navbar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface AuditReport {
   id: string;
@@ -22,7 +23,9 @@ interface AuditReport {
 export default function AuditorReports() {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isMobile = width < 760;
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [reports, setReports] = useState<AuditReport[]>([]);
@@ -157,7 +160,25 @@ export default function AuditorReports() {
     setFilteredReports(filtered);
   }, [searchQuery, filterStatus, reports]);
 
-  const handleLogout = async () => {
+  // Prevent back navigation - show logout confirmation instead
+  useEffect(() => {
+    const backAction = () => {
+      handleLogout();
+      return true; // Prevent default back behavior
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, []);
+
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Logout', style: 'destructive', onPress: () => void doLogout() },
+    ]);
+  };
+
+  const doLogout = async () => {
     try {
       await serviceFactory.authService.signOut();
       router.replace('/');
@@ -169,14 +190,58 @@ export default function AuditorReports() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <Navbar 
-          homeRoute="/AuditorDashboard"
-          actions={[
-            { label: 'Logout', onPress: handleLogout, variant: 'outline' },
-          ]}
-        />
+        {isMobile ? (
+          <View
+            style={[
+              styles.mobileHeader,
+              Platform.OS === "web" && styles.headerStackWeb,
+              { paddingTop: insets.top + 10 },
+            ]}
+          >
+            <Pressable
+              style={styles.mobileHamburger}
+              onPress={() => setSidebarOpen(!sidebarOpen)}
+            >
+              <Text style={styles.mobileHamburgerIcon}>☰</Text>
+            </Pressable>
+            <Pressable
+              style={styles.mobileLogoButton}
+              onPress={() => router.replace("/AuditorDashboard")}
+            >
+              <Text style={styles.mobileLogo}>VoteKro</Text>
+            </Pressable>
+            <Pressable style={styles.mobileLogoutButton} onPress={handleLogout}>
+              <Text style={styles.mobileLogoutText}>Logout</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={Platform.OS === "web" ? styles.headerStackWeb : undefined}>
+            <Navbar 
+              homeRoute="/AuditorDashboard"
+              actions={[
+                { label: 'Logout', onPress: handleLogout, variant: 'outline' },
+              ]}
+            />
+          </View>
+        )}
         <View style={styles.mainContent}>
-          {!isMobile && <AuditorSidebar profileName={profile?.full_name} />}
+          {/* Overlay Backdrop - Mobile Only */}
+          {isMobile && sidebarOpen && (
+            <Pressable
+              style={styles.sidebarOverlay}
+              onPress={() => setSidebarOpen(false)}
+            />
+          )}
+
+          {/* Sidebar Navigation */}
+          {(!isMobile || sidebarOpen) && (
+            <View style={[styles.sidebar, isMobile && styles.sidebarMobile]}>
+              <AuditorSidebar
+                profileName={profile?.full_name}
+                onNavigate={() => setSidebarOpen(false)}
+              />
+            </View>
+          )}
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#1a73e8" />
             <Text style={styles.loadingText}>Loading Reports...</Text>
@@ -188,14 +253,58 @@ export default function AuditorReports() {
 
   return (
     <View style={styles.container}>
-      <Navbar 
-        homeRoute="/AuditorDashboard"
-        actions={[
-          { label: 'Logout', onPress: handleLogout, variant: 'outline' },
-        ]}
-      />
+      {isMobile ? (
+        <View
+          style={[
+            styles.mobileHeader,
+            Platform.OS === "web" && styles.headerStackWeb,
+            { paddingTop: insets.top + 10 },
+          ]}
+        >
+          <Pressable
+            style={styles.mobileHamburger}
+            onPress={() => setSidebarOpen(!sidebarOpen)}
+          >
+            <Text style={styles.mobileHamburgerIcon}>☰</Text>
+          </Pressable>
+          <Pressable
+            style={styles.mobileLogoButton}
+            onPress={() => router.replace("/AuditorDashboard")}
+          >
+            <Text style={styles.mobileLogo}>VoteKro</Text>
+          </Pressable>
+          <Pressable style={styles.mobileLogoutButton} onPress={handleLogout}>
+            <Text style={styles.mobileLogoutText}>Logout</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View style={Platform.OS === "web" ? styles.headerStackWeb : undefined}>
+          <Navbar 
+            homeRoute="/AuditorDashboard"
+            actions={[
+              { label: 'Logout', onPress: handleLogout, variant: 'outline' },
+            ]}
+          />
+        </View>
+      )}
       <View style={styles.mainContent}>
-        {!isMobile && <AuditorSidebar profileName={profile?.full_name} />}
+        {/* Overlay Backdrop - Mobile Only */}
+        {isMobile && sidebarOpen && (
+          <Pressable
+            style={styles.sidebarOverlay}
+            onPress={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Sidebar Navigation */}
+        {(!isMobile || sidebarOpen) && (
+          <View style={[styles.sidebar, isMobile && styles.sidebarMobile]}>
+            <AuditorSidebar
+              profileName={profile?.full_name}
+              onNavigate={() => setSidebarOpen(false)}
+            />
+          </View>
+        )}
         
         <ScrollView 
           style={styles.content}
@@ -206,7 +315,7 @@ export default function AuditorReports() {
             {/* Header Section */}
             <View style={styles.headerSection}>
               <View>
-                <Text style={styles.pageTitle}>Audit Reports</Text>
+                <Text style={styles.pageTitle}>📋 Audit Reports</Text>
                 <Text style={styles.pageSubtitle}>Generated audit reports and certifications</Text>
               </View>
               <Text style={styles.reportCount}>
@@ -357,57 +466,6 @@ function ReportCard({ report, isMobile }: ReportCardProps) {
   const config = statusConfig[report.status];
   const bcConfig = blockchainConfig[report.blockchainStatus];
 
-  const handleDownload = () => {
-    // Generate report content
-    const reportContent = `AUDIT REPORT
-=====================================
-Election: ${report.electionTitle}
-Generated Date: ${report.generatedDate}
-Auditor: ${report.auditorName}
-Status: ${config.label}
-
-METRICS
--------------------------------------
-Vote Accuracy: ${report.voteAccuracy}%
-Blockchain Status: ${bcConfig.label}
-Anomalies Detected: ${report.anomaliesDetected}
-
-BLOCKCHAIN VERIFICATION
--------------------------------------
-Blockchain Status: ${report.blockchainStatus.toUpperCase()}
-
-REPORT STATUS
--------------------------------------
-Current Status: ${config.label}
-
-Report Generated: ${new Date().toLocaleString()}
-`;
-
-    // Create a blob and download (web) or share (native)
-    if (typeof window !== 'undefined') {
-      // Web environment
-      const element = document.createElement('a');
-      element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(reportContent));
-      element.setAttribute('download', `audit-report-${report.electionId}.txt`);
-      element.style.display = 'none';
-      document.body.appendChild(element);
-      element.click();
-      document.body.removeChild(element);
-    } else {
-      // Native environment - show alert with export success
-      Alert.alert(
-        '📥 Report Ready',
-        'Audit report for ' + report.electionTitle + ' is ready for download.',
-        [
-          {
-            text: 'OK',
-            onPress: () => console.log('Download initiated'),
-          },
-        ]
-      );
-    }
-  };
-
   return (
     <LinearGradient
       colors={['#ffffff', '#f8faff']}
@@ -456,14 +514,15 @@ Report Generated: ${new Date().toLocaleString()}
       {/* Action Buttons */}
       <View style={[styles.actionButtons, isMobile && styles.actionButtonsMobile]}>
         <Pressable
-          onPress={handleDownload}
-          style={({ pressed }) => [
-            styles.downloadButton,
-            pressed && styles.downloadButtonPressed,
-          ]}
+          onPress={() => Alert.alert(
+            'Audit Report',
+            `Election: ${report.electionTitle}\n\nDate: ${report.generatedDate}\nAuditor: ${report.auditorName}\nStatus: ${report.status}\n\nVote Accuracy: ${report.voteAccuracy}%\nBlockchain: ${report.blockchainStatus}\nAnomalies: ${report.anomaliesDetected}`,
+            [{ text: 'OK', onPress: () => {} }]
+          )}
+          style={({ pressed }) => [styles.downloadButton, pressed && styles.downloadButtonPressed]}
         >
-          <Text style={styles.downloadIcon}>⬇️</Text>
-          <Text style={styles.downloadButtonText}>Download Report</Text>
+          <Text style={styles.downloadIcon}>📋</Text>
+          <Text style={styles.downloadButtonText}>View Report</Text>
         </Pressable>
       </View>
     </LinearGradient>
@@ -583,7 +642,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   summaryLabel: {
-    fontSize: 11,
+    fontSize: 8,
     color: '#999',
     textAlign: 'center',
   },
@@ -797,5 +856,85 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#333333',
+  },
+  // Mobile Header Styles
+  mobileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  headerStackWeb: {
+    zIndex: 2147480000,
+    position: 'relative' as const,
+  },
+  mobileHamburger: {
+    padding: 6,
+    marginRight: 8,
+  },
+  mobileHamburgerIcon: {
+    fontSize: 26,
+    color: '#1a73e8',
+    fontWeight: '700',
+  },
+  mobileLogoButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    flex: 1,
+    alignItems: 'center',
+  },
+  mobileLogo: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1a73e8',
+  },
+  mobileLogoutButton: {
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#1a73e8',
+  },
+  mobileLogoutText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a73e8',
+  },
+  // Sidebar Overlay
+  sidebar: {
+    width: 240,
+    backgroundColor: '#ffffff',
+    borderRightWidth: 1,
+    borderRightColor: '#e0e0e0',
+    paddingVertical: 20,
+    paddingHorizontal: 12,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+    minHeight: 0,
+  },
+  sidebarMobile: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    zIndex: 999,
+    width: 240,
+    maxWidth: '80%',
+    borderRightWidth: 1,
+    elevation: 10,
+  },
+  sidebarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 500,
   },
 });
