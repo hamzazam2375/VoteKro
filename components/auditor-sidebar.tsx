@@ -21,11 +21,11 @@ export function AuditorSidebar({ onNavigate, compact = false, profileName }: Aud
   const isMobile = width < 760;
 
   const navigationItems: SidebarItem[] = [
-    { label: 'View Profile', icon: '👤', route: '/AuditorViewProfile' },
     { label: 'Overview', icon: '📊', route: '/AuditorDashboard' },
     { label: 'Elections', icon: '🗳️', route: '/AuditorElections' },
     { label: 'Blockchain', icon: '⛓️', route: '/AuditorBlockchainLedger' },
     { label: 'Reports', icon: '📋', route: '/AuditorReports' },
+    { label: 'View Profile', icon: '👤', route: '/AuditorViewProfile' },
   ];
 
   const handleNavigation = (route: string) => {
@@ -40,7 +40,7 @@ export function AuditorSidebar({ onNavigate, compact = false, profileName }: Aud
   }
 
   return (
-    <View style={[styles.sidebar, compact && styles.sidebarCompact]}>
+    <View style={[styles.sidebar, compact && styles.sidebarCompact, isMobile && styles.sidebarMobile]}>
       <ScrollView
         style={styles.navContainer}
         contentContainerStyle={styles.navContent}
@@ -91,17 +91,30 @@ export function AuditorSidebar({ onNavigate, compact = false, profileName }: Aud
 
 const styles = StyleSheet.create({
   sidebar: {
-    width: 240,
+    width: 200,
     backgroundColor: '#ffffff',
-    borderRightWidth: 1,
+    borderRightWidth: 0.5,
     borderRightColor: '#e0e0e0',
     flexDirection: 'column',
-    paddingVertical: 20,
-    paddingHorizontal: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
     overflow: 'hidden',
     position: 'relative',
     zIndex: 50,
     minHeight: '100%',
+  },
+  sidebarMobile: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    zIndex: 999,
+    width: 260,         // ← WIDTH: sidebar kitni chauri ho (try: 220, 240, 260, 280)
+    height: '107%',
+    paddingBottom: 30,  // ← BOTTOM SPACE: footer card ke liye (try: 10, 20, 30)
+    borderRightWidth: 1,
+    borderRightColor: '#e0e0e0',
+    elevation: 10,
   },
   sidebarCompact: {
     width: 80,
@@ -112,13 +125,14 @@ const styles = StyleSheet.create({
     minHeight: 0,
   },
   navContent: {
-    gap: 8,
-    paddingBottom: 8,
+    gap: 4,
+    paddingTop: 15, 
+    paddingBottom: 2,
   },
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 15,
     paddingHorizontal: 14,
     borderRadius: 8,
     backgroundColor: 'transparent',
@@ -135,7 +149,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   navIcon: {
-    fontSize: 14,
+    fontSize: 16,
     marginRight: 10,
   },
   navIconCompact: {
@@ -143,7 +157,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   navLabel: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: '#4a4a4a',
     flex: 1,
@@ -152,9 +166,10 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   sidebarFooter: {
-    paddingTop: 12,
+    paddingTop: 8,
+    paddingBottom: 6,
     borderTopWidth: 1,
-    borderTopColor: '#edf0f5',
+    borderTopColor: '#e0e0e0',
     marginTop: 'auto',
   },
   sidebarFooterCompact: {

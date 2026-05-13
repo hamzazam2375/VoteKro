@@ -18,6 +18,9 @@ interface AuditReport {
   blockchainStatus: 'valid' | 'invalid' | 'warning';
   auditorName: string;
   anomaliesDetected: number;
+  flagReason?: string;
+  flaggedAt?: string;
+  flaggedBy?: string;
 }
 
 export default function AuditorReports() {
@@ -33,6 +36,17 @@ export default function AuditorReports() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'approved' | 'pending' | 'flagged'>('all');
+  const [flagModalVisible, setFlagModalVisible] = useState(false);
+  const [reportToFlag, setReportToFlag] = useState<AuditReport | null>(null);
+  const [selectedFlagReason, setSelectedFlagReason] = useState<'duplicate' | 'mismatch' | 'tampered' | ''>('');
+  const [submittingFlag, setSubmittingFlag] = useState(false);
+  const [auditingReport, setAuditingReport] = useState<string | null>(null);
+
+  const flagReasons = [
+    { id: 'duplicate', label: 'Duplicate voting detected', icon: '👥' },
+    { id: 'mismatch', label: 'Vote count mismatch', icon: '🔢' },
+    { id: 'tampered', label: 'Tampered election data suspected', icon: '⚠️' },
+  ] as const;
 
   useEffect(() => {
     const loadReports = async () => {
@@ -184,6 +198,120 @@ export default function AuditorReports() {
       router.replace('/');
     } catch (error) {
       Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to logout'));
+    }
+  };
+
+  const handleOpenFlagModal = (report: AuditReport) => {
+    setReportToFlag(report);
+    setSelectedFlagReason('');
+    setFlagModalVisible(true);
+  };
+
+  const handleCloseFlagModal = () => {
+    setFlagModalVisible(false);
+    setReportToFlag(null);
+    setSelectedFlagReason('');
+  };
+
+  const handleSubmitFlag = () => {
+    if (!selectedFlagReason) {
+      Alert.alert('Error', 'Please select a reason for flagging this report');
+      return;
+    }
+
+    if (!reportToFlag) return;
+
+    setSubmittingFlag(true);
+
+    const reasonText = flagReasons.find(r => r.id === selectedFlagReason)?.label || selectedFlagReason;
+
+    // Update the report with flag information
+    const updatedReports = reports.map(report =>
+      report.id === reportToFlag.id
+        ? {
+            ...report,
+            status: 'flagged' as const,
+            flagReason: reasonText,
+            flaggedAt: new Date().toLocaleString(),
+            flaggedBy: profile?.full_name || 'Auditor',
+          }
+        : report
+    );
+
+    setReports(updatedReports);
+    setFilteredReports(updatedReports);
+
+    setTimeout(() => {
+      setSubmittingFlag(false);
+      handleCloseFlagModal();
+      Alert.alert('Success', `Report flagged: ${reasonText}`);
+    }, 500);
+  };
+
+  const handleStartAudit = async (report: AuditReport) => {
+    if (auditingReport) return; // Prevent multiple simultaneous audits
+    
+    setAuditingReport(report.id);
+    
+    try {
+      // Re-verify the election for this report
+      const chainVerification = await serviceFactory.auditorService.verifyFullBlockchainIntegrity(report.electionId);
+      const blockchainValid = chainVerification.isFullyValid;
+      const anomalies = chainVerification.invalidBlocks.length;
+
+      // Verify vote count consistency
+      const candidates = await serviceFactory.candidateRepository.listByElection(report.electionId);
+      const resultCounts: Record<string, number> = {};
+      for (const candidate of candidates) {
+        resultCounts[candidate.id] = 0;
+      }
+      
+      let voteAccuracy = 100;
+      try {
+        const consistency = await serviceFactory.auditorService.verifyVoteCountConsistency(report.electionId, resultCounts);
+        voteAccuracy = consistency.isConsistent ? 100 : 0;
+      } catch {
+        voteAccuracy = 100;
+      }
+
+      // Determine new status based on audit results
+      let newStatus: 'approved' | 'pending' | 'flagged' = 'pending';
+      if (blockchainValid && voteAccuracy >= 99) {
+        newStatus = 'approved';
+      } else if (!blockchainValid || voteAccuracy < 95 || anomalies > 0) {
+        newStatus = 'flagged';
+      }
+
+      // Update the report with new audit results
+      const updatedReports = reports.map(r =>
+        r.id === report.id
+          ? {
+              ...r,
+              status: newStatus,
+              voteAccuracy,
+              blockchainStatus: blockchainValid ? 'valid' : 'invalid',
+              anomaliesDetected: anomalies,
+              flagReason: undefined,
+              flaggedAt: undefined,
+              flaggedBy: undefined,
+            }
+          : r
+      );
+
+      setReports(updatedReports);
+      setFilteredReports(updatedReports);
+
+      const statusMessage = newStatus === 'approved' 
+        ? 'Audit passed! Report has been approved.' 
+        : newStatus === 'pending'
+        ? 'Audit restarted. Report status is now pending.'
+        : 'Audit completed but issues were detected. Report remains flagged.';
+
+      Alert.alert('Audit Complete', statusMessage);
+    } catch (error) {
+      Alert.alert('Error', serviceFactory.authService.getErrorMessage(error, 'Failed to start audit process'));
+    } finally {
+      setAuditingReport(null);
     }
   };
 
@@ -402,6 +530,9 @@ export default function AuditorReports() {
                     key={`${report.id}-${index}`}
                     report={report}
                     isMobile={isMobile}
+                    onFlag={handleOpenFlagModal}
+                    onStartAudit={handleStartAudit}
+                    isAuditing={auditingReport === report.id}
                   />
                 ))}
               </View>
@@ -419,6 +550,68 @@ export default function AuditorReports() {
           </View>
         </ScrollView>
       </View>
+
+      {/* Flag Report Modal */}
+      {flagModalVisible && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Flag Report</Text>
+            <Text style={styles.modalSubtitle}>
+              Report: {reportToFlag?.electionTitle}
+            </Text>
+
+            <Text style={styles.inputLabel}>Select Reason for Flag *</Text>
+            <View style={styles.reasonsContainer}>
+              {flagReasons.map((reason) => (
+                <Pressable
+                  key={reason.id}
+                  onPress={() => setSelectedFlagReason(reason.id)}
+                  style={[styles.reasonOption, selectedFlagReason === reason.id && styles.reasonOptionSelected]}
+                  disabled={submittingFlag}
+                >
+                  <View style={[styles.reasonRadio, selectedFlagReason === reason.id && styles.reasonRadioSelected]}>
+                    {selectedFlagReason === reason.id && <View style={styles.reasonRadioDot} />}
+                  </View>
+                  <Text style={styles.reasonIcon}>{reason.icon}</Text>
+                  <Text style={[styles.reasonLabel, selectedFlagReason === reason.id && styles.reasonLabelSelected]}>
+                    {reason.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={styles.modalButtons}>
+              <Pressable
+                onPress={handleCloseFlagModal}
+                disabled={submittingFlag}
+                style={({ pressed }) => [
+                  styles.modalCancelButton,
+                  pressed && styles.modalButtonPressed,
+                  submittingFlag && styles.modalButtonDisabled,
+                ]}
+              >
+                <Text style={styles.modalCancelButtonText}>Cancel</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={handleSubmitFlag}
+                disabled={submittingFlag || !selectedFlagReason}
+                style={({ pressed }) => [
+                  styles.modalFlagButton,
+                  pressed && styles.modalButtonPressed,
+                  (submittingFlag || !selectedFlagReason) && styles.modalButtonDisabled,
+                ]}
+              >
+                {submittingFlag ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.modalFlagButtonText}>Flag Report</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -448,9 +641,12 @@ function SummaryCard({ icon, label, value, color }: SummaryCardProps) {
 interface ReportCardProps {
   report: AuditReport;
   isMobile: boolean;
+  onFlag: (report: AuditReport) => void;
+  onStartAudit: (report: AuditReport) => Promise<void>;
+  isAuditing: boolean;
 }
 
-function ReportCard({ report, isMobile }: ReportCardProps) {
+function ReportCard({ report, isMobile, onFlag, onStartAudit, isAuditing }: ReportCardProps) {
   const statusConfig = {
     approved: { color: '#4caf50', label: '✓ Approved', bg: '#e8f5e9' },
     pending: { color: '#ff9800', label: '⏳ Pending', bg: '#fff3e0' },
@@ -471,7 +667,7 @@ function ReportCard({ report, isMobile }: ReportCardProps) {
       colors={['#ffffff', '#f8faff']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      style={styles.reportCard}
+      style={[styles.reportCard, report.status === 'flagged' && styles.reportCardFlagged]}
     >
       <View style={styles.reportHeader}>
         <View style={styles.reportTitleSection}>
@@ -486,6 +682,17 @@ function ReportCard({ report, isMobile }: ReportCardProps) {
         </View>
         <Text style={styles.reportIcon}>📄</Text>
       </View>
+
+      {report.status === 'flagged' && report.flagReason && (
+        <View style={styles.flagReasonBox}>
+          <Text style={styles.flagReasonLabel}>Flag Reason:</Text>
+          <Text style={styles.flagReasonText}>{report.flagReason}</Text>
+          <View style={styles.flagMetaInfo}>
+            <Text style={styles.flagMetaText}>Flagged by: {report.flaggedBy}</Text>
+            <Text style={styles.flagMetaText}>on {report.flaggedAt}</Text>
+          </View>
+        </View>
+      )}
 
       <View style={styles.reportMeta}>
         <MetaItem label="Generated" value={report.generatedDate} />
@@ -516,7 +723,7 @@ function ReportCard({ report, isMobile }: ReportCardProps) {
         <Pressable
           onPress={() => Alert.alert(
             'Audit Report',
-            `Election: ${report.electionTitle}\n\nDate: ${report.generatedDate}\nAuditor: ${report.auditorName}\nStatus: ${report.status}\n\nVote Accuracy: ${report.voteAccuracy}%\nBlockchain: ${report.blockchainStatus}\nAnomalies: ${report.anomaliesDetected}`,
+            `Election: ${report.electionTitle}\n\nDate: ${report.generatedDate}\nAuditor: ${report.auditorName}\nStatus: ${report.status}\n\nVote Accuracy: ${report.voteAccuracy}%\nBlockchain: ${report.blockchainStatus}\nAnomalies: ${report.anomaliesDetected}${report.flagReason ? `\n\nFlag Reason: ${report.flagReason}` : ''}`,
             [{ text: 'OK', onPress: () => {} }]
           )}
           style={({ pressed }) => [styles.downloadButton, pressed && styles.downloadButtonPressed]}
@@ -524,6 +731,35 @@ function ReportCard({ report, isMobile }: ReportCardProps) {
           <Text style={styles.downloadIcon}>📋</Text>
           <Text style={styles.downloadButtonText}>View Report</Text>
         </Pressable>
+
+        {report.status === 'flagged' ? (
+          <Pressable
+            onPress={() => onStartAudit(report)}
+            disabled={isAuditing}
+            style={({ pressed }) => [
+              styles.auditButton,
+              pressed && styles.auditButtonPressed,
+              isAuditing && styles.auditButtonDisabled,
+            ]}
+          >
+            {isAuditing ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <>
+                <Text style={styles.auditIcon}>🔄</Text>
+                <Text style={styles.auditButtonText}>Start Audit</Text>
+              </>
+            )}
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={() => onFlag(report)}
+            style={({ pressed }) => [styles.flagButton, pressed && styles.flagButtonPressed]}
+          >
+            <Text style={styles.flagIcon}>🚩</Text>
+            <Text style={styles.flagButtonText}>Flag</Text>
+          </Pressable>
+        )}
       </View>
     </LinearGradient>
   );
@@ -813,6 +1049,234 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  // Flag Button Styles
+  flagButton: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: 10,
+    backgroundColor: '#ff9800',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  flagButtonPressed: {
+    opacity: 0.8,
+  },
+  flagIcon: {
+    fontSize: 13,
+  },
+  flagButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  // Audit Button Styles
+  auditButton: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: 10,
+    backgroundColor: '#4caf50',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  auditButtonPressed: {
+    opacity: 0.8,
+  },
+  auditButtonDisabled: {
+    opacity: 0.6,
+  },
+  auditIcon: {
+    fontSize: 13,
+  },
+  auditButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  // Flagged Report Styles
+  reportCardFlagged: {
+    borderWidth: 1.5,
+    borderColor: '#ffb74d',
+    backgroundColor: '#fffbf0',
+  },
+  flagReasonBox: {
+    backgroundColor: '#fff3e0',
+    borderLeftWidth: 4,
+    borderLeftColor: '#ff9800',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  flagReasonLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#e65100',
+    marginBottom: 4,
+  },
+  flagReasonText: {
+    fontSize: 12,
+    color: '#1a1a1a',
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  flagMetaInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    borderTopWidth: 0.5,
+    borderTopColor: '#ffe0b2',
+  },
+  flagMetaText: {
+    fontSize: 10,
+    color: '#e65100',
+    fontWeight: '500',
+  },
+  // Modal Styles
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxWidth: 500,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 16,
+    fontWeight: '500',
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 8,
+  },
+  modalInput: {
+    borderWidth: 1.5,
+    borderColor: '#e0e7ff',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 13,
+    color: '#1a1a1a',
+    marginBottom: 16,
+    textAlignVertical: 'top',
+    minHeight: 100,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#f0f0f0',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    alignItems: 'center',
+  },
+  modalCancelButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  modalFlagButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#d32f2f',
+    alignItems: 'center',
+  },
+  modalFlagButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  modalButtonPressed: {
+    opacity: 0.8,
+  },
+  modalButtonDisabled: {
+    opacity: 0.5,
+  },
+  // Flag Reasons Styles
+  reasonsContainer: {
+    marginBottom: 16,
+    gap: 10,
+  },
+  reasonOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1.5,
+    borderColor: '#e0e7ff',
+  },
+  reasonOptionSelected: {
+    backgroundColor: '#e8f4fd',
+    borderColor: '#1a73e8',
+  },
+  reasonRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  reasonRadioSelected: {
+    borderColor: '#1a73e8',
+    backgroundColor: '#e8f4fd',
+  },
+  reasonRadioDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#1a73e8',
+  },
+  reasonIcon: {
+    fontSize: 18,
+    marginRight: 10,
+  },
+  reasonLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#666',
+    flex: 1,
+  },
+  reasonLabelSelected: {
+    color: '#1a73e8',
+    fontWeight: '600',
   },
   // Empty State
   emptyState: {

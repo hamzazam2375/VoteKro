@@ -68,6 +68,7 @@ export default function AuditorBlockchainLedger() {
   const [searchBlockId, setSearchBlockId] = useState('');
   const [showElectionPicker, setShowElectionPicker] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedBlockDetail, setSelectedBlockDetail] = useState<VoteBlock | null>(null);
   const [metrics, setMetrics] = useState<BlockChainMetrics>({
     totalBlocks: 0,
     isValid: false,
@@ -163,10 +164,19 @@ export default function AuditorBlockchainLedger() {
       return blocks;
     }
 
-    const query = searchBlockId.toLowerCase();
+    const query = searchBlockId.toLowerCase().trim();
+    // First try to match exact block index
+    const exactMatch = blocks.filter((block) =>
+      block.block_index.toString() === query
+    );
+    
+    if (exactMatch.length > 0) {
+      return exactMatch;
+    }
+
+    // If no exact match, search by hash
     return blocks.filter((block) => {
       return (
-        block.block_index.toString().includes(query) ||
         block.current_hash.toLowerCase().includes(query) ||
         block.previous_hash.toLowerCase().includes(query)
       );
@@ -179,7 +189,10 @@ export default function AuditorBlockchainLedger() {
   };
 
   const renderBlockItem = ({ item }: { item: VoteBlock }) => (
-    <View style={[styles.blockCard, item.isValid === false && styles.blockCardInvalid]}>
+    <Pressable
+      onPress={() => setSelectedBlockDetail(item)}
+      style={({ pressed }) => [styles.blockCard, item.isValid === false && styles.blockCardInvalid, pressed && styles.blockCardPressed]}
+    >
       <Text style={[styles.blockTitle, { fontSize: 13, marginBottom: 4 }]}>#{item.block_index}</Text>
       <Text style={[styles.blockMeta, { fontSize: 11, marginBottom: 2 }]} numberOfLines={1}>Voter: {item.voter_id?.slice(0, 8) || 'Anon'}</Text>
       <Text style={[styles.blockMeta, { fontSize: 10, marginBottom: 2 }]} numberOfLines={1}>{new Date(item.created_at).toLocaleDateString()}</Text>
@@ -187,7 +200,7 @@ export default function AuditorBlockchainLedger() {
       <Text style={[styles.blockStatus, item.isValid === false ? styles.blockStatusBad : styles.blockStatusGood, { fontSize: 10, marginTop: 6 }]}>
         {item.isValid === false ? 'Tampered' : 'Valid'}
       </Text>
-    </View>
+    </Pressable>
   );
 
   return (
@@ -280,7 +293,7 @@ export default function AuditorBlockchainLedger() {
                           }}
                         >
                           <Text style={styles.pickerItemText}>
-                            {election.title} ({election.status})
+                            {election.title}
                           </Text>
                         </Pressable>
                       ))}
@@ -351,6 +364,63 @@ export default function AuditorBlockchainLedger() {
           </View>
         </ScrollView>
       </View>
+
+      {/* Block Details Modal */}
+      {selectedBlockDetail && (
+        <View style={styles.detailsModalOverlay}>
+          <View style={styles.detailsModalContent}>
+            <Pressable
+              onPress={() => setSelectedBlockDetail(null)}
+              style={styles.detailsCloseButton}
+            >
+              <Text style={styles.detailsCloseIcon}>✕</Text>
+            </Pressable>
+
+            <Text style={styles.detailsTitle}>Block Details</Text>
+            
+            <View style={styles.detailsGrid}>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Block Index</Text>
+                <Text style={styles.detailValue}>#{selectedBlockDetail.block_index}</Text>
+              </View>
+
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Voter ID</Text>
+                <Text style={styles.detailValue}>{selectedBlockDetail.voter_id || 'Anonymous'}</Text>
+              </View>
+
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Status</Text>
+                <Text style={[styles.detailValue, selectedBlockDetail.isValid === false ? styles.detailValueBad : styles.detailValueGood]}>
+                  {selectedBlockDetail.isValid === false ? 'Tampered' : 'Valid'}
+                </Text>
+              </View>
+
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Created</Text>
+                <Text style={styles.detailValue}>{new Date(selectedBlockDetail.created_at).toLocaleString()}</Text>
+              </View>
+            </View>
+
+            <View style={styles.detailsHashSection}>
+              <Text style={styles.detailsHashLabel}>Current Hash</Text>
+              <Text style={styles.detailsHashValue} selectable={true}>{selectedBlockDetail.current_hash}</Text>
+            </View>
+
+            <View style={styles.detailsHashSection}>
+              <Text style={styles.detailsHashLabel}>Previous Hash</Text>
+              <Text style={styles.detailsHashValue} selectable={true}>{selectedBlockDetail.previous_hash}</Text>
+            </View>
+
+            <Pressable
+              onPress={() => setSelectedBlockDetail(null)}
+              style={({ pressed }) => [styles.detailsCloseActionButton, pressed && styles.detailsCloseActionButtonPressed]}
+            >
+              <Text style={styles.detailsCloseActionText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -676,5 +746,117 @@ const styles = StyleSheet.create({
   },
   blockStatusBad: {
     color: '#d32f2f',
+  },
+  blockCardPressed: {
+    opacity: 0.7,
+  },
+  // Block Details Modal Styles
+  detailsModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  detailsModalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxWidth: 500,
+    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  detailsCloseButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    padding: 8,
+    zIndex: 10,
+  },
+  detailsCloseIcon: {
+    fontSize: 24,
+    color: '#999',
+    fontWeight: '600',
+  },
+  detailsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  detailsGrid: {
+    marginBottom: 16,
+  },
+  detailItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#f8faff',
+    borderRadius: 8,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#1a73e8',
+  },
+  detailLabel: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#1a1a1a',
+    fontWeight: '600',
+  },
+  detailValueGood: {
+    color: '#4caf50',
+  },
+  detailValueBad: {
+    color: '#d32f2f',
+  },
+  detailsHashSection: {
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  detailsHashLabel: {
+    fontSize: 10,
+    color: '#666',
+    fontWeight: '700',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  detailsHashValue: {
+    fontSize: 11,
+    color: '#1a1a1a',
+    fontFamily: 'monospace',
+    lineHeight: 16,
+    letterSpacing: 0.3,
+  },
+  detailsCloseActionButton: {
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#1a73e8',
+    alignItems: 'center',
+  },
+  detailsCloseActionButtonPressed: {
+    opacity: 0.8,
+  },
+  detailsCloseActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 });
