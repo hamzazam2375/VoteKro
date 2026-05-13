@@ -14,6 +14,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextStyle,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -437,7 +438,7 @@ export default function AuditorDashboard() {
                   </Text>
                   <Text
                     style={[
-                      styles.statusCardStatus,
+                      styles.statusCardStatus as TextStyle,
                       stats.anomalies > 0 && { color: "#f44336" },
                     ]}
                   >
@@ -453,7 +454,7 @@ export default function AuditorDashboard() {
                 <Text style={styles.sectionTitle}>⚠️ Review Anomalies</Text>
                 <Text
                   style={[
-                    styles.anomaliesCount,
+                    styles.anomaliesCount as TextStyle,
                     stats.anomalies > 0 && {
                       backgroundColor: "#ffebee",
                       color: "#f44336",
@@ -473,7 +474,7 @@ export default function AuditorDashboard() {
                     <Text
                       key={idx}
                       style={[
-                        styles.noAnomaliesText,
+                        styles.noAnomaliesText as TextStyle,
                         { color: "#f44336", marginBottom: 8 },
                       ]}
                     >
@@ -536,7 +537,7 @@ export default function AuditorDashboard() {
                       {detail.totalVotes === detail.totalBlocks ? (
                         <Text
                           style={[
-                            styles.blockchainDetailLabel,
+                            styles.blockchainDetailLabel as TextStyle,
                             { color: "#4caf50", marginTop: 8 },
                           ]}
                         >
@@ -545,7 +546,7 @@ export default function AuditorDashboard() {
                       ) : (
                         <Text
                           style={[
-                            styles.blockchainDetailLabel,
+                            styles.blockchainDetailLabel as TextStyle,
                             { color: "#ff9800", marginTop: 8 },
                           ]}
                         >
@@ -567,7 +568,7 @@ export default function AuditorDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    height: "100vh",
+    height: Platform.OS === "web" ? ("100vh" as any) : "100%",
     overflow: "hidden",
     backgroundColor: "#f5f5f5",
   },

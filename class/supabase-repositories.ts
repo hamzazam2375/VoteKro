@@ -412,8 +412,6 @@ export class SupabaseElectionRepository
         .single();
       return election as ElectionRow;
     }
-
-    return data as ElectionRow;
   }
 }
 
