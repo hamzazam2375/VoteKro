@@ -2,9 +2,9 @@ import { BaseService } from "@/class/base-service";
 import type { ProfileRow } from "@/class/database-types";
 import { AuthenticationError, ValidationError } from "@/class/errors";
 import type {
-    IAuthRepository,
-    IProfileRepository,
-    SignUpInput,
+  IAuthRepository,
+  IProfileRepository,
+  SignUpInput,
 } from "@/class/service-contracts";
 
 const DASHBOARD_ROUTE_BY_ROLE = {
@@ -209,19 +209,9 @@ export class AuthService extends BaseService {
   private getFriendlyErrorMessage(message: string): string | null {
     const normalized = message.toLowerCase();
 
-    if (normalized.includes("edge function returned a non-2xx status code")) {
-      return "Registration could not be completed. The email may already be registered or a request is pending. Please verify the email and try again.";
-    }
-
-    if (
-      normalized.includes("failed to initiate voter registration with face")
-    ) {
-      const remainder = message
-        .replace(/^failed to initiate voter registration with face:\s*/i, "")
-        .trim();
-      return remainder
-        ? (this.getFriendlyErrorMessage(remainder) ?? remainder)
-        : "Registration could not be completed. Please try again.";
+    // FIRST handle specific errors
+    if (normalized.includes("face is already registered")) {
+      return "This face is already registered with another voter. Please use the original voter email or contact support.";
     }
 
     if (normalized.includes("already registered")) {
@@ -230,6 +220,23 @@ export class AuthService extends BaseService {
 
     if (normalized.includes("pending registration request")) {
       return "A registration request is already pending for this email. Ask the user to check their email to complete registration.";
+    }
+
+    if (
+      normalized.includes("failed to initiate voter registration with face")
+    ) {
+      const remainder = message
+        .replace(/^failed to initiate voter registration with face:\s*/i, "")
+        .trim();
+
+      return remainder
+        ? (this.getFriendlyErrorMessage(remainder) ?? remainder)
+        : "Registration could not be completed. Please try again.";
+    }
+
+    // Generic fallback LAST
+    if (normalized.includes("edge function returned a non-2xx status code")) {
+      return "Registration could not be completed. Please try again.";
     }
 
     return null;

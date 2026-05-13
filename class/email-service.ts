@@ -20,7 +20,22 @@ export class EmailService {
     });
 
     if (error) {
-      throw new Error(`Failed to send email: ${error.message}`);
+      let edgeMessage = error.message;
+
+      try {
+        const response = error.context as Response;
+
+        if (response) {
+          const body = await response.json();
+
+          if (body?.error) {
+            edgeMessage = body.error;
+          }
+        }
+      } catch {
+        // Ignore parsing errors
+      }
+      throw new Error(edgeMessage);
     }
   }
 
@@ -101,8 +116,22 @@ If you did not request this account or have any questions, please contact suppor
     );
 
     if (error) {
-      // Extract the meaningful error message from the edge function response
-      const edgeMessage = data?.error ?? error.message;
+      let edgeMessage = error.message;
+
+      try {
+        const response = error.context as Response;
+
+        if (response) {
+          const body = await response.json();
+
+          if (body?.error) {
+            edgeMessage = body.error;
+          }
+        }
+      } catch {
+        // Ignore parsing errors
+      }
+
       throw new Error(edgeMessage);
     }
   }
@@ -122,9 +151,24 @@ If you did not request this account or have any questions, please contact suppor
     );
 
     if (error) {
-      const edgeMessage = data?.error ?? error.message;
-      throw new Error(edgeMessage);
+  let edgeMessage = error.message;
+
+  try {
+    const response = error.context as Response;
+
+    if (response) {
+      const body = await response.json();
+
+      if (body?.error) {
+        edgeMessage = body.error;
+      }
     }
+  } catch {
+    // Ignore parsing errors
+  }
+
+  throw new Error(edgeMessage);
+}
   }
 
   async initiateAuditorRegistrationAuthorization(
@@ -142,7 +186,22 @@ If you did not request this account or have any questions, please contact suppor
     );
 
     if (error) {
-      const edgeMessage = data?.error ?? error.message;
+      let edgeMessage = error.message;
+
+      try {
+        const response = error.context as Response;
+
+        if (response) {
+          const body = await response.json();
+
+          if (body?.error) {
+            edgeMessage = body.error;
+          }
+        }
+      } catch {
+        // Ignore parsing errors
+      }
+
       throw new Error(edgeMessage);
     }
   }

@@ -19,6 +19,34 @@ const generatePassword = (length = 10) => {
   return password;
 };
 
+const FACE_DISTANCE_THRESHOLD = 0.45;
+const MIN_SIMILARITY_PERCENT = 65;
+
+const euclideanDistance = (a: number[], b: number[]): number => {
+  let sum = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    const diff = a[i] - b[i];
+    sum += diff * diff;
+  }
+  return Math.sqrt(sum);
+};
+
+const isFaceMatch = (candidate: number[], reference: number[]): boolean => {
+  if (candidate.length === 0 || candidate.length !== reference.length) {
+    return false;
+  }
+
+  const distance = euclideanDistance(candidate, reference);
+  const similarity = Math.max(
+    0,
+    Math.min(100, Math.round((1 - distance) * 100)),
+  );
+
+  return (
+    distance < FACE_DISTANCE_THRESHOLD && similarity >= MIN_SIMILARITY_PERCENT
+  );
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -126,6 +154,43 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
+    }
+
+    if (Array.isArray(faceEmbedding) && faceEmbedding.length > 0) {
+      const { data: existingEmbeddings, error: embeddingsError } =
+        await adminClient
+          .from("voter_face_embeddings")
+          .select("email, embedding");
+
+      if (embeddingsError) {
+        return new Response(
+          JSON.stringify({
+            error: `Failed to validate face data: ${embeddingsError.message}`,
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      const hasMatchingFace = (existingEmbeddings ?? []).some((row: any) => {
+        const existing = Array.isArray(row?.embedding) ? row.embedding : [];
+        return isFaceMatch(existing, faceEmbedding);
+      });
+
+      if (hasMatchingFace) {
+        return new Response(
+          JSON.stringify({
+            error:
+              "This face is already registered with another voter. Please use the original voter email or contact support.",
+          }),
+          {
+            status: 409,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
     }
 
     // Check if a user with this email already exists in auth.users
