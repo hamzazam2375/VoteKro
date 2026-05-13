@@ -70,6 +70,7 @@ export default function VoterDashboard() {
   >(new Map());
   const searchInputRef = useRef<any>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
 
   const displayName = profile?.full_name?.trim() || "Voter";
   const electionCardWidth = Math.min(330, Math.max(250, width - 48));
@@ -116,11 +117,72 @@ export default function VoterDashboard() {
     }
   };
 
+  const waitForSession = async (timeoutMs = 2500): Promise<boolean> => {
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < timeoutMs) {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        return true;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+
+    return false;
+  };
+
+  const isAuthLoadingError = (error: unknown): boolean => {
+    const message = error instanceof Error ? error.message : String(error);
+    return /not authenticated|auth session missing|invalid refresh token|refresh token not found/i.test(
+      message,
+    );
+  };
+
   useEffect(() => {
     const loadProfile = async () => {
+      setIsAuthChecking(true);
+      setIsLoading(true);
+
       try {
-        const userProfile =
-          await serviceFactory.authService.getRequiredProfile("voter");
+        const sessionReady = await waitForSession();
+        if (!sessionReady) {
+          router.replace("/VoterLogin");
+          return;
+        }
+
+        let userProfile: ProfileRow | null = null;
+        let profileLoadError: unknown = null;
+
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            userProfile =
+              await serviceFactory.authService.getRequiredProfile("voter");
+            profileLoadError = null;
+            break;
+          } catch (error) {
+            profileLoadError = error;
+            if (isAuthLoadingError(error) && attempt < 2) {
+              const retrySessionReady = await waitForSession();
+              if (!retrySessionReady) {
+                break;
+              }
+              continue;
+            }
+
+            throw error;
+          }
+        }
+
+        if (!userProfile) {
+          if (profileLoadError && isAuthLoadingError(profileLoadError)) {
+            router.replace("/VoterLogin");
+            return;
+          }
+
+          throw profileLoadError ?? new Error("Unable to load voter profile");
+        }
+
         setProfile(userProfile);
 
         await supabase.auth.getUser();
@@ -150,15 +212,19 @@ export default function VoterDashboard() {
           setSelectedCandidateId(null);
         }
       } catch (error) {
-        Alert.alert(
-          "Error",
-          serviceFactory.authService.getErrorMessage(
-            error,
-            "Failed to load profile",
-          ),
-        );
-        router.replace("/VoterLogin");
+        if (isAuthLoadingError(error)) {
+          router.replace("/VoterLogin");
+        } else {
+          Alert.alert(
+            "Error",
+            serviceFactory.authService.getErrorMessage(
+              error,
+              "Failed to load profile",
+            ),
+          );
+        }
       } finally {
+        setIsAuthChecking(false);
         setIsLoading(false);
       }
     };
@@ -686,6 +752,15 @@ export default function VoterDashboard() {
     );
   }
 
+  if (isAuthChecking) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#2f64e6" />
+        <Text style={styles.loadingText}>Checking your session...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Modal
@@ -754,6 +829,13 @@ export default function VoterDashboard() {
             icon: "📜",
             active: currentView === "history",
             onPress: () => setCurrentView("history"),
+          },
+          {
+            key: "profile",
+            label: "View Profile",
+            icon: "👤",
+            active: false,
+            onPress: () => router.push("/VoterViewProfile"),
           },
         ]}
       >
