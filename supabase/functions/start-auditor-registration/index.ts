@@ -119,6 +119,47 @@ serve(async (req) => {
       );
     }
 
+    // Check if a user with this email already exists in auth.users
+    const { data: existingUsers, error: listError } =
+      await adminClient.auth.admin.listUsers();
+
+    if (!listError && existingUsers?.users) {
+      const emailExists = existingUsers.users.some(
+        (u: any) => u.email?.toLowerCase() === email,
+      );
+      if (emailExists) {
+        return new Response(
+          JSON.stringify({
+            error: `A user with email "${email}" is already registered. Please use a different email address.`,
+          }),
+          {
+            status: 409,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+    }
+
+    // Check if there is already a pending registration request for this email
+    const { data: pendingRequest } = await adminClient
+      .from("auditor_registration_requests")
+      .select("id, status")
+      .eq("email", email)
+      .eq("status", "pending")
+      .maybeSingle();
+
+    if (pendingRequest) {
+      return new Response(
+        JSON.stringify({
+          error: `A pending registration request already exists for "${email}". Please wait for the auditor to complete their registration or cancel the existing request.`,
+        }),
+        {
+          status: 409,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
     const token = crypto.randomUUID();
     const generatedPassword = generatePassword();
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();

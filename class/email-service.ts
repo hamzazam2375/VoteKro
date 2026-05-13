@@ -88,7 +88,7 @@ If you did not request this account or have any questions, please contact suppor
     faceImageBase64: string,
     faceEmbedding?: number[],
   ): Promise<void> {
-    const { error } = await supabase.functions.invoke(
+    const { data, error } = await supabase.functions.invoke(
       "start-voter-registration",
       {
         body: {
@@ -101,9 +101,9 @@ If you did not request this account or have any questions, please contact suppor
     );
 
     if (error) {
-      throw new Error(
-        `Failed to initiate voter registration with face: ${error.message}`,
-      );
+      // Extract the meaningful error message from the edge function response
+      const edgeMessage = data?.error ?? error.message;
+      throw new Error(edgeMessage);
     }
   }
 
@@ -111,7 +111,7 @@ If you did not request this account or have any questions, please contact suppor
     fullName: string,
     email: string,
   ): Promise<void> {
-    const { error } = await supabase.functions.invoke(
+    const { data, error } = await supabase.functions.invoke(
       "start-voter-registration",
       {
         body: {
@@ -122,9 +122,8 @@ If you did not request this account or have any questions, please contact suppor
     );
 
     if (error) {
-      throw new Error(
-        `Failed to initiate voter registration authorization: ${error.message}`,
-      );
+      const edgeMessage = data?.error ?? error.message;
+      throw new Error(edgeMessage);
     }
   }
 
@@ -132,7 +131,7 @@ If you did not request this account or have any questions, please contact suppor
     fullName: string,
     email: string,
   ): Promise<void> {
-    const { error } = await supabase.functions.invoke(
+    const { data, error } = await supabase.functions.invoke(
       "start-auditor-registration",
       {
         body: {
@@ -143,9 +142,8 @@ If you did not request this account or have any questions, please contact suppor
     );
 
     if (error) {
-      throw new Error(
-        `Failed to initiate auditor registration authorization: ${error.message}`,
-      );
+      const edgeMessage = data?.error ?? error.message;
+      throw new Error(edgeMessage);
     }
   }
 

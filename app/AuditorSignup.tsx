@@ -73,9 +73,11 @@ export default function AuditorSignupScreen({
         ],
       );
     } catch (error) {
-      const alertContent =
-        serviceFactory.authService.getRegistrationErrorAlert(error);
-      Alert.alert(alertContent.title, alertContent.message);
+      const errorMessage = serviceFactory.authService.getErrorMessage(
+        error,
+        "Failed to send authorization email. Please try again.",
+      );
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -111,8 +113,21 @@ export default function AuditorSignupScreen({
             </Text>
 
             {error ? (
-              <View style={styles.errorMessage}>
-                <Text style={styles.errorText}>{error}</Text>
+              <View style={styles.errorBanner}>
+                <View style={styles.errorBannerHeader}>
+                  <View style={styles.errorIconWrap}>
+                    <Text style={styles.errorIcon}>⚠️</Text>
+                  </View>
+                  <Text style={styles.errorTitle}>Registration Error</Text>
+                  <Pressable
+                    style={styles.errorDismiss}
+                    onPress={() => setError(null)}
+                    hitSlop={8}
+                  >
+                    <Text style={styles.errorDismissText}>✕</Text>
+                  </Pressable>
+                </View>
+                <Text style={styles.errorBody}>{error}</Text>
               </View>
             ) : null}
 
@@ -311,19 +326,54 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
   },
-  errorMessage: {
-    backgroundColor: "#fee2e2",
-    borderColor: "#dc2626",
+  errorBanner: {
+    backgroundColor: "#fef2f2",
+    borderColor: "#fca5a5",
     borderWidth: 1,
-    borderRadius: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 14,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    shadowColor: "#ef4444",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  errorText: {
-    fontSize: 13,
+  errorBannerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  errorIconWrap: {
+    marginRight: 8,
+  },
+  errorIcon: {
+    fontSize: 18,
+  },
+  errorTitle: {
+    fontSize: 14,
+    fontWeight: "700",
     color: "#991b1b",
-    fontWeight: "600",
-    lineHeight: 18,
+    flex: 1,
+  },
+  errorDismiss: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#fecaca",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  errorDismissText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#991b1b",
+  },
+  errorBody: {
+    fontSize: 13,
+    color: "#b91c1c",
+    fontWeight: "500",
+    lineHeight: 19,
+    paddingLeft: 26,
   },
 });
