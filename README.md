@@ -94,8 +94,6 @@ supabase functions deploy complete-voter-registration --no-verify-jwt
 4. Confirm the login is rejected with a mismatch message.
 5. If a wrong person still passes, increase the threshold a little and re-enroll the voter.
 
-Optional: a standalone RocksDB demo API lives under `rocksdb-ledger/` for local experiments only; the Expo app reads the ledger from Supabase.
-
 ```bash
 npx expo start
 ```
@@ -124,4 +122,4 @@ import { AdminService, VotingService, AuditorService } from "@/lib/services";
 ## Framework
 
 - Frontend - React Native
-- Node.js/TypeScript for serverless functions + PostgreSQL (Supabase) for the database; optional RocksDB demo under `rocksdb-ledger/`.
+- Node.js/TypeScript for serverless functions + PostgreSQL (Supabase) for the database.

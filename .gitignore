@@ -40,5 +40,3 @@ app-example
 /ios
 /android
 
-# RocksDB data files (local database, should not be committed)
-rocksdb-ledger/data/

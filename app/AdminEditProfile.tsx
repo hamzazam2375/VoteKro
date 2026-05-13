@@ -1,26 +1,29 @@
 import { serviceFactory } from "@/class/service-factory";
 import { Navbar } from "@/components/navbar";
+import { PasswordField } from "@/components/password-field";
 import { PageBackground } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
 type AdminEditProfileProps = {
   isEmbedded?: boolean;
+  onProfileUpdated?: (nextFullName: string) => void;
 };
 
 export default function AdminEditProfile({
   isEmbedded = false,
+  onProfileUpdated,
 }: AdminEditProfileProps) {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
@@ -72,24 +75,24 @@ export default function AdminEditProfile({
         full_name: fullName,
       });
       await serviceFactory.authService.updateCurrentUser({
-        email: email.trim() || undefined,
         password: newPassword.trim() || undefined,
       });
+      onProfileUpdated?.(fullName);
       Alert.alert("Success", "Profile updated successfully");
-        if (Platform.OS === "web") {
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
-            const { toast } = require("react-toastify");
-            toast.success("Profile updated successfully");
-          } catch {
-            // fallback to Alert if toast isn't available
-            Alert.alert("Success", "Profile updated successfully");
-          }
-        } else {
+      if (Platform.OS === "web") {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports -- optional web toast
+          const { toast } = require("react-toastify");
+          toast.success("Profile updated successfully");
+        } catch {
+          // fallback to Alert if toast isn't available
           Alert.alert("Success", "Profile updated successfully");
         }
+      } else {
+        Alert.alert("Success", "Profile updated successfully");
+      }
 
-        // Stay on the same page after successful save (no navigation)
+      // Stay on the same page after successful save (no navigation)
     } catch (error) {
       Alert.alert(
         "Error",
@@ -175,31 +178,26 @@ export default function AdminEditProfile({
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>Email (read-only)</Text>
               <TextInput
                 style={styles.input}
                 value={email}
-                onChangeText={setEmail}
                 placeholder="your.email@example.com"
                 placeholderTextColor="#999"
                 keyboardType="email-address"
                 autoCapitalize="none"
-                editable={!isLoading}
+                editable={false}
               />
             </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>New Password</Text>
-              <TextInput
-                style={styles.input}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                placeholder="Leave blank to keep current password"
-                placeholderTextColor="#999"
-                secureTextEntry
-                editable={!isLoading}
-              />
-            </View>
+            <PasswordField
+              label="New Password"
+              placeholder="Leave blank to keep current password"
+              placeholderTextColor="#999"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              editable={!isLoading}
+            />
 
             <Pressable
               style={({ pressed }) => [
