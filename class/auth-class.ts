@@ -156,7 +156,8 @@ export class AuthService extends BaseService {
   }
 
   getErrorMessage(error: unknown, fallbackMessage: string): string {
-    return error instanceof Error ? error.message : fallbackMessage;
+    const message = error instanceof Error ? error.message : fallbackMessage;
+    return this.getFriendlyErrorMessage(message) ?? message;
   }
 
   getLoginErrorAlert(error: unknown): { title: string; message: string } {
@@ -176,7 +177,7 @@ export class AuthService extends BaseService {
     if (errorMessage.includes("Invalid login credentials")) {
       return {
         title: "Login Failed",
-        message: 
+        message:
           "Invalid email or password.\n\n" +
           "TROUBLESHOOTING:\n" +
           "1. Check email spelling\n" +
@@ -203,6 +204,35 @@ export class AuthService extends BaseService {
         "An error occurred during registration",
       ),
     };
+  }
+
+  private getFriendlyErrorMessage(message: string): string | null {
+    const normalized = message.toLowerCase();
+
+    if (normalized.includes("edge function returned a non-2xx status code")) {
+      return "Registration could not be completed. The email may already be registered or a request is pending. Please verify the email and try again.";
+    }
+
+    if (
+      normalized.includes("failed to initiate voter registration with face")
+    ) {
+      const remainder = message
+        .replace(/^failed to initiate voter registration with face:\s*/i, "")
+        .trim();
+      return remainder
+        ? (this.getFriendlyErrorMessage(remainder) ?? remainder)
+        : "Registration could not be completed. Please try again.";
+    }
+
+    if (normalized.includes("already registered")) {
+      return "This email is already registered. Ask the user to log in or use a different email.";
+    }
+
+    if (normalized.includes("pending registration request")) {
+      return "A registration request is already pending for this email. Ask the user to check their email to complete registration.";
+    }
+
+    return null;
   }
 
   private requireMinimumLength(
